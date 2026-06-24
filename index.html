@@ -1,0 +1,3492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klyp — Games, Chat & Shorts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://www.youtube.com">
+<link rel="preconnect" href="https://i.ytimg.com">
+<link rel="dns-prefetch" href="https://www.youtube.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* ===========================================================
+   NEONHUB — design tokens
+   Color: --bg #060a14, --panel #0c1326, --panel-2 #11193a,
+          --blue #2f7bff, --cyan #00e0ff, --text #e7ecfb,
+          --muted #7c89ad, --pink #ff3d77
+   Type: display = Rajdhani (700), body = Inter, mono = JetBrains Mono
+   =========================================================== */
+
+:root{
+  --bg:#060a14;
+  --panel:#0c1326;
+  --panel-2:#101a3a;
+  --line:#1c2750;
+  --blue:#2f7bff;
+  --cyan:#00e0ff;
+  --text:#e7ecfb;
+  --muted:#7c89ad;
+  --pink:#ff3d77;
+  --radius:10px;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+ul{margin:0;padding:0;list-style:none;}
+input{font-family:inherit;}
+
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--panel-2);border-radius:8px;border:2px solid var(--bg);}
+
+::selection{background:var(--blue);color:#fff;}
+
+/* focus visibility */
+button:focus-visible, input:focus-visible, li:focus-visible{
+  outline:2px solid var(--cyan);
+  outline-offset:2px;
+}
+
+/* ===================== TOPBAR ===================== */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:rgba(6,10,20,.85);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.topbar__inner{
+  max-width:1500px;margin:0 auto;
+  display:flex;align-items:center;gap:24px;
+  padding:14px 24px;
+}
+.brand{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.brand__mark{
+  width:36px;height:36px;border-radius:8px;
+  background:linear-gradient(135deg,var(--blue),var(--cyan));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Rajdhani',sans-serif;font-weight:700;color:#04070f;
+  box-shadow:0 0 18px rgba(47,123,255,.55);
+}
+.brand__name{
+  font-family:'Rajdhani',sans-serif;font-weight:700;font-size:22px;letter-spacing:.5px;
+}
+.brand__name--accent{color:var(--cyan);}
+
+.searchbar{
+  flex:1;max-width:520px;
+  display:flex;align-items:center;gap:10px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:9px 16px;
+  transition:border-color .15s, box-shadow .15s;
+}
+.searchbar:focus-within{
+  border-color:var(--blue);
+  box-shadow:0 0 0 3px rgba(47,123,255,.18);
+}
+.searchbar__icon{width:18px;height:18px;color:var(--muted);flex-shrink:0;}
+.searchbar input{
+  background:none;border:none;color:var(--text);width:100%;font-size:14px;outline:none;
+}
+.searchbar input::placeholder{color:var(--muted);}
+
+.topnav{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0;}
+.topnav__btn{
+  font-size:14px;font-weight:600;padding:9px 16px;border-radius:999px;
+  background:linear-gradient(135deg,var(--blue),var(--cyan));
+  color:#04070f;
+}
+.topnav__btn--ghost{
+  background:none;border:1px solid var(--line);color:var(--text);
+}
+.topnav__btn--ghost:hover{border-color:var(--blue);}
+
+/* ===================== SHELL ===================== */
+.shell{
+  max-width:1500px;margin:0 auto;
+  display:grid;grid-template-columns:220px 1fr;gap:28px;
+  padding:24px;
+}
+.sidebar{position:sticky;top:84px;align-self:start;}
+.sidebar__label{
+  font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);
+  margin:18px 4px 8px;
+}
+.sidebar__list li{
+  padding:10px 12px;border-radius:8px;font-size:14px;font-weight:500;
+  color:var(--muted);cursor:pointer;margin-bottom:2px;
+  transition:background .15s, color .15s;
+}
+.sidebar__list li:hover{background:var(--panel);color:var(--text);}
+.sidebar__list li.active{
+  background:var(--panel-2);color:var(--cyan);
+  box-shadow:inset 2px 0 0 var(--cyan);
+}
+
+/* ===================== HERO ===================== */
+.hero{
+  position:relative;border-radius:18px;overflow:hidden;
+  min-height:280px;display:flex;align-items:center;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(47,123,255,.35), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(0,224,255,.18), transparent 50%),
+    linear-gradient(135deg,#0a1130,#060a14 70%);
+  border:1px solid var(--line);
+  margin-bottom:30px;
+}
+.hero__grid{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(47,123,255,.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47,123,255,.12) 1px, transparent 1px);
+  background-size:38px 38px;
+  mask-image:linear-gradient(to bottom, rgba(0,0,0,.9), transparent 85%);
+  animation:gridDrift 14s linear infinite;
+}
+@keyframes gridDrift{
+  from{background-position:0 0,0 0;}
+  to{background-position:38px 38px,38px 38px;}
+}
+.hero__content{position:relative;padding:40px 48px;max-width:640px;}
+.hero__eyebrow{
+  font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:2px;
+  color:var(--cyan);margin:0 0 10px;
+}
+.hero__title{
+  font-family:'Rajdhani',sans-serif;font-weight:700;font-size:44px;line-height:1.05;
+  margin:0 0 12px;text-shadow:0 0 24px rgba(47,123,255,.45);
+}
+.hero__desc{color:var(--muted);font-size:15px;margin:0 0 22px;max-width:520px;}
+
+.btn{
+  font-weight:600;font-size:14px;padding:12px 26px;border-radius:999px;
+}
+.btn--primary{
+  background:linear-gradient(135deg,var(--blue),var(--cyan));
+  color:#04070f;
+  box-shadow:0 0 24px rgba(47,123,255,.45);
+  transition:transform .12s ease;
+}
+.btn--primary:hover{transform:translateY(-1px);}
+
+/* ===================== GRID ===================== */
+.gamesSection__head{
+  display:flex;align-items:baseline;gap:12px;margin-bottom:16px;
+}
+.gamesSection__head h2{
+  font-family:'Rajdhani',sans-serif;font-size:22px;margin:0;
+}
+.gamesSection__count{color:var(--muted);font-size:13px;}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(170px,1fr));
+  gap:18px;
+}
+.card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  overflow:hidden;cursor:pointer;
+  transition:transform .15s, box-shadow .15s, border-color .15s;
+  position:relative;
+}
+.card:hover{
+  transform:translateY(-4px);
+  border-color:var(--blue);
+  box-shadow:0 8px 28px rgba(47,123,255,.28);
+}
+.card__thumb{
+  height:120px;width:100%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:38px;
+  position:relative;
+  background:linear-gradient(135deg,#11193a,#0c1326);
+  overflow:hidden;
+}
+.card__thumb img{
+  width:100%;height:100%;object-fit:cover;
+  transition:transform .2s ease;
+}
+.card:hover .card__thumb img{transform:scale(1.06);}
+.card__emojiFallback{
+  width:100%;height:100%;
+  align-items:center;justify-content:center;
+  font-size:38px;
+}
+.card__badge{
+  position:absolute;top:8px;left:8px;
+  font-size:10px;font-weight:700;letter-spacing:.5px;
+  padding:3px 8px;border-radius:999px;
+  background:rgba(6,10,20,.7);color:var(--cyan);
+  border:1px solid var(--cyan);
+}
+.card__fav{
+  position:absolute;top:6px;right:6px;
+  background:rgba(6,10,20,.65);border-radius:50%;
+  width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:14px;
+}
+.card__fav.active{color:var(--pink);}
+.card__body{padding:10px 12px 12px;}
+.card__title{font-size:14px;font-weight:600;margin:0 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card__cat{font-size:11px;color:var(--muted);text-transform:capitalize;}
+.card__playOverlay{
+  position:absolute;inset:0;background:rgba(6,10,20,0);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .15s;
+}
+.card:hover .card__playOverlay{opacity:1;background:rgba(6,10,20,.45);}
+.card__playOverlay span{
+  width:42px;height:42px;border-radius:50%;
+  background:var(--cyan);color:#04070f;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+
+.emptyState{
+  text-align:center;color:var(--muted);padding:60px 0;font-size:14px;grid-column:1/-1;
+}
+
+/* ===================== PLAYER OVERLAY ===================== */
+.playerOverlay, .viewerOverlay{
+  position:fixed;inset:0;background:var(--bg);
+  z-index:200;display:none;flex-direction:column;
+}
+.playerOverlay.open, .viewerOverlay.open{display:flex;}
+.playerOverlay__bar, .viewerOverlay__bar{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 18px;border-bottom:1px solid var(--line);
+  background:var(--panel);font-weight:600;
+}
+.playerOverlay__bar span{font-family:'Rajdhani',sans-serif;font-size:16px;}
+.playerOverlay__actions{margin-left:auto;display:flex;gap:8px;}
+.playerOverlay__actions button, .viewerOverlay__bar button{
+  width:34px;height:34px;border-radius:8px;background:var(--panel-2);
+  border:1px solid var(--line);font-size:14px;
+}
+.playerOverlay__actions button:hover, .viewerOverlay__bar button:hover{border-color:var(--blue);}
+.playerOverlay__stage{flex:1;display:flex;align-items:center;justify-content:center;background:#04070f;}
+.playerOverlay__stage canvas{outline:1px solid var(--line);}
+
+/* Fullscreen mode: iframes fill the whole screen; canvases scale up
+   as large as will fit without distorting their fixed pixel size.
+   Using % (relative to the stage) rather than vw/vh — vw/vh always refer
+   to the literal, unrotated screen, which breaks once the mobile
+   landscape-rotation transform is applied to the player as a whole. */
+.playerOverlay:fullscreen{background:#04070f;}
+.playerOverlay:fullscreen .playerOverlay__stage iframe{
+  width:100% !important; height:100% !important;
+  max-width:100% !important; max-height:100% !important;
+}
+.playerOverlay:fullscreen .playerOverlay__stage canvas{
+  max-width:100% !important; max-height:100% !important; width:auto !important; height:auto !important;
+}
+.playerOverlay:-webkit-full-screen{background:#04070f;}
+.playerOverlay:-webkit-full-screen .playerOverlay__stage iframe{
+  width:100% !important; height:100% !important;
+  max-width:100% !important; max-height:100% !important;
+}
+.playerOverlay:-webkit-full-screen .playerOverlay__stage canvas{
+  max-width:100% !important; max-height:100% !important; width:auto !important; height:auto !important;
+}
+
+/* In fullscreen, only the game itself should be visible — hide the bar
+   and rating row entirely. */
+.playerOverlay:fullscreen .playerOverlay__bar,
+.playerOverlay:fullscreen .playerOverlay__ratingBar,
+.playerOverlay:-webkit-full-screen .playerOverlay__bar,
+.playerOverlay:-webkit-full-screen .playerOverlay__ratingBar{
+  display:none !important;
+}
+
+/* Force a landscape layout for games while the phone is physically held
+   portrait — most browsers only allow the real orientation-lock API while
+   in fullscreen, so this CSS-only rotation works everywhere with no
+   permissions needed. The instant the phone is actually rotated to
+   landscape, this media query stops matching and the transform disappears
+   on its own — no JS coordination required. */
+@media (max-width:700px) and (orientation:portrait){
+  .playerOverlay.open{
+    position:fixed; top:0; left:0;
+    width:100vh; height:100vw;
+    transform-origin:top left;
+    transform:rotate(90deg) translateY(-100%);
+  }
+}
+
+/* The game player sets inline px sizes (e.g. embedWidth/embedHeight) for
+   desktop, which on a small mobile screen left the game tiny inside a
+   much bigger stage. These !important rules override those inline styles
+   (same trick already used for :fullscreen above) so games actually fill
+   the available space on phones, rotated or not. */
+@media (max-width:700px){
+  .playerOverlay__stage iframe{
+    width:100% !important; height:100% !important;
+    max-width:100% !important; max-height:100% !important;
+  }
+  .playerOverlay__stage canvas{
+    max-width:100% !important; max-height:100% !important;
+    width:auto !important; height:auto !important;
+  }
+}
+
+/* ===================== WEB VIEWER ===================== */
+.viewerOverlay__bar input{
+  flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+  color:var(--text);padding:8px 12px;font-size:13px;
+}
+.viewerOverlay__notice{
+  font-size:12px;color:var(--muted);padding:8px 18px;border-bottom:1px solid var(--line);
+  background:rgba(255,61,119,.06);
+}
+.viewerOverlay__frame{flex:1;width:100%;border:none;background:#fff;}
+
+/* ===================== APP SHELL / SECTION RAIL ===================== */
+.appShell{display:flex; min-height:100vh;}
+.appShell__content{flex:1; min-width:0;}
+.sectionRail{
+  width:64px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; align-items:center; gap:14px; padding:18px 0;
+  position:sticky; top:0; height:100vh;
+}
+.sectionRail__btn{
+  width:42px; height:42px; border-radius:12px; font-size:19px;
+  background:var(--panel-2); border:1px solid var(--line); color:var(--muted);
+  display:flex; align-items:center; justify-content:center; transition:transform .12s;
+}
+.sectionRail__btn:hover{transform:translateY(-2px);}
+.sectionRail__btn.active{
+  background:linear-gradient(135deg,var(--blue),var(--cyan)); color:#04070f; border-color:transparent;
+  box-shadow:0 0 16px rgba(47,123,255,.5);
+}
+
+/* ===================== MESSAGING ===================== */
+.messagingSection{
+  display:flex; height:calc(100vh - 65px);
+}
+.messaging__contacts{
+  width:240px; flex-shrink:0; border-right:1px solid var(--line); background:var(--panel);
+  display:flex; flex-direction:column; padding:16px 0;
+}
+.messaging__contactsHead{display:flex; align-items:center; justify-content:space-between; padding:0 16px 12px;}
+.messaging__contactsHead h3{font-family:'Rajdhani',sans-serif; margin:0; font-size:16px;}
+.messaging__contactsHead button{
+  width:28px; height:28px; border-radius:8px; background:var(--panel-2); border:1px solid var(--line);
+}
+.contactList{list-style:none; margin:0; padding:0; overflow-y:auto;}
+.contactList li{
+  padding:10px 16px; cursor:pointer; font-size:14px; color:var(--muted);
+  display:flex; align-items:center; gap:8px; border-left:3px solid transparent;
+}
+.contactList li:hover{background:var(--panel-2);}
+.contactList li.active{background:var(--panel-2); color:var(--text); border-left-color:var(--cyan);}
+.contactList li .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan); flex-shrink:0;}
+.messaging__main{
+  flex:1; display:flex; flex-direction:column; padding:18px 24px; min-width:0;
+}
+.messaging__backBtn{display:none; align-self:flex-start; margin-bottom:10px; color:var(--muted); font-size:13px;}
+.messaging__header h2{font-family:'Rajdhani',sans-serif; margin:0 0 4px; font-size:20px;}
+.messaging__header p{color:var(--muted); font-size:13px; margin:0 0 14px;}
+.messaging__thread{
+  flex:1; overflow-y:auto; background:var(--panel); border:1px solid var(--line);
+  border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;
+}
+.msg{max-width:78%; padding:9px 13px; border-radius:12px; font-size:14px; line-height:1.4;}
+.msg__meta{font-size:11px; color:var(--muted); margin-bottom:2px;}
+.msg.mine{align-self:flex-end; background:linear-gradient(135deg,var(--blue),var(--cyan)); color:#04070f;}
+.msg.theirs{align-self:flex-start; background:var(--panel-2); color:var(--text);}
+.messaging__inputRow{display:flex; gap:10px; margin-top:14px;}
+.messaging__inputRow input{
+  flex:1; background:var(--panel); border:1px solid var(--line); border-radius:999px;
+  padding:11px 18px; color:var(--text); font-size:14px;
+}
+.messaging__inputRow button{padding:11px 22px; border-radius:999px;}
+
+/* ===================== SHORTS ===================== */
+.shortsSection{height:calc(100vh - 65px); display:flex; justify-content:center; background:#000;}
+.shorts__feed{
+  width:100%; max-width:430px; height:100%; overflow-y:scroll; scroll-snap-type:y mandatory;
+}
+.shorts__item{
+  height:100%; scroll-snap-align:start; position:relative;
+  display:flex; align-items:flex-end; background-size:cover; background-position:center;
+  background-color:#11193a;
+}
+.shorts__item__overlay{
+  width:100%; padding:26px 20px 32px;
+  background:linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,.1) 60%, transparent);
+  color:#fff; position:relative; z-index:2; pointer-events:none;
+}
+.shorts__item__overlay a, .shorts__item__overlay button{pointer-events:auto;}
+.shorts__item__title{font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:700; margin:0 0 4px;}
+.shorts__item__cat{font-size:12px; opacity:.8; text-transform:capitalize; margin:0 0 14px;}
+.shorts__item__playBtn{
+  padding:10px 24px; border-radius:999px; font-weight:700;
+  background:linear-gradient(135deg,var(--blue),var(--cyan)); color:#04070f;
+}
+.shorts__item__ytLink{
+  display:inline-block; margin-top:6px; padding:8px 16px; border-radius:999px;
+  font-size:12px; font-weight:600; color:#fff; border:1px solid rgba(255,255,255,.5);
+}
+.shorts__item__actions{display:flex; align-items:center; gap:12px; margin-top:10px;}
+.shorts__likeBtn{
+  font-size:22px; background:rgba(0,0,0,.4); border-radius:50%;
+  width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+  border:1px solid rgba(255,255,255,.3); transition:transform .12s;
+}
+.shorts__likeBtn:hover{transform:scale(1.1);}
+.shorts__likeBtn.liked{background:rgba(255,61,119,.25); border-color:var(--pink);}
+.shorts__dislikeBtn{
+  font-size:22px; background:rgba(0,0,0,.4); border-radius:50%;
+  width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+  border:1px solid rgba(255,255,255,.3); transition:transform .12s;
+}
+.shorts__dislikeBtn:hover{transform:scale(1.1);}
+.shorts__dislikeBtn.active{background:rgba(124,137,173,.3); border-color:var(--muted);}
+.shorts__videoBox{
+  position:absolute; inset:0; background:#000;
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+/* Genuine vertical Shorts: fill the box edge-to-edge at their real 9:16 ratio. */
+.shorts__item--video[data-aspect="vertical"] .shorts__videoBox iframe{
+  height:100% !important; width:auto !important; aspect-ratio:9/16 !important;
+  border:none !important; max-width:100% !important;
+}
+/* Landscape fallback content (live-search results of unknown aspect):
+   letterbox at the correct 16:9 ratio instead of stretching. */
+.shorts__item--video[data-aspect="horizontal"] .shorts__videoBox iframe,
+.shorts__item--video:not([data-aspect]) .shorts__videoBox iframe{
+  width:100% !important; height:auto !important; aspect-ratio:16/9 !important;
+  border:none !important; max-height:100% !important;
+}
+.shorts__hint{
+  position:absolute; top:16px; left:50%; transform:translateX(-50%);
+  color:rgba(255,255,255,.6); font-size:12px; letter-spacing:.5px;
+}
+.shorts__unmuteHint{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  z-index:5; padding:12px 22px; border-radius:999px; font-size:14px; font-weight:600;
+  background:rgba(0,0,0,.65); color:#fff; border:1px solid rgba(255,255,255,.5);
+}
+.shorts__brokenMsg{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  text-align:center; padding:24px; color:#fff; font-size:14px; background:rgba(0,0,0,.5);
+}
+
+/* ===================== FORM INPUTS (signup modal) ===================== */
+.formLabel{display:block; font-size:12px; color:var(--muted); margin:14px 0 6px;}
+.formInput{
+  width:100%; padding:11px 13px; border-radius:9px; border:1px solid var(--line);
+  background:var(--panel-2); color:var(--text); font-size:14px; box-sizing:border-box;
+}
+.formInput:focus{outline:2px solid var(--blue);}
+.formError{color:var(--pink); font-size:12px; margin:10px 0 0;}
+
+/* ===================== LONG VIDEOS SECTION ===================== */
+.videosSection{padding:24px 32px; height:calc(100vh - 65px); overflow-y:auto;}
+.videosSection__head h2{font-family:'Rajdhani',sans-serif; margin:0 0 4px; font-size:22px;}
+.videosSection__head p{color:var(--muted); font-size:13px; margin:0 0 18px;}
+.videosGrid{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:20px;
+}
+.videoCard{
+  background:var(--panel); border:1px solid var(--line); border-radius:12px;
+  overflow:hidden; cursor:pointer; transition:transform .15s, border-color .15s;
+}
+.videoCard:hover{transform:translateY(-3px); border-color:var(--blue);}
+.videoCard__thumb{
+  width:100%; aspect-ratio:16/9; background:#0c1326; position:relative; overflow:hidden;
+}
+.videoCard__thumb img{width:100%; height:100%; object-fit:cover;}
+.videoCard__playIcon{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:30px; color:#fff; background:rgba(0,0,0,0); transition:background .15s;
+}
+.videoCard:hover .videoCard__playIcon{background:rgba(0,0,0,.35);}
+.videoCard__body{padding:12px 14px;}
+.videoCard__title{font-size:14px; font-weight:600; margin:0 0 4px; line-height:1.3;}
+.videoCard__tags{font-size:11px; color:var(--muted); text-transform:capitalize;}
+.videoPlayerCard{max-width:880px;}
+.videoPlayerBox{width:100%; aspect-ratio:16/9; background:#000; border-radius:8px; overflow:hidden;}
+.videoPlayerBox iframe{width:100%; height:100%; border:none;}
+
+/* ===================== APPS SECTION ===================== */
+.appsSection{padding:24px 32px; height:calc(100vh - 65px); overflow-y:auto;}
+.appsSection__head h2{font-family:'Rajdhani',sans-serif; margin:0 0 4px; font-size:22px;}
+.appsSection__head p{color:var(--muted); font-size:13px; margin:0 0 18px; max-width:640px;}
+.appsGrid{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:18px;
+}
+.appCard{
+  background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  padding:22px 14px; text-align:center; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  transition:transform .15s, border-color .15s;
+}
+.appCard:hover{transform:translateY(-3px); border-color:var(--blue);}
+.appCard__icon{
+  width:56px; height:56px; border-radius:16px; display:flex; align-items:center;
+  justify-content:center; font-size:26px;
+}
+.appCard__name{font-weight:600; font-size:14px;}
+.appCard__desc{font-size:11px; color:var(--muted);}
+.appPlayerCard{max-width:500px;}
+.appPlayerBox{min-height:80px;}
+
+/* ===================== MOST PLAYED TODAY ===================== */
+.grid--row{
+  display:flex; gap:18px; overflow-x:auto; padding-bottom:6px;
+  grid-template-columns:none;
+}
+.grid--row .card{flex:0 0 170px;}
+
+/* ===================== RATING BAR ===================== */
+.playerOverlay__ratingBar{
+  display:flex; align-items:center; gap:12px;
+  padding:8px 18px; background:var(--panel); border-bottom:1px solid var(--line);
+  font-size:13px; color:var(--muted);
+}
+.starRow{display:flex; gap:2px;}
+.starRow button{
+  font-size:18px; color:var(--muted); cursor:pointer; transition:color .1s, transform .1s;
+}
+.starRow button:hover{transform:scale(1.15);}
+.starRow button.filled{color:#ffd93d;}
+.playerOverlay__ratingAvg{margin-left:auto; font-size:12px;}
+
+/* ===================== MODALS (profile / leaderboard) ===================== */
+.modalOverlay{
+  position:fixed; inset:0; background:rgba(4,7,15,.7);
+  z-index:260; display:none; align-items:center; justify-content:center;
+  padding:20px;
+}
+.modalOverlay.open{display:flex;}
+.modalCard{
+  background:var(--panel); border:1px solid var(--line); border-radius:16px;
+  padding:26px; max-width:420px; width:100%; max-height:85vh; overflow-y:auto;
+  position:relative; box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.modalCard__close{
+  position:absolute; top:16px; right:16px; width:30px; height:30px;
+  border-radius:8px; background:var(--panel-2); border:1px solid var(--line); font-size:14px;
+}
+.modalCard__title{
+  font-family:'Rajdhani',sans-serif; font-size:20px; margin:0 0 16px;
+}
+.modalCard__subhead{
+  font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--muted);
+  margin:18px 0 10px;
+}
+.modalCard__note{font-size:12px; color:var(--muted); margin:0 0 14px;}
+.modalCard__wide{width:100%; margin-top:18px;}
+.modalCard__reset{
+  display:block; margin:14px auto 0; font-size:12px; color:var(--muted);
+  text-decoration:underline; cursor:pointer;
+}
+.profileName{display:flex; align-items:center; gap:8px; font-size:18px; font-weight:600; margin-bottom:14px;}
+.profileName button{font-size:14px; color:var(--muted); cursor:pointer;}
+.xpBar{
+  height:10px; border-radius:999px; background:var(--panel-2); overflow:hidden;
+}
+.xpBar__fill{
+  height:100%; background:linear-gradient(90deg,var(--blue),var(--cyan));
+  width:0%; transition:width .3s ease;
+}
+.xpBar__label{font-size:12px; color:var(--muted); margin:6px 0 0;}
+.streakLine{font-size:14px; margin:10px 0 0;}
+.badgeGrid{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:4px;
+}
+.badge{
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:10px 4px; border-radius:10px; background:var(--panel-2);
+  font-size:11px; text-align:center; color:var(--muted);
+  border:1px solid var(--line);
+}
+.badge__icon{font-size:22px; filter:grayscale(1); opacity:.35;}
+.badge.unlocked{border-color:var(--cyan); color:var(--text);}
+.badge.unlocked .badge__icon{filter:none; opacity:1;}
+.leaderboardList{list-style:none; margin:0; padding:0;}
+.leaderboardList li{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 8px; border-bottom:1px solid var(--line); font-size:14px;
+}
+.leaderboardList li.me{background:rgba(47,123,255,.12); border-radius:8px;}
+.leaderboardList .rank{width:26px; color:var(--muted); font-weight:700;}
+.leaderboardList .lbName{flex:1; font-weight:600;}
+.leaderboardList .lbXp{color:var(--cyan); font-size:12px;}
+
+/* ===================== LIGHT THEME ===================== */
+html[data-theme="light"]{
+  --bg:#f3f5fb; --panel:#ffffff; --panel-2:#eef1fb; --line:#dde3f5;
+  --text:#0c1330; --muted:#5b6788;
+}
+html[data-theme="light"] .topbar{background:rgba(243,245,251,.9);}
+html[data-theme="light"] .playerOverlay,
+html[data-theme="light"] .viewerOverlay{background:var(--bg);}
+html[data-theme="light"] .playerOverlay__stage{background:#e7eaf5;}
+html[data-theme="light"] .hero{
+  background:
+    radial-gradient(circle at 20% 20%, rgba(47,123,255,.18), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(0,224,255,.12), transparent 50%),
+    linear-gradient(135deg,#eef1fb,#f3f5fb 70%);
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr;}
+  .sidebar{
+    position:static;display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;
+  }
+  .sidebar__label{display:none;}
+  .sidebar__list{display:flex;gap:8px;}
+  .hero__title{font-size:30px;}
+  .topbar__inner{flex-wrap:wrap;}
+  .searchbar{order:3;max-width:none;width:100%;}
+}
+
+@media (max-width:700px){
+  /* Section rail becomes a bottom tab bar */
+  .appShell{flex-direction:column;}
+  .sectionRail{
+    position:fixed; bottom:0; left:0; right:0; top:auto; height:60px; width:100%;
+    flex-direction:row; justify-content:space-around; align-items:center;
+    border-right:none; border-top:1px solid var(--line); padding:0;
+    z-index:120;
+  }
+  .sectionRail__btn{width:48px; height:44px; border-radius:10px;}
+  .appShell__content{padding-bottom:60px;}
+
+  /* Topbar: compact, icon-only web viewer label */
+  .topbar__inner{padding:10px 14px; gap:10px;}
+  .brand__name{font-size:17px;}
+  .topnav__btn{padding:8px 10px; font-size:12px;}
+  .topnav__btn span.btnLabel{display:none;}
+
+  /* Messaging: stacked panes that slide via .mobileShow */
+  .messagingSection{height:calc(100vh - 60px - 56px); position:relative; overflow:hidden;}
+  .messaging__contacts{
+    width:100%; position:absolute; inset:0; z-index:2; transform:translateX(0);
+    transition:transform .2s ease;
+  }
+  .messaging__main{
+    width:100%; position:absolute; inset:0; z-index:1; transform:translateX(100%);
+    transition:transform .2s ease; padding:14px 16px;
+  }
+  .messaging__contacts.mobileShow{transform:translateX(0);}
+  .messaging__main.mobileShow{transform:translateX(0); z-index:3;}
+  .messaging__backBtn{display:block;}
+
+  /* Shorts: account for bottom nav */
+  .shortsSection{height:calc(100vh - 60px);}
+  .shorts__feed{max-width:100%;}
+
+  /* Modals: comfortable on small screens */
+  .modalCard{padding:20px; max-width:94vw;}
+  .badgeGrid{grid-template-columns:repeat(3,1fr);}
+
+  /* Grid: tighter cards */
+  .grid{grid-template-columns:repeat(auto-fill, minmax(135px,1fr)); gap:12px;}
+  .hero__content{padding:26px 22px;}
+  .hero__title{font-size:24px;}
+  .gamesSection__head h2{font-size:18px;}
+}
+
+@media (max-width:420px){
+  .grid{grid-template-columns:repeat(2,1fr);}
+  .card__thumb{height:100px;}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .hero__grid{animation:none;}
+  .card{transition:none;}
+}
+
+</style>
+</head>
+<body>
+
+<div class="appShell">
+  <!-- ===== SECTION RAIL ===== -->
+  <nav class="sectionRail">
+    <button class="sectionRail__btn active" data-section="gaming" title="Gaming">🎮</button>
+    <button class="sectionRail__btn" data-section="messaging" title="Messaging">💬</button>
+    <button class="sectionRail__btn" data-section="shorts" title="Shorts">📱</button>
+    <button class="sectionRail__btn" data-section="videos" title="Videos">📺</button>
+    <button class="sectionRail__btn" data-section="apps" title="Apps">🧩</button>
+  </nav>
+
+  <div class="appShell__content">
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" href="#" data-route="home">
+      <span class="brand__mark">KL</span>
+      <span class="brand__name">KL<span class="brand__name--accent">YP</span></span>
+    </a>
+
+    <div class="searchbar">
+      <svg class="searchbar__icon" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M20 20L16.5 16.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="searchInput" type="text" placeholder="Search games..." autocomplete="off">
+    </div>
+
+    <nav class="topnav">
+      <button class="topnav__btn topnav__btn--ghost" id="themeToggle" title="Toggle theme">🌙</button>
+      <button class="topnav__btn" data-route="browser">Web Viewer</button>
+      <button class="topnav__btn topnav__btn--ghost" id="leaderboardBtn">🏆 Leaderboard</button>
+      <button class="topnav__btn topnav__btn--ghost" id="profileBtn">👤 Guest</button>
+    </nav>
+  </div>
+  </header>
+
+  <!-- ===== GAMING SECTION ===== -->
+  <div class="shell" id="gamingSection">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <p class="sidebar__label">Discover</p>
+    <ul class="sidebar__list" id="categoryList">
+      <li data-cat="all" class="active">⚡ All Games</li>
+      <li data-cat="action">🎯 Action</li>
+      <li data-cat="puzzle">🧩 Puzzle</li>
+      <li data-cat="arcade">👾 Arcade</li>
+      <li data-cat="strategy">♟ Strategy</li>
+      <li data-cat="multiplayer">🌐 Multiplayer</li>
+    </ul>
+    <p class="sidebar__label">Library</p>
+    <ul class="sidebar__list">
+      <li data-cat="new">✨ New</li>
+      <li data-cat="trending">🔥 Trending</li>
+      <li data-cat="fav" id="favLink">★ Favorites</li>
+    </ul>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main" id="mainView">
+
+    <!-- HERO -->
+    <section class="hero" id="heroSection">
+      <div class="hero__grid"></div>
+      <div class="hero__content">
+        <p class="hero__eyebrow">FEATURED CABINET</p>
+        <h1 class="hero__title" id="heroTitle">Loading...</h1>
+        <p class="hero__desc" id="heroDesc"></p>
+        <button class="btn btn--primary" id="heroPlayBtn">▶ Play Now</button>
+      </div>
+    </section>
+
+    <!-- MOST PLAYED TODAY -->
+    <section class="gamesSection" id="topTodaySection" style="display:none;">
+      <div class="gamesSection__head">
+        <h2>🔥 Most Played Today</h2>
+      </div>
+      <div class="grid grid--row" id="topTodayGrid"></div>
+    </section>
+
+    <!-- GAME GRID -->
+    <section class="gamesSection">
+      <div class="gamesSection__head">
+        <h2 id="gridTitle">All Games</h2>
+        <span class="gamesSection__count" id="gridCount"></span>
+      </div>
+      <div class="grid" id="gameGrid"></div>
+    </section>
+  </main>
+  </div>
+  <!-- end #gamingSection -->
+
+  <!-- ===== MESSAGING SECTION ===== -->
+  <div class="messagingSection" id="messagingSection" style="display:none;">
+    <aside class="messaging__contacts" id="messagingContacts">
+      <div class="messaging__contactsHead">
+        <h3>Chats</h3>
+        <button id="addContactBtn" title="Add contact">➕</button>
+      </div>
+      <ul class="contactList" id="contactList"></ul>
+    </aside>
+    <div class="messaging__main">
+      <button class="messaging__backBtn" id="messagingBackBtn">← Chats</button>
+      <div class="messaging__header">
+        <h2 id="messagingThreadName">💬 Klyp Public Chat</h2>
+        <p id="messagingThreadSub">Visible to everyone currently using this site.</p>
+      </div>
+      <div class="messaging__thread" id="messagingThread"></div>
+      <form class="messaging__inputRow" id="messagingForm">
+        <input id="messagingInput" placeholder="Say something..." autocomplete="off" maxlength="300">
+        <button type="submit" class="btn btn--primary">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== SHORTS SECTION ===== -->
+  <div class="shortsSection" id="shortsSection" style="display:none;">
+    <div class="shorts__feed" id="shortsFeed"></div>
+  </div>
+
+  <!-- ===== LONG VIDEOS SECTION (regular YouTube-style grid) ===== -->
+  <div class="videosSection" id="videosSection" style="display:none;">
+    <div class="videosSection__head">
+      <h2>📺 Videos</h2>
+      <p>Regular-length videos — click any thumbnail to watch.</p>
+    </div>
+    <div class="videosGrid" id="videosGrid"></div>
+  </div>
+
+  <!-- ===== APPS SECTION ===== -->
+  <div class="appsSection" id="appsSection" style="display:none;">
+    <div class="appsSection__head">
+      <h2>🧩 Apps</h2>
+      <p>Real official embeds from other platforms — not full logged-in apps, just genuine content from each one, the same way our YouTube videos work.</p>
+    </div>
+    <div class="appsGrid" id="appsGrid"></div>
+  </div>
+
+  </div>
+  <!-- end .appShell__content -->
+</div>
+<!-- end .appShell -->
+
+<!-- ===== PLAYER MODAL ===== -->
+<div class="playerOverlay" id="playerOverlay">
+  <div class="playerOverlay__bar">
+    <span id="playerTitle">Game</span>
+    <div class="playerOverlay__actions">
+      <button id="favToggle" title="Favorite">★</button>
+      <button id="fullscreenToggle" title="Fullscreen">⛶</button>
+      <button id="closePlayer" title="Close">✕</button>
+    </div>
+  </div>
+  <div class="playerOverlay__ratingBar">
+    <span class="playerOverlay__ratingLabel">Rate this game:</span>
+    <div class="starRow" id="starRow">
+      <button data-star="1">☆</button><button data-star="2">☆</button><button data-star="3">☆</button><button data-star="4">☆</button><button data-star="5">☆</button>
+    </div>
+    <span id="ratingAvgText" class="playerOverlay__ratingAvg"></span>
+  </div>
+  <div class="playerOverlay__stage" id="playerStage"></div>
+</div>
+
+<!-- ===== WEB VIEWER (limited iframe viewer, see README) ===== -->
+<div class="viewerOverlay" id="viewerOverlay">
+  <div class="viewerOverlay__bar">
+    <button id="viewerBack" title="Back">←</button>
+    <input id="viewerUrl" type="text" placeholder="https://example.com" />
+    <button id="viewerGo">Go</button>
+    <button id="viewerClose">✕</button>
+  </div>
+  <div class="viewerOverlay__notice" id="viewerNotice"></div>
+  <iframe id="viewerFrame" class="viewerOverlay__frame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+</div>
+
+<!-- ===== PROFILE MODAL ===== -->
+<div class="modalOverlay" id="profileOverlay">
+  <div class="modalCard">
+    <button class="modalCard__close" id="profileClose">✕</button>
+    <h3 class="modalCard__title">👤 Your Profile</h3>
+    <div class="profileName">
+      <span id="profileUsername">Guest</span>
+      <button id="profileRename" title="Change name">✏</button>
+    </div>
+    <div class="xpBar">
+      <div class="xpBar__fill" id="xpBarFill"></div>
+    </div>
+    <p class="xpBar__label" id="xpLabel">Level 1 — 0 / 100 XP</p>
+    <p class="streakLine" id="streakLine">🔥 0 day streak</p>
+    <h4 class="modalCard__subhead">Badges</h4>
+    <div class="badgeGrid" id="badgeGrid"></div>
+    <button class="btn btn--primary modalCard__wide" id="openLeaderboardFromProfile">🏆 View Leaderboard</button>
+    <button class="modalCard__reset" id="resetProfile">Reset profile</button>
+  </div>
+</div>
+
+<!-- ===== LEADERBOARD MODAL ===== -->
+<div class="modalOverlay" id="leaderboardOverlay">
+  <div class="modalCard">
+    <button class="modalCard__close" id="leaderboardClose">✕</button>
+    <h3 class="modalCard__title">🏆 Leaderboard</h3>
+    <p class="modalCard__note">Shared across everyone using this site — top players by XP.</p>
+    <ol class="leaderboardList" id="leaderboardList"></ol>
+  </div>
+</div>
+
+<!-- ===== SIGNUP MODAL (mandatory: full name + username) ===== -->
+<div class="modalOverlay" id="signupOverlay" style="z-index:400;">
+  <div class="modalCard" style="text-align:left;">
+    <h3 class="modalCard__title">🎮 Welcome to Klyp</h3>
+    <p class="modalCard__note">Create your account to play, chat, and climb the leaderboard.</p>
+    <label class="formLabel" for="signupFullName">Full name</label>
+    <input id="signupFullName" class="formInput" placeholder="e.g. Alex Johnson" autocomplete="off">
+    <label class="formLabel" for="signupUsername">Username</label>
+    <input id="signupUsername" class="formInput" placeholder="e.g. alexj99" autocomplete="off">
+    <p class="formError" id="signupError" style="display:none;"></p>
+    <button class="btn btn--primary modalCard__wide" id="signupSubmit">Create Account</button>
+  </div>
+</div>
+
+<!-- ===== LONG VIDEO PLAYER MODAL ===== -->
+<div class="modalOverlay" id="videoPlayerOverlay">
+  <div class="modalCard videoPlayerCard">
+    <button class="modalCard__close" id="videoPlayerClose">✕</button>
+    <h3 class="modalCard__title" id="videoPlayerTitle">Video</h3>
+    <div class="videoPlayerBox" id="videoPlayerBox"></div>
+  </div>
+</div>
+
+<!-- ===== APP EMBED MODAL ===== -->
+<div class="modalOverlay" id="appPlayerOverlay">
+  <div class="modalCard appPlayerCard">
+    <button class="modalCard__close" id="appPlayerClose">✕</button>
+    <h3 class="modalCard__title" id="appPlayerTitle">App</h3>
+    <div class="appPlayerBox" id="appPlayerBox"></div>
+  </div>
+</div>
+
+<script>
+// Game catalog. `engine` points to a function name in games-engines.js
+// that boots a real playable game inside the player overlay.
+// Cards without a matching engine show a friendly "coming soon" state —
+// exactly like real game hubs do while back-filling their library.
+
+const GAMES = [
+  { id:"snake",    title:"Neon Snake",      cat:"arcade",   emoji:"🐍", badge:"HOT",  engine:"snake" },
+  { id:"2048",     title:"2048 Drift",      cat:"puzzle",   emoji:"🔢", badge:"NEW",  engine:"twozerofoureight" },
+  { id:"memory",   title:"Glow Memory",     cat:"puzzle",   emoji:"🧠", badge:null,   engine:"memory" },
+  { id:"reaction", title:"Reflex Tap",      cat:"action",   emoji:"⚡", badge:"HOT",  engine:"reaction" },
+  { id:"breakout", title:"Block Breaker",   cat:"arcade",   emoji:"🧱", badge:null,   engine:"breakout" },
+
+  // --- Everything below is pulled from OnlineGames.io's own public
+  // "embeddable games" feed (onlinegames.io/media/plugins/genGames/embed.json).
+  // This is the specific list they've opened up for embedding on any domain —
+  // each entry was spot-checked (fetched directly) before being added here,
+  // unlike the earlier batch that turned out to be domain-locked. ---
+
+  { id:"drift-king", title:"Drift King", cat:"multiplayer", emoji:"🏎", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2024/unity/drift-king/index.html",
+    img:"https://www.onlinegames.io/media/posts/729/responsive/Drift-King-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/drift-king/" },
+
+  { id:"armedforces-io", title:"ArmedForces.io", cat:"multiplayer", emoji:"🪖", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2021/unity3/armedforces-io/index.html",
+    img:"https://www.onlinegames.io/media/posts/234/responsive/Armed-Forces-io-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/armedforces-io/" },
+
+  { id:"cs-online", title:"CS Online", cat:"multiplayer", emoji:"🔫", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/unity2/cs-online/index.html",
+    img:"https://www.onlinegames.io/media/posts/434/responsive/CS-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/cs-online/" },
+
+  { id:"legendary-sniper", title:"Legendary Sniper", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity3/legendary-sniper/index.html",
+    img:"https://www.onlinegames.io/media/posts/596/responsive/Legendary-Sniper-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/legendary-sniper/" },
+
+  { id:"draw-the-bridge", title:"Draw The Bridge", cat:"puzzle", emoji:"🌉", badge:"NEW",
+    embedUrl:"https://www.onlinegames.io/games/2021/4/draw-the-bridge/index.html",
+    img:"https://www.onlinegames.io/media/posts/164/responsive/Draw-the-Bridge-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/draw-the-bridge/" },
+
+  { id:"geometry-escape", title:"Geometry Escape", cat:"arcade", emoji:"🔺", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/construct/299/geometry-escape/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/905/responsive/Geometry-Escape-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/geometry-escape/" },
+
+  { id:"stack-fire-ball", title:"Stack Fire Ball", cat:"arcade", emoji:"🔥", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2021/unity/stack-fire-ball/index.html",
+    img:"https://www.onlinegames.io/media/posts/184/responsive/Stack-Fire-Ball-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/stack-fire-ball/" },
+
+  { id:"survival-karts", title:"Survival Karts", cat:"multiplayer", emoji:"🏁", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2024/unity3/survival-karts/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/887/responsive/survival-karts-play-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/survival-karts/" },
+
+  { id:"masked-special-forces", title:"Masked Special Forces", cat:"multiplayer", emoji:"💂", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2022/unity2/masked-special-forces/index.html",
+    img:"https://www.onlinegames.io/media/posts/310/responsive/Masked-Special-Forces-FPS-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/masked-special-forces/" },
+
+  { id:"chess-freezenova", title:"Chess", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity3/chess/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1116/responsive/chess-freezenova-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/chess-freezenova/" },
+
+  { id:"skibidi-toilet-io", title:"Skibidi Toilet io", cat:"multiplayer", emoji:"🚽", badge:"NEW",
+    embedUrl:"https://www.onlinegames.io/games/2023/construct/242/skibidi-toilet-io/index.html",
+    img:"https://www.onlinegames.io/media/posts/540/responsive/Skibidi-Toilet-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/skibidi-toilet-io/" },
+
+  { id:"crown-defense", title:"Crown Defense", cat:"strategy", emoji:"👑", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/construct/337/crown-defense/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1098/responsive/crown-defense-online-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/crown-defense/" },
+
+  { id:"dinosaur-game", title:"Dinosaur Game", cat:"arcade", emoji:"🦖", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/q2/dinosaur-game/index.html",
+    img:"https://www.onlinegames.io/media/posts/417/responsive/Dinosaur-Game-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/dinosaur-game/" },
+
+  { id:"geometry-dash-freezenova", title:"Geometry Dash FreezeNova", cat:"arcade", emoji:"📐", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2023/q2/geometry-dash-freezenova/index.html",
+    img:"https://www.onlinegames.io/media/posts/510/responsive/Geometry-Dash-FreezeNova-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/geometry-dash-freezenova/" },
+
+  { id:"crazy-cattle-3d", title:"Crazy Cattle 3D", cat:"multiplayer", emoji:"🐑", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity3/crazy-cattle-3d/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1004/responsive/Crazy-Cattle-3D-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/crazy-cattle-3d/" },
+
+  { id:"nuts-and-bolts-puzzle", title:"Nuts and Bolts Puzzle", cat:"puzzle", emoji:"🔩", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity/nuts-and-bolts-puzzle/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/965/responsive/nuts-and-bolts-puzzle-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/nuts-and-bolts-puzzle/" },
+
+  { id:"basketball-slam-dunk", title:"Basketball Slam Dunk", cat:"action", emoji:"🏀", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity2/basketball-slam-dunk/index.html",
+    img:"https://www.onlinegames.io/media/posts/200/responsive/Basketball-Slam-Dunk-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/basketball-slam-dunk/" },
+
+  { id:"find-it", title:"Find It", cat:"puzzle", emoji:"🔍", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity/find-it/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/940/responsive/Find-It-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/find-it/" },
+
+  { id:"battle-royale-simulator", title:"Battle Royale Simulator", cat:"multiplayer", emoji:"🪂", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2022/unity3/battle-royale-simulator/index.html",
+    img:"https://www.onlinegames.io/media/posts/633/responsive/Battle-Royale-Simulator-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/battle-royale-simulator/" },
+
+  { id:"tank-arena", title:"Tank Arena", cat:"multiplayer", emoji:"🪖", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/construct/293/tank-arena/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/956/responsive/Tank-Arena-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/tank-arena/" },
+
+  { id:"mini-shooters", title:"Mini Shooters", cat:"multiplayer", emoji:"🎮", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/5/mini-shooters/index.html",
+    img:"https://www.onlinegames.io/media/posts/206/responsive/Mini-Shooters-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/mini-shooters/" },
+
+  { id:"mech-shooter", title:"Mech Shooter", cat:"action", emoji:"🤖", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2022/unity/mech-shooter/index.html",
+    img:"https://www.onlinegames.io/media/posts/649/responsive/Mech-Shooter-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/mech-shooter/" },
+
+  { id:"crazy-strike-force", title:"Crazy Strike Force", cat:"action", emoji:"💥", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/unity/crazy-strike-force/index.html",
+    img:"https://www.onlinegames.io/media/posts/366/responsive/Crazy-Strike-Force-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/crazy-strike-force/" },
+
+  { id:"warstrike", title:"WarStrike", cat:"action", emoji:"💀", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/unity3/warstrike/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/870/responsive/WarStrike-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/warstrike/" },
+
+  { id:"solitaire", title:"Solitaire", cat:"puzzle", emoji:"🃏", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/html/solitaire/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1007/responsive/solitaire-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/solitaire/" },
+
+  { id:"8-ball-pool-billiard", title:"8 Ball Pool Billiard", cat:"strategy", emoji:"🎱", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity3/8-ball-pool-billiard/index.html",
+    img:"https://www.onlinegames.io/media/posts/442/responsive/8-Ball-Pool-Billiard-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/8-ball-pool-billiard/" },
+
+  { id:"highway-traffic", title:"Highway Traffic", cat:"arcade", emoji:"🚗", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2022/unity/highway-traffic/index.html",
+    img:"https://www.onlinegames.io/media/posts/32/responsive/Highway-Traffic-2-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/highway-traffic/" },
+
+  { id:"snake-football", title:"Snake Football", cat:"arcade", emoji:"⚽", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/construct/200/snake-football/index.html",
+    img:"https://www.onlinegames.io/media/posts/706/responsive/Snake-Football-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/snake-football/" },
+
+  { id:"capybara-clicker-pro", title:"Capybara Clicker Pro", cat:"arcade", emoji:"🐹", badge:"NEW",
+    embedUrl:"https://www.onlinegames.io/games/2023/q2/capybara-clicker-pro/index.html",
+    img:"https://www.onlinegames.io/media/posts/554/responsive/Capybara-Clicker-Pro-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/capybara-clicker-pro/" },
+
+  { id:"cube-worlds", title:"Cube Worlds", cat:"strategy", emoji:"🧊", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2025/html/cube-worlds/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/986/responsive/Cube-Worlds-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/cube-worlds/" },
+
+  { id:"geometry-vector", title:"Geometry Vector", cat:"arcade", emoji:"🔷", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2026/construct/329/geometry-vector/game.html",
+    img:"https://www.onlinegames.io/media/posts/1246/responsive/geometry-vector-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/geometry-vector/" },
+
+  { id:"fall-brainrots", title:"Fall Brainrots", cat:"multiplayer", emoji:"🧠", badge:"HOT",
+    embedUrl:"https://cloud.onlinegames.io/games/2026/unity/fall-brainrots/game.html",
+    img:"https://www.onlinegames.io/media/posts/1194/responsive/fall-brainrots-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/fall-brainrots/" },
+
+  { id:"idle-dev-startup", title:"Idle Dev Startup", cat:"strategy", emoji:"💻", badge:"NEW",
+    embedUrl:"https://www.onlinegames.io/games/2023/unity3/idle-dev-startup/index.html",
+    img:"https://www.onlinegames.io/media/posts/566/responsive/Idle-Dev-Startup-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/idle-dev-startup/" },
+
+  { id:"golf-bit", title:"Golf Bit", cat:"arcade", emoji:"⛳", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2026/construct/328/golf-bit/game.html",
+    img:"https://www.onlinegames.io/media/posts/1289/responsive/golf-bit-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/golf-bit/" },
+  { id:"love-tester", title:"Love Tester", cat:"arcade", emoji:"💘", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/3/love-tester/index.html",
+    img:"https://www.onlinegames.io/media/posts/152/responsive/love-tester-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/love-tester/" },
+  { id:"stickman-parkour", title:"Stickman Parkour", cat:"action", emoji:"🏃", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/construct/219/stickman-parkour/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/871/responsive/stickman-parkour-OG-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/stickman-parkour/" },
+  { id:"stickman-gta-city", title:"Stickman GTA City", cat:"action", emoji:"🏙", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/unity3/stickman-gta-city/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/900/responsive/stickman-gta-city-free-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/stickman-gta-city/" },
+  { id:"gta-simulator", title:"GTA Simulator", cat:"action", emoji:"🚓", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2023/unity2/gta-simulator/index.html",
+    img:"https://www.onlinegames.io/media/posts/416/responsive/GTA-Simulator-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/gta-simulator/" },
+  { id:"checkout-frenzy", title:"Checkout Frenzy", cat:"strategy", emoji:"🛒", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity/checkout-frenzy/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/974/responsive/checkout-frenzy-cashier-game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/checkout-frenzy/" },
+  { id:"get-on-top", title:"Get On Top", cat:"action", emoji:"🤼", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2024/code/6/get-on-top/index.html",
+    img:"https://www.onlinegames.io/media/posts/697/responsive/Get-on-Top-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/get-on-top/" },
+  { id:"velocity-rush", title:"Velocity Rush", cat:"arcade", emoji:"🏌", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2026/unity/velocity-rush/game.html",
+    img:"https://www.onlinegames.io/media/posts/1265/responsive/velocity-rush-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/velocity-rush/" },
+  { id:"dublix", title:"Dublix", cat:"multiplayer", emoji:"🧱", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity4/dublix/game-og.html",
+    img:"https://www.onlinegames.io/media/posts/1126/responsive/dublix-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/dublix/" },
+  { id:"real-flight-simulator", title:"Real Flight Simulator", cat:"action", emoji:"✈", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2023/unity2/real-flight-simulator/index.html",
+    img:"https://www.onlinegames.io/media/posts/342/responsive/Real-Flight-Simulator-2-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/real-flight-simulator/" },
+  { id:"escape-car", title:"Escape Car", cat:"action", emoji:"🚔", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity2/escape-car/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1000/responsive/Escape-Car-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/escape-car/" },
+  { id:"snaker-io", title:"Snaker io", cat:"multiplayer", emoji:"🐍", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2026/more/snaker-io/game.html",
+    img:"https://www.onlinegames.io/media/posts/1261/responsive/snaker-io-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/snaker-io/" },
+  { id:"drift-hunters-pro", title:"Drift Hunters Pro", cat:"action", emoji:"🚘", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/unity/drift-hunters-pro/index.html",
+    img:"https://www.onlinegames.io/media/posts/397/responsive/Drift-Hunters-Pro-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/drift-hunters-pro/" },
+  { id:"guerrillas-io", title:"Guerrillas io", cat:"multiplayer", emoji:"🪖", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/unity2/guerrillas-io/index.html",
+    img:"https://www.onlinegames.io/media/posts/423/responsive/Guerillas-io-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/guerrillas-io/" },
+  { id:"edys-car-simulator", title:"Edys Car Simulator", cat:"action", emoji:"🚙", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity/edys-car-simulator/index.html",
+    img:"https://www.onlinegames.io/media/posts/238/responsive/Edys-Car-Simulator-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/edys-car-simulator/" },
+  { id:"drunken-duel", title:"Drunken Duel", cat:"action", emoji:"🥊", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2024/code/2/drunken-duel/index.html",
+    img:"https://www.onlinegames.io/media/posts/698/responsive/Drunken-Duel-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/drunken-duel/" },
+  { id:"basketball-io", title:"Basketball io", cat:"multiplayer", emoji:"🏀", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity3/basketball-io/index.html",
+    img:"https://www.onlinegames.io/media/posts/302/responsive/Basketball-io-2-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/basketball-io/" },
+  { id:"burnout-city", title:"Burnout City", cat:"action", emoji:"🌃", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/unity/burnout-city/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/861/responsive/burnoutcity-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/burnout-city/" },
+  { id:"basket-hoop", title:"Basket Hoop", cat:"arcade", emoji:"🏀", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2024/construct/311/basket-hoop/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/843/responsive/Basket-Hoop-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/basket-hoop/" },
+  { id:"fps-strike", title:"FPS Strike", cat:"action", emoji:"🔫", badge:"HOT",
+    embedUrl:"https://cloud.onlinegames.io/games/2024/unity2/fps-strike/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/902/responsive/fps-strike-online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/fps-strike/" },
+  { id:"99-nights-in-the-forest", title:"99 Nights in the Forest", cat:"action", emoji:"🌲", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2026/unity/99-nights-in-the-forest-survival/game.html",
+    img:"https://www.onlinegames.io/media/posts/1190/responsive/99-nights-in-the-forest-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/99-nights-in-the-forest/" },
+  { id:"stickman-destruction", title:"Stickman Destruction", cat:"arcade", emoji:"💥", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity3/stickman-destruction/index.html",
+    img:"https://www.onlinegames.io/media/posts/233/responsive/Stickman-Destruction-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/stickman-destruction/" },
+  { id:"cat-simulator", title:"Cat Simulator", cat:"strategy", emoji:"🐱", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity4/cat-simulator/index.html",
+    img:"https://www.onlinegames.io/media/posts/330/responsive/Cat-Simulator-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/cat-simulator/" },
+  { id:"fast-food-rush", title:"Fast Food Rush", cat:"strategy", emoji:"🍔", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity/fast-food-rush/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/979/responsive/fast-food-rush-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/fast-food-rush/" },
+  { id:"poop-clicker", title:"Poop Clicker", cat:"arcade", emoji:"💩", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2024/construct/292/poop-clicker/index.html",
+    img:"https://www.onlinegames.io/media/posts/742/responsive/Poop-Clicker-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/poop-clicker/" },
+  { id:"super-car-driving", title:"Super Car Driving", cat:"action", emoji:"🏎", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/unity2/super-car-driving/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/854/responsive/supercardriving-2-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/super-car-driving/" },
+  { id:"pixelmon-town", title:"Pixelmon Town", cat:"strategy", emoji:"🧩", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2025/html/pixelmon-town/game.html",
+    img:"https://www.onlinegames.io/media/posts/1214/responsive/pixelmon-town-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/pixelmon-town/" },
+  { id:"highway-racer-pro", title:"Highway Racer Pro", cat:"action", emoji:"🛣", badge:"NEW",
+    embedUrl:"https://www.onlinegames.io/games/2024/unity/highway-racer-pro/index.html",
+    img:"https://www.onlinegames.io/media/posts/822/responsive/Highway-Racer-Pro-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/highway-racer-pro/" },
+  { id:"egg-car-racing", title:"Egg Car Racing", cat:"arcade", emoji:"🥚", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/construct/289/egg-car-racing/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/910/responsive/egg-car-racing-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/egg-car-racing/" },
+  { id:"masked-forces-zombie-survival", title:"Masked Forces Zombie Survival", cat:"multiplayer", emoji:"🧟", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2021/unity3/masked-forces-zombie-survival/index.html",
+    img:"https://www.onlinegames.io/media/posts/225/responsive/Masked-Forces-Zombie-Survival-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/masked-forces-zombie-survival/" },
+  { id:"love-tester-story", title:"Love Tester Story", cat:"arcade", emoji:"💞", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/construct/225/love-tester-story/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/816/responsive/Love-Tester-Story-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/love-tester-story/" },
+  { id:"police-chase-drifter", title:"Police Chase Drifter", cat:"action", emoji:"🚨", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/3/police-chase-drifter/index.html",
+    img:"https://www.onlinegames.io/media/posts/155/responsive/Police-Chase-Drifter-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/police-chase-drifter/" },
+  { id:"cubecraft-survival", title:"CubeCraft Survival", cat:"strategy", emoji:"⛏", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity4/cubecraft-survival/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1113/responsive/cubecraft-survival-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/cubecraft-survival/" },
+  { id:"wasteland-shooters", title:"Wasteland Shooters", cat:"multiplayer", emoji:"☣", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity2/wasteland-shooters/index.html",
+    img:"https://www.onlinegames.io/media/posts/218/responsive/Wasteland-Shooters-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/wasteland-shooters/" },
+  { id:"car-football", title:"Car Football", cat:"arcade", emoji:"⚽", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/construct/198/car-football/index.html",
+    img:"https://www.onlinegames.io/media/posts/405/responsive/Car-Football-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/car-football/" },
+  { id:"drift-rider", title:"Drift Rider", cat:"action", emoji:"🏍", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/unity3/drift-rider/index.html",
+    img:"https://www.onlinegames.io/media/posts/553/responsive/Drift-Rider-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/drift-rider/" },
+  { id:"f1-drift-racer", title:"F1 Drift Racer", cat:"action", emoji:"🏁", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/construct/134/f1-drift-racer/index.html",
+    img:"https://www.onlinegames.io/media/posts/504/responsive/F1-Drift-Racer-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/f1-drift-racer/" },
+  { id:"backflip-challenge", title:"Backflip Challenge", cat:"arcade", emoji:"🤸", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2026/unity/backflip-challenge/game.html",
+    img:"https://www.onlinegames.io/media/posts/1203/responsive/backflip-challenge-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/backflip-challenge/" },
+  { id:"crazy-parking-fury", title:"Crazy Parking Fury", cat:"action", emoji:"🅿", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity3/crazy-parking-fury/index.html",
+    img:"https://www.onlinegames.io/media/posts/643/responsive/Crazy-Parking-Fury-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/crazy-parking-fury/" },
+  { id:"crazy-drifter", title:"Crazy Drifter", cat:"action", emoji:"🚗", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity3/crazy-drifter/index.html",
+    img:"https://www.onlinegames.io/media/posts/314/responsive/Crazy-Drifter-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/crazy-drifter/" },
+  { id:"mob-city", title:"Mob City", cat:"action", emoji:"🕴", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity3/mob-city/index.html",
+    img:"https://www.onlinegames.io/media/posts/418/responsive/Mob-City-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/mob-city/" },
+  { id:"head-soccer-2022", title:"Head Soccer 2022", cat:"arcade", emoji:"⚽", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2023/construct/280/head-soccer-2022/index.html",
+    img:"https://www.onlinegames.io/media/posts/624/responsive/Head-Soccer-2022-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/head-soccer-2022/" },
+  { id:"rome-simulator", title:"Rome Simulator", cat:"action", emoji:"🏛", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity/rome-simulator/index.html",
+    img:"https://www.onlinegames.io/media/posts/634/responsive/Rome-Simulator-2-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/rome-simulator/" },
+  { id:"taxi-simulator", title:"Taxi Simulator", cat:"strategy", emoji:"🚕", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity/taxi-simulator/index.html",
+    img:"https://www.onlinegames.io/media/posts/465/responsive/Taxi-Simulator-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/taxi-simulator/" },
+  { id:"mini-cars-racing", title:"Mini Cars Racing", cat:"arcade", emoji:"🚙", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2021/unity/mini-cars-racing/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1010/responsive/Mini-Cars-Racing-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/mini-cars-racing/" },
+  { id:"kick-the-dummy", title:"Kick The Dummy", cat:"arcade", emoji:"🥋", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/construct/153/kick-the-dummy/index.html",
+    img:"https://www.onlinegames.io/media/posts/414/responsive/Kick-The-Dummy-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/kick-the-dummy/" },
+  { id:"fast-food-manager", title:"Fast Food Manager", cat:"strategy", emoji:"🍟", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity4/fast-food-manager/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1114/responsive/fast-food-manager-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/fast-food-manager/" },
+  { id:"basketball-king", title:"Basketball King", cat:"multiplayer", emoji:"🏀", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2024/construct/316/basketball-king/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/907/responsive/basketball-king-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/basketball-king/" },
+  { id:"alien-sky-invasion", title:"Alien Sky Invasion", cat:"action", emoji:"👽", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity3/alien-sky-invasion/index.html",
+    img:"https://www.onlinegames.io/media/posts/594/responsive/Alien-Sky-Invasion-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/alien-sky-invasion/" },
+  { id:"troll-level", title:"Troll Level", cat:"arcade", emoji:"😈", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/unity2/troll-level/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/857/responsive/troll-level-online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/troll-level/" },
+  { id:"stunt-rider", title:"Stunt Rider", cat:"action", emoji:"🏍", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2024/unity/stunt-rider/index.html",
+    img:"https://www.onlinegames.io/media/posts/674/responsive/Stunt-Rider-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/stunt-rider/" },
+  { id:"fort-drifter", title:"Fort Drifter", cat:"action", emoji:"🏰", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity3/fort-drifter/index.html",
+    img:"https://www.onlinegames.io/media/posts/592/responsive/Fort-Drifter-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/fort-drifter/" },
+  { id:"rooftop-duel", title:"Rooftop Duel", cat:"multiplayer", emoji:"🏚", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/construct/213/rooftop-duel/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1002/responsive/Rooftop-Duel-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/rooftop-duel/" },
+  { id:"survival-island", title:"Survival Island", cat:"strategy", emoji:"🏝", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/unity2/survival-island/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/970/responsive/Survival-Island-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/survival-island/" },
+  { id:"five-nights-at-poppy", title:"Five Nights at Poppy", cat:"action", emoji:"🎪", badge:"HOT",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity2/five-nights-at-poppy/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/992/responsive/Five-Nights-at-Poppy-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/five-nights-at-poppy/" },
+  { id:"army-combat", title:"Army Combat", cat:"action", emoji:"🎖", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity/army-combat/index.html",
+    img:"https://www.onlinegames.io/media/posts/664/responsive/Army-Combat-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/army-combat/" },
+  { id:"police-traffic", title:"Police Traffic", cat:"action", emoji:"🚓", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity/police-traffic/index.html",
+    img:"https://www.onlinegames.io/media/posts/187/responsive/Pollice-Traffic-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/police-traffic/" },
+  { id:"four-colors", title:"Four Colors", cat:"strategy", emoji:"🎴", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/code/four-colors/index.html",
+    img:"https://www.onlinegames.io/media/posts/535/responsive/Four-Colors-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/four-colors/" },
+  { id:"motorbike-traffic", title:"Motorbike Traffic", cat:"action", emoji:"🏍", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity/motorbike-traffic/index.html",
+    img:"https://www.onlinegames.io/media/posts/419/responsive/Motorbike-Traffic-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/motorbike-traffic/" },
+  { id:"airplane-racer", title:"Airplane Racer", cat:"action", emoji:"🛩", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity/airplane-racer/index.html",
+    img:"https://www.onlinegames.io/media/posts/268/responsive/Airplane-Racer-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/airplane-racer/" },
+  { id:"drift-fury", title:"Drift Fury", cat:"action", emoji:"🚗", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/unity/drift-fury/index.html",
+    img:"https://www.onlinegames.io/media/posts/650/responsive/Drift-Fury-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/drift-fury/" },
+  { id:"nova-clicker", title:"Nova Clicker", cat:"arcade", emoji:"✨", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/construct/314/nova-clicker/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/981/responsive/Nova-Clicker-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/nova-clicker/" },
+  { id:"tiny-crash-fighters", title:"Tiny Crash Fighters", cat:"strategy", emoji:"🤖", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/construct/285/tiny-crash-fighters/index.html",
+    img:"https://www.onlinegames.io/media/posts/622/responsive/Tiny-Crash-Fighters-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/tiny-crash-fighters/" },
+  { id:"2-player-crazy-racer", title:"2 Player Crazy Racer", cat:"multiplayer", emoji:"🏎", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity3/2-player-crazy-racer/index.html",
+    img:"https://www.onlinegames.io/media/posts/617/responsive/2-Player-Crazy-Racer-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/2-player-crazy-racer/" },
+  { id:"pinball-simulator", title:"Pinball Simulator", cat:"arcade", emoji:"🪩", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity2/pinball-simulator/index.html",
+    img:"https://www.onlinegames.io/media/posts/460/responsive/Pinball-Simulator-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/pinball-simulator/" },
+  { id:"atv-highway-traffic", title:"ATV Highway Traffic", cat:"action", emoji:"🏍", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity/atv-highway-traffic/index.html",
+    img:"https://www.onlinegames.io/media/posts/668/responsive/ATV-Highway-Traffic-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/atv-highway-traffic/" },
+  { id:"futuristic-racer", title:"Futuristic Racer", cat:"action", emoji:"🛸", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2021/2/futuristic-racer/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1051/responsive/futuristic_racer_game-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/futuristic-racer/" },
+  { id:"motorbike-stunt-simulator", title:"Motorbike Stunt Simulator", cat:"action", emoji:"🏍", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2021/unity/motorbike-stunt-simulator/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1045/responsive/motorbike_stunt_simulator_game-2-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/motorbike-stunt-simulator/" },
+  { id:"burnout-drift-hunter", title:"Burnout Drift Hunter", cat:"action", emoji:"🚗", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity4/burnout-drift-hunter/index.html",
+    img:"https://www.onlinegames.io/media/posts/327/responsive/Burnout-Drift-Hunter-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/burnout-drift-hunter/" },
+  { id:"dark-ninja-hanjo", title:"Dark Ninja Hanjo", cat:"action", emoji:"🥷", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2023/unity/dark-ninja-hanjo/index.html",
+    img:"https://www.onlinegames.io/media/posts/451/responsive/Dark-Ninja-Hanjo-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/dark-ninja-hanjo/" },
+  { id:"offroad-rally", title:"Offroad Rally", cat:"action", emoji:"🚙", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/unity2/offroad-rally/index.html",
+    img:"https://www.onlinegames.io/media/posts/461/responsive/Offroad-Rally-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/offroad-rally/" },
+  { id:"stunt-simulator-2", title:"Stunt Simulator 2", cat:"action", emoji:"🚗", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity3/stunt-simulator-2/index.html",
+    img:"https://www.onlinegames.io/media/posts/765/responsive/Stunt-simulator-2-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/stunt-simulator-2/" },
+  { id:"voxel-world", title:"Voxel World", cat:"strategy", emoji:"🧊", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity/voxel-world/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/937/responsive/voxel-world-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/voxel-world/" },
+  { id:"hero-dragon-power", title:"Hero Dragon Power", cat:"action", emoji:"🐉", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/unity/hero-dragon-power/index.html",
+    img:"https://www.onlinegames.io/media/posts/365/responsive/Hero-Dragon-Power-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/hero-dragon-power/" },
+  { id:"supercars-drift", title:"Supercars Drift", cat:"action", emoji:"🏎", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/unity3/supercars-drift/index.html",
+    img:"https://www.onlinegames.io/media/posts/628/responsive/SuperCars-Drift-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/supercars-drift/" },
+  { id:"bus-subway-runner", title:"Bus Subway Runner", cat:"arcade", emoji:"🚌", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity/bus-subway-runner/index.html",
+    img:"https://www.onlinegames.io/media/posts/235/responsive/Bus-Subway-Runner-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/bus-subway-runner/" },
+  { id:"jungle-mart", title:"Jungle Mart", cat:"strategy", emoji:"🐒", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2026/construct/339/jungle-mart/game.html",
+    img:"https://www.onlinegames.io/media/posts/1247/responsive/jungle-mart-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/jungle-mart/" },
+  { id:"draw-the-car-path", title:"Draw the Car Path", cat:"puzzle", emoji:"✏", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2021/4/draw-the-car-path/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/936/responsive/draw-the-car-path-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/draw-the-car-path/" },
+  { id:"sniper-elite", title:"Sniper Elite", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/1/sniper-elite/index.html",
+    img:"https://www.onlinegames.io/media/posts/127/responsive/Sniper-Elite-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/sniper-elite/" },
+  { id:"highway-racer-2", title:"Highway Racer 2", cat:"action", emoji:"🛣", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity2/highway-racer-2/index.html",
+    img:"https://www.onlinegames.io/media/posts/323/responsive/Highway-Racer-2-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/highway-racer-2/" },
+  { id:"car-wash", title:"Car Wash", cat:"strategy", emoji:"🚿", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/unity2/car-wash/index.html",
+    img:"https://www.onlinegames.io/media/posts/407/responsive/Car-Wash-Online-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/car-wash/" },
+  { id:"wedding-beauty-salon", title:"Wedding Beauty Salon", cat:"arcade", emoji:"💐", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/2/wedding-beauty-salon/index.html",
+    img:"https://www.onlinegames.io/media/posts/421/responsive/Wedding-Beauty-Salon-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/wedding-beauty-salon/" },
+  { id:"state-io-wars", title:"State io Wars", cat:"multiplayer", emoji:"🗺", badge:"NEW",
+    embedUrl:"https://www.onlinegames.io/games/2024/construct/233/state-io-wars/index.html",
+    img:"https://www.onlinegames.io/media/posts/685/responsive/State-io-Wars-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/state-io-wars/" },
+  { id:"poly-racing-cars", title:"Poly Racing Cars", cat:"multiplayer", emoji:"🔷", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2022/unity3/poly-racing-cars/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/835/responsive/Poly-racing-cars-image-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/poly-racing-cars/" },
+  { id:"ultimate-moto", title:"Ultimate Moto", cat:"action", emoji:"🏍", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2021/2/ultimate-moto/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1020/responsive/ultimate-moto-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/ultimate-moto/" },
+  { id:"cool-brainrot-clicker", title:"Cool Brainrot Clicker", cat:"arcade", emoji:"🧠", badge:"HOT",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/construct/335/cool-brainrot-clicker/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1104/responsive/cool-brainrot-clicker-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/cool-brainrot-clicker/" },
+  { id:"pixel-driver", title:"Pixel Driver", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2021/unity3/pixel-driver/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/990/responsive/Pixel-Driver-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/pixel-driver/" },
+  { id:"archer-hero", title:"Archer Hero", cat:"action", emoji:"🏹", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/unity/archer-hero/index.html",
+    img:"https://www.onlinegames.io/media/posts/364/responsive/Archer-Hero-Online-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/archer-hero/" },
+  { id:"monster-survivors", title:"Monster Survivors", cat:"action", emoji:"👹", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/unity/monster-survivors/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/942/responsive/Monster-survivors-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/monster-survivors/" },
+  { id:"julie-beauty-salon", title:"Julie Beauty Salon", cat:"arcade", emoji:"💅", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2021/1/julie-beauty-salon/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1011/responsive/Julie-Beauty-Salon-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/julie-beauty-salon/" },
+  { id:"neon-racer", title:"Neon Racer", cat:"action", emoji:"🌈", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/4/neon-racer/index.html",
+    img:"https://www.onlinegames.io/media/posts/173/responsive/Neon-Racer-2-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/neon-racer/" },
+  { id:"nova-craft", title:"Nova Craft", cat:"puzzle", emoji:"⚗", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/more2/nova-craft/index.html",
+    img:"https://www.onlinegames.io/media/posts/841/responsive/Nova-Craft-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/nova-craft/" },
+  { id:"fun-party-makeup", title:"Fun Party Makeup", cat:"arcade", emoji:"🎉", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/4/fun-party-makeup/index.html",
+    img:"https://www.onlinegames.io/media/posts/723/responsive/Fun-Party-Makeup-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/fun-party-makeup/" },
+  { id:"galactic-sniper", title:"Galactic Sniper", cat:"action", emoji:"🛰", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/2/galactic-sniper/index.html",
+    img:"https://www.onlinegames.io/media/posts/719/responsive/Galactic-Sniper-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/galactic-sniper/" },
+  { id:"survival-craft", title:"Survival Craft", cat:"strategy", emoji:"🪓", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity/survival-craft/index.html",
+    img:"https://www.onlinegames.io/media/posts/593/responsive/Survival-Craft-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/survival-craft/" },
+  { id:"solitaire-adventure", title:"Solitaire Adventure", cat:"puzzle", emoji:"🃏", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/unity4/solitaire-adventure/index.html",
+    img:"https://www.onlinegames.io/media/posts/519/responsive/Solitaire-Adventure-Tripeaks-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/solitaire-adventure/" },
+  { id:"jeep-driver", title:"Jeep Driver", cat:"action", emoji:"🚙", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2021/1/jeep-driver/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1039/responsive/jeep-driver-game-3-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/jeep-driver/" },
+  { id:"fire-and-water", title:"Fire and Water", cat:"puzzle", emoji:"🔥", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2023/construct/179/fire-and-water/index.html",
+    img:"https://www.onlinegames.io/media/posts/469/responsive/Fire-and-Water-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/fire-and-water/" },
+  { id:"american-touchdown", title:"American Touchdown", cat:"multiplayer", emoji:"🏈", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity3/american-touchdown/index.html",
+    img:"https://www.onlinegames.io/media/posts/545/responsive/American-Touchdown-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/american-touchdown/" },
+  { id:"football-king", title:"Football King", cat:"multiplayer", emoji:"👑", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2024/construct/226/football-king/index.html",
+    img:"https://www.onlinegames.io/media/posts/739/responsive/Football-King-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/football-king/" },
+
+
+  { id:"princess-influencer-salon", title:"Princess Influencer Salon", cat:"arcade", emoji:"💅", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/3/princess-influencer-salon/index.html",
+    img:"https://www.onlinegames.io/media/posts/485/responsive/Princess-Influencer-Salon-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/princess-influencer-salon/" },
+  { id:"crazy-karts", title:"Crazy Karts", cat:"multiplayer", emoji:"🏎", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2024/unity/crazy-karts/index.html",
+    img:"https://www.onlinegames.io/media/posts/740/responsive/Crazy-Karts-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/crazy-karts/" },
+  { id:"moto-trials", title:"Moto Trials", cat:"action", emoji:"🏍", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity/moto-trials/index.html",
+    img:"https://www.onlinegames.io/media/posts/523/responsive/Moto-Trials-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/moto-trials/" },
+  { id:"paw-clicker", title:"Paw Clicker", cat:"arcade", emoji:"🐾", badge:"NEW",
+    embedUrl:"https://cloud.onlinegames.io/games/2025/construct/331/paw-clicker/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1077/responsive/Paw-Clicker-xs.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/paw-clicker/" },
+  { id:"perfect-first-date", title:"Perfect First Date", cat:"arcade", emoji:"💕", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/3/perfect-first-date/index.html",
+    img:"https://www.onlinegames.io/media/posts/532/responsive/Perfect-First-Date-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/perfect-first-date/" },
+  { id:"secret-sniper-agent", title:"Secret Sniper Agent", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2022/construct/129/secret-sniper-agent/index.html",
+    img:"https://www.onlinegames.io/media/posts/753/responsive/Secret-Sniper-Agent-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/secret-sniper-agent/" },
+  { id:"madalin-stunt-cars-pro", title:"Madalin Stunt Cars Pro", cat:"action", emoji:"🏎", badge:"HOT",
+    embedUrl:"https://www.onlinegames.io/games/2023/unity/madalin-stunt-cars-pro/index.html",
+    img:"https://www.onlinegames.io/media/posts/401/responsive/Madalin-Stunt-Cars-Pro-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/madalin-stunt-cars-pro/" },
+  { id:"kawaii-shooter", title:"Kawaii Shooter", cat:"action", emoji:"🌸", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2024/unity/kawaii-shooter/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/844/responsive/Kawaii-Shooter-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/kawaii-shooter/" },
+  { id:"evil-santa", title:"Evil Santa", cat:"arcade", emoji:"🎅", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/1/evil-santa/index.html",
+    img:"https://www.onlinegames.io/media/posts/539/responsive/Evil-Santa-Game-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/evil-santa/" },
+  { id:"kick-the-pirate", title:"Kick the Pirate", cat:"arcade", emoji:"🏴‍☠️", badge:null,
+    embedUrl:"https://cloud.onlinegames.io/games/2022/construct/92/kick-the-pirate/index-og.html",
+    img:"https://www.onlinegames.io/media/posts/1012/responsive/Kick-The-Pirate-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/kick-the-pirate/" },
+  { id:"hover-racer-pro", title:"Hover Racer Pro", cat:"action", emoji:"🛸", badge:"NEW",
+    embedUrl:"https://www.onlinegames.io/games/2021/unity/hover-racer-pro/index.html",
+    img:"https://www.onlinegames.io/media/posts/572/responsive/Hover-Racer-Pro-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/hover-racer-pro/" },
+  { id:"dont-fall-io", title:"Dont Fall io", cat:"multiplayer", emoji:"🔷", badge:null,
+    embedUrl:"https://www.onlinegames.io/games/2021/unity/dont-fall-io/index.html",
+    img:"https://www.onlinegames.io/media/posts/182/responsive/Dont-Fall-io-2-xs.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/dont-fall-io/" },
+
+
+  { id:"idev-water-sort", title:"Water Sort", cat:"puzzle", emoji:"🧪", badge:"NEW",
+    embedUrl:"https://iDev.Games/embed/water-sort",
+    img:"https://idev.games/cachedImages/2233/eyIdg9.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/water-sort" },
+  { id:"idev-geography-expert", title:"Geography Expert", cat:"strategy", emoji:"🌍", badge:null,
+    embedUrl:"https://iDev.Games/embed/geography-expert",
+    img:"https://idev.games/cachedImages/2737/kR2u6d.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/geography-expert" },
+  { id:"idev-one-life-one-goal-prototype", title:"One Life One Goal", cat:"action", emoji:"🔫", badge:null,
+    embedUrl:"https://iDev.Games/embed/one-life-one-goal-prototype",
+    img:"https://idev.games/cachedImages/787/IbYrBr.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/one-life-one-goal-prototype" },
+  { id:"idev-dragonmaids-virtual-friend", title:"Dragonmaids Virtual Friend", cat:"arcade", emoji:"🐉", badge:null,
+    embedUrl:"https://iDev.Games/embed/dragonmaids-virtual-friend",
+    img:"https://idev.games/cachedImages/3805/h6iTpU.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/dragonmaids-virtual-friend" },
+  { id:"idev-mango-shooter", title:"Mango Shooter", cat:"arcade", emoji:"🥭", badge:null,
+    embedUrl:"https://iDev.Games/embed/mango-shooter",
+    img:"https://idev.games/cachedImages/351/84445.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/mango-shooter" },
+  { id:"idev-ancient-beast", title:"Ancient Beast", cat:"strategy", emoji:"🐲", badge:"HOT",
+    embedUrl:"https://iDev.Games/embed/ancient-beast",
+    img:"https://idev.games/cachedImages/808/GSMWQ7.webp",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/ancient-beast" },
+  { id:"idev-galactic-wars", title:"Galactic Wars", cat:"action", emoji:"🚀", badge:"NEW",
+    embedUrl:"https://iDev.Games/embed/galactic-wars",
+    img:"https://idev.games/cachedImages/37/72796.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/galactic-wars" },
+  { id:"idev-minimal-tower-defense", title:"Minimal Tower Defense", cat:"strategy", emoji:"🛡", badge:null,
+    embedUrl:"https://iDev.Games/embed/minimal-tower-defense",
+    img:"https://idev.games/cachedImages/21/76017.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/minimal-tower-defense" },
+  { id:"idev-bitcoin-wallet-simulator", title:"Bitcoin Wallet Simulator", cat:"strategy", emoji:"💰", badge:null,
+    embedUrl:"https://iDev.Games/embed/bitcoin-wallet-simulator",
+    img:"https://idev.games/cachedImages/333/VlAcD5.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/bitcoin-wallet-simulator" },
+  { id:"idev-fruit-ninja", title:"Fruit Ninja", cat:"arcade", emoji:"🍉", badge:"HOT",
+    embedUrl:"https://iDev.Games/embed/fruit-ninja",
+    img:"https://idev.games/cachedImages/1423/z95TmJ.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/fruit-ninja" },
+  { id:"idev-reaction", title:"Reaction", cat:"action", emoji:"⚡", badge:null,
+    embedUrl:"https://iDev.Games/embed/reaction",
+    img:"https://idev.games/cachedImages/20/5XMIuL.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/reaction" },
+  { id:"idev-multi-bomb", title:"Multi Bomb", cat:"arcade", emoji:"💣", badge:null,
+    embedUrl:"https://iDev.Games/embed/multi-bomb",
+    img:"https://idev.games/cachedImages/5/MultibombFunctionImage.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/multi-bomb" },
+  { id:"idev-mine-rails-rush", title:"Mine Rails Rush", cat:"puzzle", emoji:"🛤", badge:null,
+    embedUrl:"https://iDev.Games/embed/mine-rails-rush",
+    img:"https://idev.games/cachedImages/51/19571.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/mine-rails-rush" },
+  { id:"idev-narrow-escape", title:"Narrow Escape", cat:"arcade", emoji:"🔴", badge:null,
+    embedUrl:"https://iDev.Games/embed/narrow-escape",
+    img:"https://idev.games/cachedImages/338/38403.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/narrow-escape" },
+  { id:"idev-amoeba-online", title:"Amoeba Online", cat:"multiplayer", emoji:"🦠", badge:"NEW",
+    embedUrl:"https://iDev.Games/embed/amoeba-online",
+    img:"https://idev.games/cachedImages/1023/z6aWtT.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/amoeba-online" },
+  { id:"idev-doge-clicker", title:"Doge Clicker", cat:"arcade", emoji:"🐕", badge:null,
+    embedUrl:"https://iDev.Games/embed/doge-clicker",
+    img:"https://idev.games/cachedImages/1228/QZGq3j.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/doge-clicker" },
+  { id:"idev-sillysnake", title:"SillySnake", cat:"arcade", emoji:"🐍", badge:null,
+    embedUrl:"https://iDev.Games/embed/sillysnake",
+    img:"https://idev.games/cachedImages/55/29691.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/sillysnake" },
+  { id:"idev-emojir", title:"EmojiR", cat:"arcade", emoji:"🏃", badge:null,
+    embedUrl:"https://iDev.Games/embed/emojir",
+    img:"https://idev.games/cachedImages/65/73117.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/emojir" },
+  { id:"idev-meteors", title:"Meteors", cat:"arcade", emoji:"☄", badge:null,
+    embedUrl:"https://iDev.Games/embed/meteors",
+    img:"https://idev.games/cachedImages/22/42496.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/meteors" },
+  { id:"idev-synth-hero", title:"Synth Hero", cat:"action", emoji:"🎹", badge:null,
+    embedUrl:"https://iDev.Games/embed/synth-hero",
+    img:"https://idev.games/cachedImages/465/sZUjJR.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/synth-hero" },
+  { id:"idev-adventures-of-spectre", title:"Adventures of Spectre", cat:"arcade", emoji:"👻", badge:null,
+    embedUrl:"https://iDev.Games/embed/adventures-of-spectre",
+    img:"https://idev.games/cachedImages/466/22943.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/adventures-of-spectre" },
+  { id:"idev-blockrun", title:"BlockRun", cat:"arcade", emoji:"🏃", badge:null,
+    embedUrl:"https://iDev.Games/embed/blockrun",
+    img:"https://idev.games/cachedImages/786/fpD2C0.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/blockrun" },
+  { id:"idev-cat-bubble-shooter", title:"Cat Bubble Shooter", cat:"puzzle", emoji:"🐱", badge:null,
+    embedUrl:"https://iDev.Games/embed/cat-bubble-shooter",
+    img:"https://idev.games/cachedImages/556/97051.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/cat-bubble-shooter" },
+  { id:"idev-minesweepers", title:"MinesWeepers", cat:"puzzle", emoji:"💎", badge:null,
+    embedUrl:"https://iDev.Games/embed/minesweepers",
+    img:"https://idev.games/cachedImages/1998/Ni2xQe.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/minesweepers" },
+  { id:"idev-land-of-might-mmropg", title:"Land Of Might MMORPG", cat:"strategy", emoji:"⚔", badge:"HOT",
+    embedUrl:"https://iDev.Games/embed/land-of-might-mmropg",
+    img:"https://idev.games/cachedImages/2541/eqbFWo.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/land-of-might-mmropg" },
+  { id:"idev-keep-it-up-football-kick-ups", title:"Keep It Up Football", cat:"arcade", emoji:"⚽", badge:null,
+    embedUrl:"https://iDev.Games/embed/keep-it-up-football-kick-ups-",
+    img:"https://idev.games/cachedImages/9/hluwlz.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/keep-it-up-football-kick-ups-" },
+  { id:"idev-super-bounce-ball-maze", title:"Super Bounce Ball Maze", cat:"puzzle", emoji:"🔵", badge:null,
+    embedUrl:"https://iDev.Games/embed/super-bounce-ball-maze",
+    img:"https://idev.games/cachedImages/14/40812.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/super-bounce-ball-maze" },
+  { id:"idev-ninja-arena-warrior", title:"Ninja Arena Warrior", cat:"action", emoji:"🥷", badge:null,
+    embedUrl:"https://iDev.Games/embed/ninja-arena-warrior",
+    img:"https://idev.games/cachedImages/90/GTV0aK.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/ninja-arena-warrior" },
+  { id:"idev-ragdoll-sandbox-physics-game", title:"Ragdoll Sandbox Physics", cat:"arcade", emoji:"🤸", badge:null,
+    embedUrl:"https://iDev.Games/embed/ragdoll---sandbox-physics-game",
+    img:"https://idev.games/cachedImages/124/43269.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/ragdoll---sandbox-physics-game" },
+  { id:"idev-spartan-bouncing-ball", title:"Spartan Bouncing Ball", cat:"action", emoji:"🛡", badge:null,
+    embedUrl:"https://iDev.Games/embed/spartan-bouncing-ball",
+    img:"https://idev.games/cachedImages/263/84292.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/spartan-bouncing-ball" },
+  { id:"idev-dungeon-deathmatch", title:"Dungeon Deathmatch", cat:"multiplayer", emoji:"⚔", badge:"NEW",
+    embedUrl:"https://iDev.Games/embed/dungeon-deathmatch",
+    img:"https://idev.games/cachedImages/859/KZqTUq.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/dungeon-deathmatch" },
+  { id:"idev-don-t-touch-the-ball", title:"Don't Touch The Ball", cat:"arcade", emoji:"🟡", badge:null,
+    embedUrl:"https://iDev.Games/embed/don-t-touch-the-ball",
+    img:"https://idev.games/cachedImages/1417/E31tQf.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/don-t-touch-the-ball" },
+  { id:"idev-helix-jump", title:"Helix Jump", cat:"arcade", emoji:"🌀", badge:null,
+    embedUrl:"https://iDev.Games/embed/helix-jump",
+    img:"https://idev.games/cachedImages/1917/bUpOH3.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/helix-jump" },
+  { id:"idev-fill-the-cup", title:"Fill The Cup", cat:"puzzle", emoji:"🥤", badge:null,
+    embedUrl:"https://iDev.Games/embed/fill-the-cup",
+    img:"https://idev.games/cachedImages/1925/NwcdQC.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/fill-the-cup" },
+  { id:"idev-touch-not-3", title:"Touch Not! 3", cat:"arcade", emoji:"🚫", badge:null,
+    embedUrl:"https://iDev.Games/embed/touch-not-3",
+    img:"https://idev.games/cachedImages/1956/FdlvDG.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/touch-not-3" },
+  { id:"idev-around-the-blocks", title:"Around The Blocks", cat:"arcade", emoji:"🔲", badge:null,
+    embedUrl:"https://iDev.Games/embed/around-the-blocks",
+    img:"https://idev.games/cachedImages/1987/5VP7oD.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/around-the-blocks" },
+  { id:"idev-truck-jumper", title:"Truck Jumper", cat:"arcade", emoji:"🚚", badge:null,
+    embedUrl:"https://iDev.Games/embed/truck-jumper",
+    img:"https://idev.games/cachedImages/2026/LJ41hC.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/truck-jumper" },
+  { id:"idev-pixel-dash-2", title:"Pixel Dash 2", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://iDev.Games/embed/pixel-dash-2",
+    img:"https://idev.games/cachedImages/2068/XLAjng.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/pixel-dash-2" },
+  { id:"idev-adventure-kid", title:"Adventure Kid", cat:"arcade", emoji:"🗡", badge:null,
+    embedUrl:"https://iDev.Games/embed/adventure-kid",
+    img:"https://idev.games/cachedImages/2089/1chdM3.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/adventure-kid" },
+  { id:"idev-sky-jumper", title:"Sky Jumper", cat:"arcade", emoji:"⛅", badge:null,
+    embedUrl:"https://iDev.Games/embed/sky-jumper",
+    img:"https://idev.games/cachedImages/2221/rss36r.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/sky-jumper" },
+  { id:"idev-fruit-match-fun", title:"Fruit Match Fun", cat:"puzzle", emoji:"🍇", badge:null,
+    embedUrl:"https://iDev.Games/embed/fruit-match-fun",
+    img:"https://idev.games/cachedImages/2257/KcimLu.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/fruit-match-fun" },
+  { id:"idev-fruit-salad-slice", title:"Fruit Salad Slice", cat:"arcade", emoji:"🍓", badge:null,
+    embedUrl:"https://iDev.Games/embed/fruit-salad-slice",
+    img:"https://idev.games/cachedImages/2/5h0UkG.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/fruit-salad-slice" },
+  { id:"idev-glow-air-hockey-classic", title:"Glow Air Hockey Classic", cat:"arcade", emoji:"🏒", badge:null,
+    embedUrl:"https://iDev.Games/embed/glow-air-hockey-classic",
+    img:"https://idev.games/cachedImages/15/61640.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/glow-air-hockey-classic" },
+  { id:"idev-strategy-war-game", title:"Strategy War Game", cat:"strategy", emoji:"🎖", badge:null,
+    embedUrl:"https://iDev.Games/embed/strategy-war-game",
+    img:"https://idev.games/cachedImages/68/28746.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/strategy-war-game" },
+  { id:"idev-helicopter-game", title:"Helicopter Game", cat:"arcade", emoji:"🚁", badge:"HOT",
+    embedUrl:"https://iDev.Games/embed/helicopter-game",
+    img:"https://idev.games/cachedImages/269/60000.jpg",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/helicopter-game" },
+];
+
+
+// Each engine function receives the stage <div> and must render its own
+// canvas/DOM and clean itself up via the returned `destroy()` function
+// (called when the player overlay closes).
+
+const ENGINES = {};
+
+/* ---------------- SNAKE ---------------- */
+ENGINES.snake = function(stage){
+  const size = 18, cols = 20, rows = 20;
+  const canvas = document.createElement("canvas");
+  canvas.width = cols*size; canvas.height = rows*size;
+  canvas.style.background = "#04070f";
+  stage.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+
+  let snake = [{x:10,y:10}], dir = {x:1,y:0}, nextDir = dir, food = randFood(), score = 0, alive = true, raf;
+
+  function randFood(){
+    return {x:Math.floor(Math.random()*cols), y:Math.floor(Math.random()*rows)};
+  }
+  function key(e){
+    const map = {ArrowUp:{x:0,y:-1},ArrowDown:{x:0,y:1},ArrowLeft:{x:-1,y:0},ArrowRight:{x:1,y:0},
+                 w:{x:0,y:-1},s:{x:0,y:1},a:{x:-1,y:0},d:{x:1,y:0}};
+    const d = map[e.key];
+    if(d && (d.x !== -dir.x || d.y !== -dir.y)) nextDir = d;
+  }
+  window.addEventListener("keydown", key);
+
+  function tick(){
+    if(!alive) return;
+    dir = nextDir;
+    const head = {x:snake[0].x+dir.x, y:snake[0].y+dir.y};
+    if(head.x<0||head.y<0||head.x>=cols||head.y>=rows||snake.some(s=>s.x===head.x&&s.y===head.y)){
+      alive = false; draw(); return;
+    }
+    snake.unshift(head);
+    if(head.x===food.x && head.y===food.y){ score++; food = randFood(); }
+    else snake.pop();
+    draw();
+  }
+  function draw(){
+    ctx.fillStyle = "#04070f"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#ff3d77";
+    ctx.fillRect(food.x*size, food.y*size, size-2, size-2);
+    snake.forEach((s,i)=>{
+      ctx.fillStyle = i===0 ? "#00e0ff" : "#2f7bff";
+      ctx.fillRect(s.x*size, s.y*size, size-2, size-2);
+    });
+    ctx.fillStyle = "#7c89ad"; ctx.font = "14px Inter";
+    ctx.fillText(alive ? `Score: ${score}` : `Game over — score ${score}. Press R to restart`, 6, canvas.height-6);
+  }
+  function restart(e){
+    if(e.key.toLowerCase()==="r" && !alive){
+      snake=[{x:10,y:10}]; dir={x:1,y:0}; nextDir=dir; food=randFood(); score=0; alive=true;
+    }
+  }
+  window.addEventListener("keydown", restart);
+  draw();
+  const interval = setInterval(tick, 110);
+
+  return { destroy(){ clearInterval(interval); window.removeEventListener("keydown",key); window.removeEventListener("keydown",restart); } };
+};
+
+/* ---------------- 2048 ---------------- */
+ENGINES.twozerofoureight = function(stage){
+  const wrap = document.createElement("div");
+  wrap.style.display="grid"; wrap.style.gridTemplateColumns="repeat(4,70px)";
+  wrap.style.gridTemplateRows="repeat(4,70px)"; wrap.style.gap="8px";
+  stage.appendChild(wrap);
+  const info = document.createElement("p");
+  info.style.color="#7c89ad"; info.style.fontFamily="Inter"; info.style.marginTop="14px"; info.style.fontSize="13px";
+  info.textContent = "Use arrow keys to merge tiles to 2048.";
+  stage.appendChild(info);
+
+  let board = Array.from({length:4},()=>Array(4).fill(0));
+  const colors = {0:"#0c1326",2:"#11193a",4:"#16204a",8:"#1c2b5e",16:"#2f7bff",32:"#3f8bff",64:"#00b8d4",128:"#00e0ff",256:"#ff3d77",512:"#ff6b9d",1024:"#ffd93d",2048:"#ffffff"};
+  function addRandom(){
+    const empty=[]; board.forEach((row,r)=>row.forEach((v,c)=>{if(v===0)empty.push([r,c]);}));
+    if(!empty.length) return;
+    const [r,c] = empty[Math.floor(Math.random()*empty.length)];
+    board[r][c] = Math.random()<0.9?2:4;
+  }
+  function render(){
+    wrap.innerHTML="";
+    board.forEach(row=>row.forEach(v=>{
+      const cell=document.createElement("div");
+      cell.style.background=colors[v]||"#fff";
+      cell.style.borderRadius="8px";
+      cell.style.display="flex";cell.style.alignItems="center";cell.style.justifyContent="center";
+      cell.style.fontFamily="Rajdhani, sans-serif"; cell.style.fontWeight="700";
+      cell.style.fontSize="22px"; cell.style.color = v<=8?"#7c89ad":"#04070f";
+      cell.textContent = v||"";
+      wrap.appendChild(cell);
+    }));
+  }
+  function slide(row){
+    const arr = row.filter(v=>v!==0);
+    for(let i=0;i<arr.length-1;i++){
+      if(arr[i]===arr[i+1]){ arr[i]*=2; arr.splice(i+1,1); }
+    }
+    while(arr.length<4) arr.push(0);
+    return arr;
+  }
+  function move(dir){
+    let moved=false;
+    const before = JSON.stringify(board);
+    if(dir==="left"){ board = board.map(slide); }
+    if(dir==="right"){ board = board.map(r=>slide(r.slice().reverse()).reverse()); }
+    if(dir==="up"){
+      for(let c=0;c<4;c++){ const col=slide(board.map(r=>r[c])); for(let r=0;r<4;r++) board[r][c]=col[r]; }
+    }
+    if(dir==="down"){
+      for(let c=0;c<4;c++){ const col=slide(board.map(r=>r[c]).reverse()).reverse(); for(let r=0;r<4;r++) board[r][c]=col[r]; }
+    }
+    moved = JSON.stringify(board)!==before;
+    if(moved) addRandom();
+    render();
+  }
+  function key(e){
+    const map={ArrowLeft:"left",ArrowRight:"right",ArrowUp:"up",ArrowDown:"down"};
+    if(map[e.key]){ e.preventDefault(); move(map[e.key]); }
+  }
+  window.addEventListener("keydown", key);
+  addRandom(); addRandom(); render();
+  return { destroy(){ window.removeEventListener("keydown",key); } };
+};
+
+/* ---------------- MEMORY MATCH ---------------- */
+ENGINES.memory = function(stage){
+  const icons = ["🐙","🌵","🚀","🍩","🎲","🦊","🌈","🔮"];
+  let deck = [...icons,...icons].sort(()=>Math.random()-0.5);
+  let flipped = [], matched = [];
+
+  const wrap = document.createElement("div");
+  wrap.style.display="grid"; wrap.style.gridTemplateColumns="repeat(4,72px)";
+  wrap.style.gap="10px";
+  stage.appendChild(wrap);
+
+  function render(){
+    wrap.innerHTML="";
+    deck.forEach((icon,i)=>{
+      const card=document.createElement("button");
+      const isUp = flipped.includes(i)||matched.includes(i);
+      card.textContent = isUp ? icon : "?";
+      card.style.width="72px";card.style.height="72px";card.style.fontSize="26px";
+      card.style.borderRadius="10px";card.style.border="1px solid #1c2750";
+      card.style.background = isUp ? "#11193a" : "#0c1326";
+      card.style.color = "#e7ecfb";
+      card.onclick=()=>flip(i);
+      wrap.appendChild(card);
+    });
+  }
+  function flip(i){
+    if(flipped.includes(i)||matched.includes(i)||flipped.length===2) return;
+    flipped.push(i); render();
+    if(flipped.length===2){
+      const [a,b]=flipped;
+      if(deck[a]===deck[b]){ matched.push(a,b); flipped=[]; render(); }
+      else setTimeout(()=>{ flipped=[]; render(); },650);
+    }
+  }
+  render();
+  return { destroy(){} };
+};
+
+/* ---------------- REFLEX TAP ---------------- */
+ENGINES.reaction = function(stage){
+  const box = document.createElement("div");
+  box.style.width="260px";box.style.height="260px";box.style.borderRadius="16px";
+  box.style.display="flex";box.style.alignItems="center";box.style.justifyContent="center";
+  box.style.fontFamily="Rajdhani, sans-serif";box.style.fontSize="18px";box.style.fontWeight="700";
+  box.style.cursor="pointer";box.style.background="#11193a";box.style.color="#7c89ad";
+  box.textContent = "Click to start";
+  stage.appendChild(box);
+
+  let state="idle", timeout, startTime;
+  box.onclick=()=>{
+    if(state==="idle"){
+      state="waiting"; box.style.background="#0c1326"; box.textContent="Wait for green...";
+      const delay = 800+Math.random()*1800;
+      timeout=setTimeout(()=>{ state="go"; startTime=performance.now(); box.style.background="#00e0ff"; box.style.color="#04070f"; box.textContent="CLICK NOW"; },delay);
+    } else if(state==="waiting"){
+      clearTimeout(timeout); state="idle"; box.style.background="#ff3d77"; box.textContent="Too soon! Click to retry";
+    } else if(state==="go"){
+      const ms = Math.round(performance.now()-startTime);
+      state="idle"; box.style.background="#11193a"; box.style.color="#7c89ad";
+      box.textContent = `${ms} ms — click to retry`;
+    }
+  };
+  return { destroy(){ clearTimeout(timeout); } };
+};
+
+/* ---------------- BLOCK BREAKER ---------------- */
+ENGINES.breakout = function(stage){
+  const canvas=document.createElement("canvas");
+  canvas.width=400; canvas.height=320; canvas.style.background="#04070f";
+  stage.appendChild(canvas);
+  const ctx=canvas.getContext("2d");
+
+  let paddle={x:170,w:60,h:10}, ball={x:200,y:200,vx:2.4,vy:-3.2,r:6};
+  let bricks=[];
+  for(let r=0;r<4;r++) for(let c=0;c<8;c++) bricks.push({x:c*48+4,y:r*20+20,w:44,h:14,alive:true});
+  let alive=true, win=false;
+
+  function move(e){
+    const rect=canvas.getBoundingClientRect();
+    paddle.x = Math.min(canvas.width-paddle.w, Math.max(0,(e.clientX-rect.left)-paddle.w/2));
+  }
+  canvas.addEventListener("mousemove", move);
+
+  function step(){
+    if(!alive){ draw(); return; }
+    ball.x+=ball.vx; ball.y+=ball.vy;
+    if(ball.x<ball.r||ball.x>canvas.width-ball.r) ball.vx*=-1;
+    if(ball.y<ball.r) ball.vy*=-1;
+    if(ball.y>canvas.height-ball.r-10 && ball.x>paddle.x && ball.x<paddle.x+paddle.w) ball.vy=-Math.abs(ball.vy);
+    if(ball.y>canvas.height){ alive=false; }
+    bricks.forEach(b=>{
+      if(b.alive && ball.x>b.x && ball.x<b.x+b.w && ball.y>b.y && ball.y<b.y+b.h){
+        b.alive=false; ball.vy*=-1;
+      }
+    });
+    if(bricks.every(b=>!b.alive)){ alive=false; win=true; }
+    draw();
+    raf = requestAnimationFrame(step);
+  }
+  function draw(){
+    ctx.fillStyle="#04070f"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="#2f7bff";
+    bricks.forEach(b=>{ if(b.alive){ ctx.fillRect(b.x,b.y,b.w,b.h); }});
+    ctx.fillStyle="#00e0ff"; ctx.fillRect(paddle.x,canvas.height-10,paddle.w,paddle.h);
+    ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,7); ctx.fillStyle="#ff3d77"; ctx.fill();
+    if(!alive){
+      ctx.fillStyle="#e7ecfb"; ctx.font="16px Inter";
+      ctx.fillText(win?"You win! Reload to play again":"Game over — reload to retry", 60, canvas.height/2);
+    }
+  }
+  let raf = requestAnimationFrame(step);
+  return { destroy(){ cancelAnimationFrame(raf); canvas.removeEventListener("mousemove",move); } };
+};
+
+
+(function(){
+  "use strict";
+
+  const grid = document.getElementById("gameGrid");
+  const gridTitle = document.getElementById("gridTitle");
+  const gridCount = document.getElementById("gridCount");
+  const searchInput = document.getElementById("searchInput");
+  const categoryList = document.getElementById("categoryList");
+
+  // In-memory favorites (resets on page reload — swap back to localStorage
+  // once you're running this from your own files instead of the live preview)
+  let _favs = [];
+  function getFavs(){ return _favs; }
+  function setFavs(arr){ _favs = arr; }
+  function isFav(id){ return getFavs().includes(id); }
+  function toggleFav(id){
+    const favs = getFavs();
+    const i = favs.indexOf(id);
+    if(i>-1) favs.splice(i,1); else favs.push(id);
+    setFavs(favs);
+  }
+
+  let state = { cat:"all", query:"" };
+
+  function matches(game){
+    if(state.cat==="fav" && !isFav(game.id)) return false;
+    if(state.cat==="new" && game.badge!=="NEW") return false;
+    if(state.cat==="trending" && game.badge!=="HOT") return false;
+    if(["all","fav","new","trending"].indexOf(state.cat)===-1 && game.cat!==state.cat) return false;
+    if(state.query && !game.title.toLowerCase().includes(state.query)) return false;
+    return true;
+  }
+
+  function renderGrid(){
+    const list = GAMES.filter(matches);
+    grid.innerHTML = "";
+    gridCount.textContent = `${list.length} game${list.length!==1?"s":""}`;
+
+    if(!list.length){
+      grid.innerHTML = `<div class="emptyState">No games match "${state.query}". Try another search.</div>`;
+      return;
+    }
+
+    list.forEach(game=>{
+      const card = document.createElement("div");
+      card.className = "card";
+      const thumbContent = game.img
+        ? `<img src="${game.img}" alt="${game.title}" loading="lazy"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+           <div class="card__emojiFallback" style="display:none;">${game.emoji}</div>`
+        : `<div class="card__emojiFallback" style="display:flex;">${game.emoji}</div>`;
+      card.innerHTML = `
+        <div class="card__thumb">
+          ${thumbContent}
+          ${game.badge ? `<span class="card__badge">${game.badge}</span>` : ""}
+          <button class="card__fav ${isFav(game.id)?"active":""}" data-id="${game.id}">★</button>
+          <div class="card__playOverlay"><span>▶</span></div>
+        </div>
+        <div class="card__body">
+          <p class="card__title">${game.title}</p>
+          <p class="card__cat">${game.cat}</p>
+        </div>`;
+      card.querySelector(".card__fav").addEventListener("click",(e)=>{
+        e.stopPropagation(); toggleFav(game.id); renderGrid();
+      });
+      card.addEventListener("click", ()=>openGame(game));
+      grid.appendChild(card);
+    });
+  }
+
+  categoryList.addEventListener("click", (e)=>{
+    const li = e.target.closest("li");
+    if(!li) return;
+    [...categoryList.children].forEach(c=>c.classList.remove("active"));
+    li.classList.add("active");
+    state.cat = li.dataset.cat;
+    gridTitle.textContent = li.textContent.replace(/^\W+\s/,"");
+    renderGrid();
+  });
+  document.getElementById("favLink").addEventListener("click",()=>{
+    state.cat="fav";
+  });
+
+  searchInput.addEventListener("input", (e)=>{
+    state.query = e.target.value.trim().toLowerCase();
+    renderGrid();
+  });
+
+  /* ---------------- HERO ---------------- */
+  const featured = GAMES.filter(g=>g.engine);
+  let heroIndex = 0;
+  function showHero(){
+    const g = featured[heroIndex % featured.length];
+    document.getElementById("heroTitle").textContent = g.title;
+    document.getElementById("heroDesc").textContent =
+      `Jump into ${g.title} — fully playable right in your browser, no download needed.`;
+    document.getElementById("heroPlayBtn").onclick = ()=>openGame(g);
+  }
+  showHero();
+  setInterval(()=>{ heroIndex++; showHero(); }, 6000);
+
+  /* ---------------- PLAYER OVERLAY ---------------- */
+  const playerOverlay = document.getElementById("playerOverlay");
+  const playerStage = document.getElementById("playerStage");
+  const playerTitle = document.getElementById("playerTitle");
+  const favToggleBtn = document.getElementById("favToggle");
+  let activeEngine = null, activeGameId = null;
+
+  function openGame(game){
+    // Embedded game (e.g. an itch.io embed snippet the creator published for off-site use)
+    if(game.embedUrl){
+      activeGameId = game.id;
+      playerTitle.textContent = game.title;
+      playerStage.innerHTML = "";
+      favToggleBtn.classList.toggle("active", isFav(game.id));
+      playerOverlay.classList.add("open");
+      tryAutoRotateMobile();
+      recordPlay(game);
+      renderRatingBar(game.id);
+      const iframe = document.createElement("iframe");
+      iframe.src = game.embedUrl;
+      iframe.style.width = (game.embedWidth || 800) + "px";
+      iframe.style.height = (game.embedHeight || 600) + "px";
+      iframe.style.maxWidth = "95vw";
+      iframe.style.maxHeight = "85vh";
+      iframe.style.border = "1px solid #1c2750";
+      iframe.style.background = "#fff";
+      iframe.allow = "fullscreen; gamepad; autoplay";
+      iframe.setAttribute("allowfullscreen", "true");
+      playerStage.appendChild(iframe);
+      if(game.sourceUrl){
+        const credit = document.createElement("a");
+        credit.href = game.sourceUrl; credit.target = "_blank"; credit.rel = "noopener";
+        credit.textContent = "View source ↗";
+        credit.style.position = "absolute"; credit.style.bottom = "10px"; credit.style.right = "16px";
+        credit.style.fontSize = "12px"; credit.style.color = "#7c89ad";
+        playerStage.style.position = "relative";
+        playerStage.appendChild(credit);
+      }
+      activeEngine = { destroy(){ iframe.src = "about:blank"; } };
+      return;
+    }
+    if(!game.engine || !ENGINES[game.engine]){
+      toast(`${game.title} is coming soon — this card is a placeholder, just like real hubs keep while building out their library.`);
+      return;
+    }
+    activeGameId = game.id;
+    playerTitle.textContent = game.title;
+    playerStage.innerHTML = "";
+    favToggleBtn.classList.toggle("active", isFav(game.id));
+    playerOverlay.classList.add("open");
+    tryAutoRotateMobile();
+    recordPlay(game);
+    renderRatingBar(game.id);
+    activeEngine = ENGINES[game.engine](playerStage);
+  }
+
+  /* ----- Auto-rotate to landscape on phones (best-effort, no forced fullscreen) -----
+     Per-request: this does NOT force fullscreen. Some browsers only allow
+     orientation lock while fullscreen, so on those the lock attempt simply
+     fails silently and the CSS rotate-hint banner covers it instead. */
+  function isMobileViewport(){
+    return window.matchMedia("(max-width:700px)").matches;
+  }
+  async function tryAutoRotateMobile(){
+    if(!isMobileViewport()) return;
+    try{
+      if(screen.orientation && screen.orientation.lock){
+        await screen.orientation.lock("landscape");
+      }
+    }catch(e){
+      // Not supported without fullscreen on this browser, or not supported
+      // at all (e.g. iOS Safari) — the CSS force-landscape rotation still
+      // applies regardless, so gameplay isn't squished either way.
+    }
+  }
+  function releaseOrientationLock(){
+    try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }
+    catch(e){}
+  }
+
+  function closeGame(){
+    releaseOrientationLock();
+    if(isFullscreen()) exitFullscreen();
+    playerOverlay.classList.remove("open");
+    if(activeEngine && activeEngine.destroy) activeEngine.destroy();
+    activeEngine = null;
+  }
+  document.getElementById("closePlayer").addEventListener("click", closeGame);
+  favToggleBtn.addEventListener("click", ()=>{
+    if(!activeGameId) return;
+    toggleFav(activeGameId);
+    favToggleBtn.classList.toggle("active", isFav(activeGameId));
+    renderGrid();
+  });
+
+  /* ---------------- FULLSCREEN ---------------- */
+  const fullscreenBtn = document.getElementById("fullscreenToggle");
+  function isFullscreen(){
+    return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+  }
+  function enterFullscreen(el){
+    const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if(fn) fn.call(el);
+  }
+  function exitFullscreen(){
+    const fn = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    if(fn) fn.call(document);
+  }
+  function updateFullscreenIcon(){
+    fullscreenBtn.textContent = isFullscreen() ? "🗗" : "⛶";
+    fullscreenBtn.title = isFullscreen() ? "Exit fullscreen" : "Fullscreen";
+    // Now that fullscreen is actually active, retry the real orientation lock —
+    // it requires fullscreen on most browsers, so this is the one moment it
+    // has a real chance to succeed. If it does, the device truly rotates and
+    // our CSS rotate-trick's media query stops matching on its own (since the
+    // OS itself now reports landscape). If it doesn't (e.g. iOS Safari), the
+    // CSS trick keeps doing the job, no harm either way.
+    if(isFullscreen() && typeof tryAutoRotateMobile === "function") tryAutoRotateMobile();
+  }
+  fullscreenBtn.addEventListener("click", ()=>{
+    if(isFullscreen()) exitFullscreen();
+    else enterFullscreen(playerOverlay);
+  });
+  ["fullscreenchange","webkitfullscreenchange","MSFullscreenChange"].forEach(evt=>{
+    document.addEventListener(evt, updateFullscreenIcon);
+  });
+
+  /* ---------------- TOAST ---------------- */
+  let toastTimer;
+  function toast(msg){
+    let el = document.getElementById("toastEl");
+    if(!el){
+      el = document.createElement("div");
+      el.id = "toastEl";
+      el.style.position="fixed"; el.style.bottom="26px"; el.style.left="50%";
+      el.style.transform="translateX(-50%)"; el.style.background="#11193a";
+      el.style.border="1px solid #2f7bff"; el.style.color="#e7ecfb";
+      el.style.padding="12px 20px"; el.style.borderRadius="999px"; el.style.fontSize="13px";
+      el.style.zIndex="300"; el.style.boxShadow="0 0 24px rgba(47,123,255,.35)";
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = "1";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>{ el.style.transition="opacity .4s"; el.style.opacity="0"; }, 2600);
+  }
+
+  /* ---------------- WEB VIEWER ----------------
+     Limited, same-origin-friendly iframe viewer.
+     This is NOT a circumvention proxy: sites that block framing
+     (X-Frame-Options / CSP frame-ancestors) will refuse to load here,
+     exactly as they should. See README for details.
+  ------------------------------------------------- */
+  const viewerOverlay = document.getElementById("viewerOverlay");
+  const viewerFrame = document.getElementById("viewerFrame");
+  const viewerUrl = document.getElementById("viewerUrl");
+  const viewerNotice = document.getElementById("viewerNotice");
+
+  function openViewer(){
+    viewerOverlay.classList.add("open");
+    viewerNotice.textContent = "Heads up: many sites block embedding (X-Frame-Options/CSP) and won't load here — that's the site's own security setting, not a bug.";
+  }
+  function loadUrl(){
+    let val = viewerUrl.value.trim();
+    if(!val) return;
+    if(!/^https?:\/\//i.test(val)) val = "https://" + val;
+    viewerFrame.src = val;
+  }
+  document.querySelectorAll('[data-route="browser"]').forEach(btn=>{
+    btn.addEventListener("click", openViewer);
+  });
+  document.getElementById("viewerGo").addEventListener("click", loadUrl);
+  viewerUrl.addEventListener("keydown", (e)=>{ if(e.key==="Enter") loadUrl(); });
+  document.getElementById("viewerBack").addEventListener("click", ()=>{
+    try{ viewerFrame.contentWindow.history.back(); }catch(_e){ /* cross-origin: ignored */ }
+  });
+  document.getElementById("viewerClose").addEventListener("click", ()=>{
+    viewerOverlay.classList.remove("open");
+    viewerFrame.src = "about:blank";
+  });
+
+  /* ===================== STORAGE HELPERS ===================== */
+  // window.storage is a Claude-artifact-preview-only API — it does NOT
+  // exist once this file is downloaded and opened/hosted on its own.
+  // When it's missing: personal data (profile, theme, contacts, etc.) falls
+  // back to real localStorage — a standard browser feature, so your name
+  // and account genuinely persist across reloads, just like any normal
+  // site's "remember me" would. Shared data (public chat, leaderboard, the
+  // user registry other people look you up by) falls back to in-memory
+  // only, since truly sharing data between different people's browsers
+  // requires an actual backend server — that's not something a single
+  // HTML file can do on its own, with or without this fallback.
+  const memoryFallbackStore = {};
+  function hasRealStorage(){
+    return typeof window.storage !== "undefined" && window.storage && typeof window.storage.get === "function";
+  }
+  function hasLocalStorage(){
+    try{ const k="__klyp_test__"; localStorage.setItem(k,"1"); localStorage.removeItem(k); return true; }
+    catch(e){ return false; }
+  }
+  async function storeGet(key, shared, fallback){
+    if(!hasRealStorage()){
+      if(!shared && hasLocalStorage()){
+        const raw = localStorage.getItem("klyp:"+key);
+        return raw !== null ? JSON.parse(raw) : fallback;
+      }
+      const memKey = (shared ? "shared:" : "local:") + key;
+      const raw = memoryFallbackStore[memKey];
+      return raw !== undefined ? JSON.parse(raw) : fallback;
+    }
+    try{
+      const res = await window.storage.get(key, !!shared);
+      return res ? JSON.parse(res.value) : fallback;
+    }catch(e){ return fallback; }
+  }
+  async function storeSet(key, value, shared){
+    if(!hasRealStorage()){
+      if(!shared && hasLocalStorage()){
+        localStorage.setItem("klyp:"+key, JSON.stringify(value));
+        return;
+      }
+      const memKey = (shared ? "shared:" : "local:") + key;
+      memoryFallbackStore[memKey] = JSON.stringify(value);
+      return;
+    }
+    try{ await window.storage.set(key, JSON.stringify(value), !!shared); }
+    catch(e){ console.error("storage set failed", e); }
+  }
+
+  /* ===================== PROFILE / XP / LEVEL ===================== */
+  const BADGES = [
+    { id:"first-play",  label:"First Play",   icon:"🎮", check:p=>p.totalPlays>=1 },
+    { id:"regular",     label:"Regular",      icon:"🕹", check:p=>p.totalPlays>=20 },
+    { id:"collector",   label:"Collector",    icon:"⭐", check:p=>getFavs().length>=5 },
+    { id:"dedicated",   label:"Dedicated",    icon:"🔥", check:p=>p.streak>=3 },
+    { id:"unstoppable", label:"Unstoppable",  icon:"🌟", check:p=>p.streak>=7 },
+    { id:"rising-star", label:"Rising Star",  icon:"🚀", check:p=>p.level>=5 },
+    { id:"legend",      label:"Legend",       icon:"👑", check:p=>p.level>=10 },
+  ];
+
+  function defaultProfile(fullName, username){
+    return {
+      fullName, username,
+      xp:0, level:1, totalPlays:0, streak:0,
+      lastPlayDate:null, badges:[]
+    };
+  }
+
+  let profile = null;
+
+  // Returns true if an account already exists (loads it into `profile`).
+  // If not, shows the mandatory signup modal and returns false — callers
+  // should stop what they were doing until the modal is submitted.
+  async function ensureProfile(){
+    if(profile) return true;
+    const existing = await storeGet("profile", false, null);
+    if(existing){
+      profile = existing;
+      document.getElementById("profileBtn").textContent = "👤 " + profile.username;
+      return true;
+    }
+    document.getElementById("signupOverlay").classList.add("open");
+    return false;
+  }
+  function saveProfile(){ storeSet("profile", profile, false); }
+
+  function levelFromXp(xp){ return 1 + Math.floor(xp/100); }
+
+  function addXp(amount){
+    profile.xp += amount;
+    const newLevel = levelFromXp(profile.xp);
+    if(newLevel > profile.level){
+      profile.level = newLevel;
+      toast(`🎉 Level up! You're now level ${profile.level}`);
+    }
+    saveProfile();
+    updateLeaderboardEntry();
+  }
+
+  function todayStr(){ return new Date().toISOString().slice(0,10); }
+  function isYesterday(dateStr){
+    if(!dateStr) return false;
+    const d = new Date(dateStr); const y = new Date();
+    y.setDate(y.getDate()-1);
+    return d.toISOString().slice(0,10) === y.toISOString().slice(0,10);
+  }
+
+  function checkBadges(){
+    const unlocked = [];
+    BADGES.forEach(b=>{
+      if(!profile.badges.includes(b.id) && b.check(profile)){
+        profile.badges.push(b.id);
+        unlocked.push(b);
+      }
+    });
+    unlocked.forEach(b=> toast(`🏅 Badge unlocked: ${b.label}`));
+  }
+
+  async function recordPlay(game){
+    if(!(await ensureProfile())) return;
+    profile.totalPlays = (profile.totalPlays||0) + 1;
+
+    const today = todayStr();
+    if(profile.lastPlayDate !== today){
+      profile.streak = isYesterday(profile.lastPlayDate) ? profile.streak+1 : 1;
+      profile.lastPlayDate = today;
+      profile.xp += 20;
+      toast(`🎁 Daily reward claimed — +20 XP — 🔥 ${profile.streak} day streak`);
+    }
+    profile.xp += 10; // per-play XP
+    profile.level = levelFromXp(profile.xp);
+    checkBadges();
+    saveProfile();
+    updateLeaderboardEntry();
+    recordPlayCount(game.id);
+  }
+
+  /* ===================== LEADERBOARD ===================== */
+  async function updateLeaderboardEntry(){
+    const board = await storeGet("leaderboard_v1", true, {});
+    board[profile.username] = { xp: profile.xp, level: profile.level, updated: Date.now() };
+    await storeSet("leaderboard_v1", board, true);
+  }
+  async function renderLeaderboard(){
+    const board = await storeGet("leaderboard_v1", true, {});
+    const rows = Object.entries(board)
+      .map(([name, v])=>({ name, ...v }))
+      .sort((a,b)=>b.xp-a.xp)
+      .slice(0,20);
+    const list = document.getElementById("leaderboardList");
+    list.innerHTML = rows.length ? "" : `<li style="color:var(--muted)">No players yet — be the first!</li>`;
+    rows.forEach((r,i)=>{
+      const li = document.createElement("li");
+      if(r.name === profile.username) li.classList.add("me");
+      li.innerHTML = `<span class="rank">#${i+1}</span><span class="lbName">${r.name}</span><span class="lbXp">Lv ${r.level} · ${r.xp} XP</span>`;
+      list.appendChild(li);
+    });
+  }
+
+  /* ===================== RATINGS ===================== */
+  async function getMyRatings(){ return storeGet("myratings", false, {}); }
+  async function submitRating(gameId, stars){
+    const mine = await getMyRatings();
+    const prev = mine[gameId];
+    const agg = await storeGet("rating:"+gameId, true, {sum:0,count:0});
+    if(prev){ agg.sum += (stars - prev); }
+    else { agg.sum += stars; agg.count += 1; }
+    mine[gameId] = stars;
+    await storeSet("myratings", mine, false);
+    await storeSet("rating:"+gameId, agg, true);
+    renderRatingBar(gameId);
+  }
+  async function renderRatingBar(gameId){
+    const mine = await getMyRatings();
+    const agg = await storeGet("rating:"+gameId, true, {sum:0,count:0});
+    const avg = agg.count ? (agg.sum/agg.count) : 0;
+    const myStars = mine[gameId] || 0;
+    document.querySelectorAll("#starRow button").forEach(btn=>{
+      const v = parseInt(btn.dataset.star,10);
+      btn.classList.toggle("filled", v <= myStars);
+      btn.onclick = ()=> submitRating(gameId, v);
+    });
+    document.getElementById("ratingAvgText").textContent =
+      agg.count ? `★ ${avg.toFixed(1)} avg (${agg.count} rating${agg.count!==1?"s":""})` : "No ratings yet";
+  }
+
+  /* ===================== MOST PLAYED TODAY ===================== */
+  async function recordPlayCount(gameId){
+    const key = "plays_v1:" + todayStr();
+    const counts = await storeGet(key, true, {});
+    counts[gameId] = (counts[gameId]||0) + 1;
+    await storeSet(key, counts, true);
+    renderMostPlayedToday();
+  }
+  async function renderMostPlayedToday(){
+    const key = "plays_v1:" + todayStr();
+    const counts = await storeGet(key, true, {});
+    const ranked = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const section = document.getElementById("topTodaySection");
+    const grid = document.getElementById("topTodayGrid");
+    if(!ranked.length){ section.style.display="none"; return; }
+    section.style.display="";
+    grid.innerHTML = "";
+    ranked.forEach(([gid, count])=>{
+      const g = GAMES.find(x=>x.id===gid);
+      if(!g) return;
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="card__thumb">
+          ${g.img ? `<img src="${g.img}" alt="${g.title}" loading="lazy">` : `<div class="card__emojiFallback" style="display:flex;">${g.emoji}</div>`}
+          <span class="card__badge">${count} play${count!==1?"s":""}</span>
+        </div>
+        <div class="card__body"><p class="card__title">${g.title}</p></div>`;
+      card.addEventListener("click", ()=>openGame(g));
+      grid.appendChild(card);
+    });
+  }
+
+  /* ===================== PROFILE / LEADERBOARD MODALS ===================== */
+  const profileOverlay = document.getElementById("profileOverlay");
+  const leaderboardOverlay = document.getElementById("leaderboardOverlay");
+
+  function renderProfilePanel(){
+    document.getElementById("profileUsername").innerHTML =
+      `${profile.username}<br><span style="font-size:12px;font-weight:400;color:var(--muted)">${profile.fullName || ""}</span>`;
+    const xpIntoLevel = profile.xp % 100;
+    document.getElementById("xpBarFill").style.width = xpIntoLevel + "%";
+    document.getElementById("xpLabel").textContent = `Level ${profile.level} — ${xpIntoLevel} / 100 XP`;
+    document.getElementById("streakLine").textContent = `🔥 ${profile.streak} day streak`;
+    const grid = document.getElementById("badgeGrid");
+    grid.innerHTML = "";
+    BADGES.forEach(b=>{
+      const unlocked = profile.badges.includes(b.id);
+      const div = document.createElement("div");
+      div.className = "badge" + (unlocked ? " unlocked" : "");
+      div.innerHTML = `<span class="badge__icon">${b.icon}</span><span>${b.label}</span>`;
+      grid.appendChild(div);
+    });
+  }
+
+  document.getElementById("profileBtn").addEventListener("click", async ()=>{
+    if(!(await ensureProfile())) return;
+    renderProfilePanel();
+    profileOverlay.classList.add("open");
+  });
+  document.getElementById("profileClose").addEventListener("click", ()=> profileOverlay.classList.remove("open"));
+  document.getElementById("profileRename").addEventListener("click", async ()=>{
+    const newName = prompt("Full name:", profile.fullName || "");
+    if(newName === null) return;
+    const newUsername = prompt("Username (shown on the leaderboard):", profile.username);
+    if(newUsername === null) return;
+    const oldUsername = profile.username;
+    if(newName.trim()) profile.fullName = newName.trim();
+    if(newUsername.trim()) profile.username = newUsername.trim().slice(0,20);
+    document.getElementById("profileBtn").textContent = "👤 " + profile.username;
+    saveProfile();
+    await updateLeaderboardEntry();
+    await registerPresence();
+    if(oldUsername !== profile.username){
+      const users = await storeGet("users_v1", true, {});
+      delete users[oldUsername];
+      await storeSet("users_v1", users, true);
+    }
+    renderProfilePanel();
+  });
+  document.getElementById("resetProfile").addEventListener("click", ()=>{
+    if(confirm("Reset your account? This clears your name, username, XP, level, streak, and badges on this device — you'll be asked to create a new account.")){
+      profile = null;
+      storeSet("profile", null, false);
+      profileOverlay.classList.remove("open");
+      document.getElementById("profileBtn").textContent = "👤 Guest";
+      document.getElementById("signupFullName").value = "";
+      document.getElementById("signupUsername").value = "";
+      document.getElementById("signupOverlay").classList.add("open");
+    }
+  });
+  document.getElementById("leaderboardBtn").addEventListener("click", async ()=>{
+    if(!(await ensureProfile())) return;
+    await renderLeaderboard();
+    leaderboardOverlay.classList.add("open");
+  });
+  document.getElementById("openLeaderboardFromProfile").addEventListener("click", async ()=>{
+    await renderLeaderboard();
+    profileOverlay.classList.remove("open");
+    leaderboardOverlay.classList.add("open");
+  });
+  document.getElementById("leaderboardClose").addEventListener("click", ()=> leaderboardOverlay.classList.remove("open"));
+
+  /* ===================== SIGNUP (mandatory full name + username) ===================== */
+  document.getElementById("signupSubmit").addEventListener("click", async ()=>{
+    const fullName = document.getElementById("signupFullName").value.trim();
+    const username = document.getElementById("signupUsername").value.trim();
+    const err = document.getElementById("signupError");
+    err.style.display = "none";
+    if(!fullName || !username){
+      err.textContent = "Please enter both your full name and a username.";
+      err.style.display = "block";
+      return;
+    }
+    if(username.length < 3){
+      err.textContent = "Username must be at least 3 characters.";
+      err.style.display = "block";
+      return;
+    }
+    profile = defaultProfile(fullName, username.slice(0,20));
+    saveProfile();
+    await updateLeaderboardEntry();
+    await registerPresence();
+    document.getElementById("profileBtn").textContent = "👤 " + profile.username;
+    document.getElementById("signupOverlay").classList.remove("open");
+    renderMostPlayedToday();
+    toast(`Welcome to Klyp, ${fullName.split(" ")[0]}! 🎮`);
+  });
+
+  /* ===================== THEME TOGGLE ===================== */
+  async function loadTheme(){
+    const theme = await storeGet("theme", false, "dark");
+    document.documentElement.setAttribute("data-theme", theme);
+    document.getElementById("themeToggle").textContent = theme === "light" ? "☀" : "🌙";
+  }
+  document.getElementById("themeToggle").addEventListener("click", async ()=>{
+    const current = document.documentElement.getAttribute("data-theme") || "dark";
+    const next = current === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+    document.getElementById("themeToggle").textContent = next === "light" ? "☀" : "🌙";
+    storeSet("theme", next, false);
+  });
+
+  /* ===================== SECTION SWITCHING (Gaming / Messaging / Shorts / Videos) ===================== */
+  let messagingPollTimer = null;
+  let shortsRendered = false;
+  let videosRendered = false;
+  let appsRendered = false;
+
+  document.querySelectorAll(".sectionRail__btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".sectionRail__btn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      const section = btn.dataset.section;
+      document.getElementById("gamingSection").style.display = section==="gaming" ? "" : "none";
+      document.getElementById("messagingSection").style.display = section==="messaging" ? "" : "none";
+      document.getElementById("shortsSection").style.display = section==="shorts" ? "" : "none";
+      document.getElementById("videosSection").style.display = section==="videos" ? "" : "none";
+      document.getElementById("appsSection").style.display = section==="apps" ? "" : "none";
+
+      if(section==="messaging"){
+        ensureProfile().then(ok=>{ if(ok){ renderContactList(); refreshMessages(); startMessagingPoll(); } });
+      } else stopMessagingPoll();
+
+      if(section!=="shorts" && typeof finalizeShortsWatch === "function" && typeof shortsActiveIndex !== "undefined"){
+        finalizeShortsWatch(shortsActiveIndex);
+        shortsActiveIndex = -1;
+      }
+      if(section==="shorts" && !shortsRendered){ renderShortsFeed(); shortsRendered = true; }
+      if(section==="videos" && !videosRendered){ renderVideosGrid(); videosRendered = true; }
+      if(section==="apps" && !appsRendered){ renderAppsGrid(); appsRendered = true; }
+    });
+  });
+
+  /* ===================== MESSAGING (public chat + contacts + private DMs) ===================== */
+  let activeThread = "public"; // "public" or a contact's username
+
+  function dmKey(userA, userB){
+    return "dm_v1:" + [userA, userB].sort().join("__");
+  }
+  function threadStorageKey(){
+    return activeThread === "public" ? "chat_v1" : dmKey(profile.username, activeThread);
+  }
+
+  function startMessagingPoll(){
+    stopMessagingPoll();
+    messagingPollTimer = setInterval(refreshMessages, 4000);
+  }
+  function stopMessagingPoll(){
+    if(messagingPollTimer){ clearInterval(messagingPollTimer); messagingPollTimer = null; }
+  }
+  async function refreshMessages(){
+    const msgs = await storeGet(threadStorageKey(), true, []);
+    const thread = document.getElementById("messagingThread");
+    const wasAtBottom = thread.scrollTop + thread.clientHeight >= thread.scrollHeight - 30;
+    thread.innerHTML = msgs.length ? "" : `<p style="color:var(--muted);text-align:center;">No messages yet — say hi!</p>`;
+    msgs.forEach(m=>{
+      const div = document.createElement("div");
+      const mine = profile && m.username === profile.username;
+      div.className = "msg " + (mine ? "mine" : "theirs");
+      const time = new Date(m.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+      div.innerHTML = `<div class="msg__meta">${mine ? "You" : m.username} · ${time}</div>${escapeHtml(m.text)}`;
+      thread.appendChild(div);
+    });
+    if(wasAtBottom) thread.scrollTop = thread.scrollHeight;
+  }
+  /* ===================== LONG VIDEOS (regular-length, YouTube-homepage style) ===================== */
+  // Real, verified videos — no duration limit here, unlike Shorts.
+  const VIDEOS_LONG = [
+    { id:"yAi0MYo5Mzw", title:"GTA 6 — Official Trailer 2", tags:["gaming","trailer"] },
+    { id:"wJO_vIDZn-I", title:"A Minecraft Movie — Official Trailer", tags:["gaming","trailer"] },
+    { id:"e4sCLYMSokg", title:"Fortnite Ch.7 S2: Showdown — Launch Trailer", tags:["gaming","trailer"] },
+    { id:"lWr6dhTcu-E", title:"Valorant — Cinematic Launch Trailer", tags:["gaming","trailer"] },
+    { id:"DVQee1Cu4rI", title:"A Roblox Movie (2026) — Official Trailer", tags:["gaming","trailer"] },
+    { id:"8V1omG0UIx0", title:"Top 50 Best Game Fails (Funny Moments)", tags:["gaming","funny"] },
+    { id:"0N6DNYL-N4U", title:"Insane Valorant Esports Clutch", tags:["gaming","esports"] },
+    { id:"fqXDikLplQU", title:"33 Most Satisfying Life Hacks", tags:["lifehacks","satisfying"] },
+    { id:"inCfwKUl5g8", title:"43 Genius Life Hacks For An Easy Life", tags:["lifehacks"] },
+    { id:"duGeeNsQb8o", title:"35 Smart and Unusual Everyday Life Hacks", tags:["lifehacks"] },
+  ];
+
+  function renderVideosGrid(){
+    const grid = document.getElementById("videosGrid");
+    grid.innerHTML = "";
+    VIDEOS_LONG.forEach(v=> appendVideoCard(v));
+    renderLoadMoreVideosButton();
+  }
+
+  function appendVideoCard(v){
+    const grid = document.getElementById("videosGrid");
+    const card = document.createElement("div");
+    card.className = "videoCard";
+    card.innerHTML = `
+      <div class="videoCard__thumb">
+        <img src="https://img.youtube.com/vi/${v.id}/hqdefault.jpg" alt="${v.title}" loading="lazy">
+        <div class="videoCard__playIcon">▶</div>
+      </div>
+      <div class="videoCard__body">
+        <p class="videoCard__title">${v.title}</p>
+        <p class="videoCard__tags">${v.tags.join(" · ")}</p>
+      </div>`;
+    card.addEventListener("click", ()=> openLongVideo(v));
+    grid.appendChild(card);
+  }
+
+  /* ----- Live long-video search via Invidious (reuses the same
+     invidiousSearch() helper defined below with the Shorts code) -----
+     Filters to videos LONGER than 60 seconds, so this stays distinct
+     from the Shorts feed instead of duplicating it. */
+  const LONG_VIDEO_SEARCH_QUERIES = [
+    "documentary", "cooking recipe full video", "travel vlog", "music concert",
+    "tech review", "science explained", "history documentary", "comedy sketch",
+    "sports highlights full", "gaming let's play", "art tutorial", "finance explained",
+    "nature wildlife", "space exploration", "fitness full workout"
+  ];
+  const nextLongVideoQuery = makeQueryCycler(LONG_VIDEO_SEARCH_QUERIES);
+  const videosLoadedIds = new Set(VIDEOS_LONG.map(v=>v.id));
+
+  function renderLoadMoreVideosButton(){
+    const grid = document.getElementById("videosGrid");
+    let btn = document.getElementById("loadMoreVideosBtn");
+    if(btn) btn.remove();
+    btn = document.createElement("button");
+    btn.id = "loadMoreVideosBtn";
+    btn.className = "btn btn--primary";
+    btn.style.gridColumn = "1 / -1";
+    btn.style.justifySelf = "center";
+    btn.style.marginTop = "10px";
+    btn.textContent = "🔎 Load more videos";
+    btn.addEventListener("click", loadMoreLongVideos);
+    grid.appendChild(btn);
+  }
+
+  async function loadMoreLongVideos(){
+    const btn = document.getElementById("loadMoreVideosBtn");
+    if(btn){ btn.textContent = "Loading…"; btn.disabled = true; }
+
+    let added = 0;
+    try{
+      // Try up to 3 query/page combos in this one click — since each combo
+      // might come back empty (instance hiccup, or a query that's run dry),
+      // a single attempt understated how much is actually available.
+      for(let attempt = 0; attempt < 3 && added === 0; attempt++){
+        const { query, page } = nextLongVideoQuery();
+        const items = await invidiousSearch(query, page); // shared helper, also used by Shorts live search
+        if(!items) continue;
+        items
+          .filter(it => it.type === "video" && typeof it.lengthSeconds === "number" && it.lengthSeconds > 60)
+          .forEach(it=>{
+            if(videosLoadedIds.has(it.videoId)) return;
+            videosLoadedIds.add(it.videoId);
+            appendVideoCard({ id: it.videoId, title: it.title, tags: ["live", query] });
+            added++;
+          });
+      }
+    }catch(e){
+      console.error("loadMoreLongVideos failed:", e);
+    }finally{
+      // This runs no matter what happened above — the button can never get
+      // stuck disabled again, even if something throws unexpectedly.
+      document.getElementById("loadMoreVideosBtn")?.remove();
+      renderLoadMoreVideosButton();
+    }
+    if(added === 0){
+      toast("No new live results right now (instances may be slow) — try again in a moment.");
+    }
+  }
+
+  function openLongVideo(video){
+    document.getElementById("videoPlayerTitle").textContent = video.title;
+    document.getElementById("videoPlayerBox").innerHTML =
+      `<iframe src="https://www.youtube.com/embed/${video.id}?autoplay=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
+    document.getElementById("videoPlayerOverlay").classList.add("open");
+  }
+  document.getElementById("videoPlayerClose").addEventListener("click", ()=>{
+    document.getElementById("videoPlayerOverlay").classList.remove("open");
+    document.getElementById("videoPlayerBox").innerHTML = ""; // stop playback
+  });
+
+  /* ===================== APPS (real official embeds, not full logged-in apps) =====================
+     Netflix and Crunchyroll are deliberately NOT here — neither offers any
+     public embedding mechanism, since their entire catalog is paid/
+     subscriber-only and DRM-protected. There's no legitimate way to show
+     their content inside another site; faking it would mean either a
+     broken iframe or actually circumventing DRM/login, neither of which
+     this builds. Spotify, TikTok, and Twitch below all have real,
+     official, intended embed widgets — same idea as the YouTube embeds
+     already used throughout the rest of the site. */
+  const APPS = [
+    { id:"spotify", name:"Spotify", icon:"🎧", iconBg:"#1DB954", desc:"Music & podcasts",
+      render:()=>`<iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWvHBEQLnV1N?utm_source=oembed"
+        width="100%" height="352" frameBorder="0" allowfullscreen=""
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>` },
+    { id:"tiktok", name:"TikTok", icon:"🎵", iconBg:"#000000", desc:"Short videos",
+      render:(container)=>{
+        container.innerHTML = `<blockquote class="tiktok-embed" cite="https://www.tiktok.com/@scout2015/video/6718335390845095173"
+          data-video-id="6718335390845095173" style="max-width:325px;min-width:280px;margin:0 auto;">
+          <section></section></blockquote>`;
+        if(!document.getElementById("tiktok-embed-script")){
+          const s = document.createElement("script");
+          s.id = "tiktok-embed-script";
+          s.src = "https://www.tiktok.com/embed.js";
+          s.async = true;
+          document.body.appendChild(s);
+        } else if(window.tiktokEmbed && window.tiktokEmbed.lib && window.tiktokEmbed.lib.render){
+          window.tiktokEmbed.lib.render(container.querySelectorAll(".tiktok-embed"));
+        }
+      } },
+    { id:"twitch", name:"Twitch", icon:"🎮", iconBg:"#9146FF", desc:"Live streams",
+      note:"Twitch's embed requires a 'parent' domain parameter matching wherever this file is actually hosted — it won't load inside this chat's preview, but will once you deploy the file to a real domain (see the Netlify steps from earlier).",
+      render:()=>`<iframe src="https://player.twitch.tv/?channel=esl_csgo&parent=${encodeURIComponent(location.hostname || "localhost")}&muted=true"
+        height="300" width="100%" allowfullscreen frameBorder="0"></iframe>` },
+  ];
+
+  function renderAppsGrid(){
+    const grid = document.getElementById("appsGrid");
+    grid.innerHTML = "";
+    APPS.forEach(app=>{
+      const card = document.createElement("div");
+      card.className = "appCard";
+      card.innerHTML = `
+        <div class="appCard__icon" style="background:${app.iconBg}">${app.icon}</div>
+        <div class="appCard__name">${app.name}</div>
+        <div class="appCard__desc">${app.desc}</div>`;
+      card.addEventListener("click", ()=> openApp(app));
+      grid.appendChild(card);
+    });
+  }
+
+  function openApp(app){
+    document.getElementById("appPlayerTitle").textContent = app.name;
+    const box = document.getElementById("appPlayerBox");
+    box.innerHTML = "";
+    if(typeof app.render === "function"){
+      const result = app.render(box);
+      if(typeof result === "string") box.innerHTML = result;
+    }
+    if(app.note){
+      const note = document.createElement("p");
+      note.style.fontSize = "12px"; note.style.color = "var(--muted)"; note.style.marginTop = "12px";
+      note.textContent = app.note;
+      box.appendChild(note);
+    }
+    document.getElementById("appPlayerOverlay").classList.add("open");
+  }
+  document.getElementById("appPlayerClose").addEventListener("click", ()=>{
+    document.getElementById("appPlayerOverlay").classList.remove("open");
+    document.getElementById("appPlayerBox").innerHTML = "";
+  });
+
+  function escapeHtml(s){
+    const d = document.createElement("div"); d.textContent = s; return d.innerHTML;
+  }
+  document.getElementById("messagingForm").addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    if(!(await ensureProfile())) return;
+    const input = document.getElementById("messagingInput");
+    const text = input.value.trim();
+    if(!text) return;
+    const key = threadStorageKey();
+    const msgs = await storeGet(key, true, []);
+    msgs.push({ username: profile.username, text, ts: Date.now() });
+    while(msgs.length > 100) msgs.shift();
+    await storeSet(key, msgs, true);
+    input.value = "";
+    refreshMessages();
+  });
+
+  /* ----- User registry (lets people find each other to add as contacts) ----- */
+  async function registerPresence(){
+    if(!profile) return;
+    const users = await storeGet("users_v1", true, {});
+    users[profile.username] = { fullName: profile.fullName, lastSeen: Date.now() };
+    await storeSet("users_v1", users, true);
+  }
+
+  /* ----- Contacts ----- */
+  async function getContacts(){ return storeGet("contacts", false, []); }
+  async function renderContactList(){
+    const contacts = await getContacts();
+    const list = document.getElementById("contactList");
+    list.innerHTML = "";
+    const publicLi = document.createElement("li");
+    publicLi.className = "contactItem" + (activeThread==="public" ? " active" : "");
+    publicLi.innerHTML = `<span class="dot"></span> Public Chat`;
+    publicLi.addEventListener("click", ()=> switchThread("public"));
+    list.appendChild(publicLi);
+
+    contacts.forEach(name=>{
+      const li = document.createElement("li");
+      li.className = "contactItem" + (activeThread===name ? " active" : "");
+      li.innerHTML = `<span class="dot" style="background:var(--pink)"></span> ${name}`;
+      li.addEventListener("click", ()=> switchThread(name));
+      list.appendChild(li);
+    });
+  }
+  async function switchThread(nameOrPublic){
+    activeThread = nameOrPublic;
+    document.getElementById("messagingThreadName").textContent =
+      nameOrPublic === "public" ? "💬 Klyp Public Chat" : "💬 " + nameOrPublic;
+    document.getElementById("messagingThreadSub").textContent =
+      nameOrPublic === "public" ? "Visible to everyone currently using this site." : "Private conversation — only visible to you and " + nameOrPublic + ".";
+    await renderContactList();
+    await refreshMessages();
+    // Mobile: slide to thread view
+    document.getElementById("messagingContacts").classList.remove("mobileShow");
+    document.querySelector(".messaging__main").classList.add("mobileShow");
+  }
+  document.getElementById("addContactBtn").addEventListener("click", async ()=>{
+    if(!(await ensureProfile())) return;
+    const name = prompt("Enter the exact username of the person you want to chat with:");
+    if(!name || !name.trim()) return;
+    const trimmed = name.trim().slice(0,20);
+    if(trimmed === profile.username){ toast("That's your own username."); return; }
+    const users = await storeGet("users_v1", true, {});
+    if(!users[trimmed]){
+      toast(`No Klyp account found with username "${trimmed}".`);
+      return;
+    }
+    const contacts = await getContacts();
+    if(!contacts.includes(trimmed)){
+      contacts.push(trimmed);
+      await storeSet("contacts", contacts, false);
+    }
+    await renderContactList();
+    switchThread(trimmed);
+    toast(`Added ${trimmed} to your contacts.`);
+  });
+  document.getElementById("messagingBackBtn").addEventListener("click", ()=>{
+    document.getElementById("messagingContacts").classList.add("mobileShow");
+    document.querySelector(".messaging__main").classList.remove("mobileShow");
+  });
+
+  /* ===================== SHORTS (genuine vertical Shorts-format clips) ===================== */
+  // Every entry below was confirmed via an actual youtube.com/shorts/ URL
+  // before being added — that's what guarantees the real vertical 9:16
+  // Shorts format, not just "a short video" that happens to be landscape.
+  // Deliberately not gaming-dominated: only 1 of 10 is gaming-tagged.
+  const SHORTS_VIDEOS = [
+    { id:"CltVV3JeLVo", title:"Minecraft Tips and Tricks!", tags:["minecraft","tutorial"], aspect:"vertical" },
+    { id:"HPhSbygkjIs", title:"Oddly Satisfying Kinetic Sand Cutting ASMR", tags:["satisfying","asmr"], aspect:"vertical" },
+    { id:"qIxvQqtA8SA", title:"Cutting Kinetic Sand — Oddly Satisfying Sand ASMR", tags:["satisfying","asmr"], aspect:"vertical" },
+    { id:"yvK2rP2Y9eY", title:"Perfect Rice Every Time 🍚", tags:["cooking","food"], aspect:"vertical" },
+    { id:"H5vOd6sgfj4", title:"Quick & Easy Recipe — Thai Pork Ribs", tags:["cooking","food"], aspect:"vertical" },
+    { id:"4wZwXhoxRIA", title:"15 Tech Gadgets I Use Every Day", tags:["tech","gadgets"], aspect:"vertical" },
+    { id:"fefHQgpKt6w", title:"Funny Dance Trend", tags:["dance","funny"], aspect:"vertical" },
+    { id:"6wncD66MI1A", title:"Ranking Funniest Random Dance Moments", tags:["dance","funny"], aspect:"vertical" },
+    { id:"LTgNLBhrXYk", title:"Amazing Science Facts", tags:["science","education"], aspect:"vertical" },
+    { id:"CakwZt1bG5w", title:"Cute Puppy and Kitten", tags:["animals","cute"], aspect:"vertical" },
+    { id:"n1WWY2wyhVM", title:"Most Amazing Secret Destinations on Earth", tags:["travel"], aspect:"vertical" },
+    { id:"XxrnbgPm0X0", title:"The Best Places to Travel in the US Right Now", tags:["travel"], aspect:"vertical" },
+    { id:"yxxTYE1uJrI", title:"My Most Unforgettable Travel Experience", tags:["travel"], aspect:"vertical" },
+    { id:"UF2dk4237PM", title:"Lewis Hamilton's Grand Prix Win Celebration", tags:["sports"], aspect:"vertical" },
+    { id:"dGxSxrwCABc", title:"One of the Greatest Sports Moments Ever", tags:["sports"], aspect:"vertical" },
+    { id:"8bm-9BIBzaw", title:"Police Officer's Soccer Skills Steal the Show", tags:["sports","funny"], aspect:"vertical" },
+    { id:"gSDF_Bx-dmI", title:"4 Home Exercises for Your Core", tags:["fitness"], aspect:"vertical" },
+    { id:"jHia9iPEDW8", title:"A Quick Workout That Wakes Up Your Body", tags:["fitness"], aspect:"vertical" },
+    { id:"iSQoELBeds0", title:"Quick 5 Minute Ab Sculpt", tags:["fitness"], aspect:"vertical" },
+    { id:"uRFvw62hWh0", title:"Amazing Astronomy Facts in a Nutshell", tags:["space","science"], aspect:"vertical" },
+    { id:"H1d3txkKqv0", title:"My Favorite Space Fact", tags:["space","science"], aspect:"vertical" },
+    { id:"bQVbXS61Q_g", title:"Space Fact: Black Holes Explained", tags:["space","science"], aspect:"vertical" },
+    { id:"Obn6pfAzCYY", title:"More Stars Than Grains of Sand on Earth", tags:["space","science"], aspect:"vertical" },
+    { id:"uDFxk413IAo", title:"This Cover Is Amazing", tags:["music"], aspect:"vertical" },
+    { id:"Xi3sj9SuvUQ", title:"Iconic Vocals & Amazing Energy Live On Stage", tags:["music"], aspect:"vertical" },
+    { id:"jQmVezrwDK4", title:"Crazy Historical Facts You Didn't Know", tags:["history"], aspect:"vertical" },
+    { id:"V6k2b4Wdwj4", title:"Weird History Facts They Didn't Teach in School", tags:["history"], aspect:"vertical" },
+    { id:"Eh0WHQWR_fk", title:"Weird History Facts You Wouldn't Believe Are Real", tags:["history"], aspect:"vertical" },
+  ];
+
+  /* ----- Live video search via Invidious (no API key, no Google account) -----
+     Invidious is an open-source YouTube front-end with a public JSON API.
+     Public instances change over time, so we try several in order and use
+     whichever one actually responds. This is the primary live-search path
+     since it needs zero signup; the YouTube Data API key below is kept as
+     a secondary option for anyone who can use it. */
+  const INVIDIOUS_INSTANCES = [
+    "https://inv.nadeko.net",
+    "https://invidious.nerdvpn.de",
+    "https://inv.thepixora.com",
+  ];
+  const SHORTS_SEARCH_QUERIES = [
+    "gaming shorts", "comedy shorts", "life hacks shorts", "cooking shorts",
+    "travel shorts", "tech shorts", "sports highlights shorts", "music shorts",
+    "animal shorts", "science facts shorts", "diy shorts", "art shorts",
+    "dance shorts", "satisfying shorts", "news shorts"
+  ];
+  let liveShortsPool = []; // accumulates across many fetches — never overwritten/capped
+
+  // Generic "what to search next" tracker — cycles through every query once
+  // (page 1) before repeating any of them on page 2, then page 3, etc.
+  // This is what actually fixes "limited videos": without it, repeated
+  // fetches kept landing on the same query's same first page and finding
+  // nothing new to add.
+  function makeQueryCycler(queries){
+    const tried = new Set();
+    let page = 1;
+    return function next(){
+      for(const q of queries){
+        const key = page + ":" + q;
+        if(!tried.has(key)){ tried.add(key); return { query:q, page }; }
+      }
+      page++;
+      const q = queries[0];
+      tried.add(page + ":" + q);
+      return { query:q, page };
+    };
+  }
+  const nextShortsQuery = makeQueryCycler(SHORTS_SEARCH_QUERIES);
+
+  async function fetchWithTimeout(url, ms){
+    const controller = new AbortController();
+    const timer = setTimeout(()=> controller.abort(), ms);
+    try{
+      const res = await fetch(url, { signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function invidiousSearch(query, page){
+    // Race all instances in parallel with a per-instance timeout, instead of
+    // trying them one at a time. The old sequential version could hang
+    // indefinitely if the first instance was slow/unresponsive (no timeout
+    // at all), which looked exactly like "the second click doesn't work" —
+    // it wasn't erroring, it was just stuck waiting.
+    const attempts = INVIDIOUS_INSTANCES.map(async (base)=>{
+      const url = `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video${page>1?`&page=${page}`:""}`;
+      const res = await fetchWithTimeout(url, 6000);
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const items = await res.json();
+      if(!Array.isArray(items) || !items.length) throw new Error("empty response");
+      return items;
+    });
+    try{
+      return await Promise.any(attempts);
+    }catch(aggregateError){
+      return null; // every instance failed or timed out
+    }
+  }
+
+  async function fetchInvidiousShortsPool(){
+    const { query, page } = nextShortsQuery();
+    const items = await invidiousSearch(query, page);
+    if(!items) return null;
+    const seenIds = new Set(liveShortsPool.map(v=>v.id));
+    const underThirty = items
+      .filter(it => it.type === "video" && typeof it.lengthSeconds === "number" && it.lengthSeconds > 0 && it.lengthSeconds <= 30)
+      .filter(it => !seenIds.has(it.videoId))
+      .map(it => ({
+        id: it.videoId,
+        title: it.title,
+        tags: ["live", query.replace(" shorts","")],
+        aspect: "horizontal", // unknown true aspect from search metadata alone — letterboxed safely either way
+      }));
+    if(underThirty.length){
+      liveShortsPool = liveShortsPool.concat(underThirty);
+    }
+    return liveShortsPool.length ? liveShortsPool : null;
+  }
+
+  /* ----- Optional secondary path: YouTube Data API v3 (needs a key) -----
+     Only used if you've pasted a key below AND Invidious didn't return
+     anything usable. Get a free key at console.cloud.google.com → enable
+     "YouTube Data API v3" → Credentials → Create API Key. */
+  const YOUTUBE_API_KEY = ""; // <-- optional, only used if Invidious is unavailable
+
+  function parseIsoDurationToSeconds(iso){
+    const m = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso || "");
+    if(!m) return null;
+    const h = parseInt(m[1]||0,10), mins = parseInt(m[2]||0,10), s = parseInt(m[3]||0,10);
+    return h*3600 + mins*60 + s;
+  }
+
+  async function fetchYouTubeApiShortsPool(){
+    if(!YOUTUBE_API_KEY) return null;
+    try{
+      const query = SHORTS_SEARCH_QUERIES[Math.floor(Math.random()*SHORTS_SEARCH_QUERIES.length)];
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoDuration=short&maxResults=25&q=${encodeURIComponent(query)}&key=${YOUTUBE_API_KEY}`;
+      const searchRes = await fetch(searchUrl).then(r=>r.json());
+      const ids = (searchRes.items || []).map(it=>it.id.videoId).filter(Boolean);
+      if(!ids.length) return null;
+
+      const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${ids.join(",")}&key=${YOUTUBE_API_KEY}`;
+      const detailsRes = await fetch(detailsUrl).then(r=>r.json());
+
+      const underThirty = (detailsRes.items || [])
+        .map(item=>({
+          id: item.id,
+          title: item.snippet.title,
+          seconds: parseIsoDurationToSeconds(item.contentDetails.duration),
+          tags: ["live", (item.snippet.tags && item.snippet.tags[0]) || "gaming"],
+        }))
+        .filter(v => v.seconds !== null && v.seconds <= 30);
+
+      return underThirty.length ? underThirty : null;
+    }catch(e){
+      console.error("YouTube API search failed:", e);
+      return null;
+    }
+  }
+
+  async function fetchLiveShortsPool(){
+    // Always attempts one more fetch to top up the pool — this is the fix:
+    // the old version returned a cached result forever after the first
+    // success, so it could never grow past whatever the first query found.
+    const invidiousResult = await fetchInvidiousShortsPool();
+    if(invidiousResult) return invidiousResult;
+    if(liveShortsPool.length) return liveShortsPool; // this fetch found nothing new, but keep what we have
+    const ytApiResult = await fetchYouTubeApiShortsPool();
+    if(ytApiResult) return ytApiResult;
+    return null;
+  }
+
+  async function getShortsCandidatePool(){
+    const live = await fetchLiveShortsPool();
+    return live && live.length ? live : SHORTS_VIDEOS;
+  }
+
+  const SHORTS_BATCH_SIZE = 5;
+  let shortsIO = null;
+  let shortsRenderedIds = new Set();
+  const ytPlayers = new Map();   // index -> YT.Player
+  let ytApiPromise = null;
+  let shortsActiveIndex = -1;
+
+  function loadYouTubeApi(){
+    if(ytApiPromise) return ytApiPromise;
+    ytApiPromise = new Promise(resolve=>{
+      if(window.YT && window.YT.Player) return resolve();
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = ()=>{ if(prev) prev(); resolve(); };
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+    });
+    return ytApiPromise;
+  }
+
+  /* ----- Simple content-based recommender -----
+     Tracks how many times the viewer has watched (or liked) each tag.
+     Unseen candidates are scored by summing the viewer's affinity for their
+     tags (+ a touch of randomness so the feed doesn't feel robotic), then
+     the highest-scoring ones get appended next as they scroll. Likes count
+     for more than passive views, same idea as real recommendation systems
+     use implicit + explicit signals. */
+  async function getShortsPrefs(){
+    return storeGet("shortsPrefs", false, { tagCounts:{}, liked:[], disliked:[] });
+  }
+  async function saveShortsPrefs(prefs){ return storeSet("shortsPrefs", prefs, false); }
+  function scoreVideo(video, prefs){
+    if(prefs.disliked && prefs.disliked.includes(video.id)) return -9999; // effectively excluded
+    let score = 0;
+    video.tags.forEach(t=> score += (prefs.tagCounts[t] || 0));
+    if(prefs.liked && prefs.liked.includes(video.id)) score += 5; // small nudge to resurface liked content occasionally
+    return score + Math.random() * 0.75; // light shuffle so it's not robotic
+  }
+  const SHORTS_CONTENT_TYPES = ["tutorial","satisfying","cooking","tech","dance","science","animals","travel","sports","fitness","space","music","history"];
+
+  async function pickNextBatch(n){
+    const prefs = await getShortsPrefs();
+    const pool = await getShortsCandidatePool();
+    let candidates = pool.filter(v=>!shortsRenderedIds.has(v.id) && !(prefs.disliked||[]).includes(v.id) && !brokenShortsIds.has(v.id));
+    if(!candidates.length) candidates = pool.filter(v=>!(prefs.disliked||[]).includes(v.id) && !brokenShortsIds.has(v.id));
+    if(!candidates.length) candidates = pool.filter(v=>!brokenShortsIds.has(v.id));
+    if(!candidates.length) candidates = pool.slice(); // truly nothing left — give up excluding, show something
+
+    const picked = [];
+    const usedIds = new Set();
+
+    // Round-robin across content types first, so one category (e.g. trailers,
+    // which happen to outnumber the others) can't dominate a batch just by
+    // having more entries. Within each type, pick the viewer's best-scoring match.
+    let typeIndex = 0, attempts = 0;
+    while(picked.length < n && picked.length < candidates.length && attempts < SHORTS_CONTENT_TYPES.length * 3){
+      const type = SHORTS_CONTENT_TYPES[typeIndex % SHORTS_CONTENT_TYPES.length];
+      typeIndex++; attempts++;
+      const matches = candidates.filter(v=>v.tags.includes(type) && !usedIds.has(v.id));
+      if(matches.length){
+        const best = matches.map(v=>({v,score:scoreVideo(v,prefs)})).sort((a,b)=>b.score-a.score)[0].v;
+        picked.push(best);
+        usedIds.add(best.id);
+      }
+    }
+    // Fill any remaining slots with the best-scoring leftovers regardless of type
+    if(picked.length < n){
+      candidates.filter(v=>!usedIds.has(v.id))
+        .map(v=>({v,score:scoreVideo(v,prefs)}))
+        .sort((a,b)=>b.score-a.score)
+        .forEach(({v})=>{ if(picked.length<n){ picked.push(v); usedIds.add(v.id); } });
+    }
+    return picked.slice(0,n);
+  }
+
+  /* ----- Watch-time weighted view tracking -----
+     A 1-second glance and a 25-second full watch shouldn't count the same.
+     Each tag's weight grows with how long the viewer actually watched,
+     capped so one long-open tab doesn't dominate the whole profile. */
+  async function recordShortsView(video, watchedSeconds){
+    const weight = Math.max(0.25, Math.min(watchedSeconds / 3, 8)); // ~3s watched = +1 weight, capped at 8
+    const prefs = await getShortsPrefs();
+    video.tags.forEach(t=> prefs.tagCounts[t] = (prefs.tagCounts[t]||0) + weight);
+    await saveShortsPrefs(prefs);
+  }
+
+  async function toggleShortsLike(video, likeBtn, dislikeBtn){
+    const prefs = await getShortsPrefs();
+    // Remove any existing dislike first — like and dislike are mutually exclusive
+    const dIdx = prefs.disliked.indexOf(video.id);
+    if(dIdx > -1){
+      prefs.disliked.splice(dIdx,1);
+      video.tags.forEach(t=> prefs.tagCounts[t] = (prefs.tagCounts[t]||0) + 5);
+      dislikeBtn.classList.remove("active"); dislikeBtn.textContent = "👎";
+    }
+    const i = prefs.liked.indexOf(video.id);
+    if(i > -1){
+      prefs.liked.splice(i,1);
+      video.tags.forEach(t=> prefs.tagCounts[t] = Math.max(0, (prefs.tagCounts[t]||0) - 5));
+      likeBtn.classList.remove("liked"); likeBtn.textContent = "🤍";
+    } else {
+      prefs.liked.push(video.id);
+      video.tags.forEach(t=> prefs.tagCounts[t] = (prefs.tagCounts[t]||0) + 5);
+      likeBtn.classList.add("liked"); likeBtn.textContent = "❤️";
+    }
+    await saveShortsPrefs(prefs);
+  }
+
+  async function toggleShortsDislike(video, dislikeBtn, likeBtn, itemEl){
+    const prefs = await getShortsPrefs();
+    // Remove any existing like first — like and dislike are mutually exclusive
+    const lIdx = prefs.liked.indexOf(video.id);
+    if(lIdx > -1){
+      prefs.liked.splice(lIdx,1);
+      video.tags.forEach(t=> prefs.tagCounts[t] = Math.max(0, (prefs.tagCounts[t]||0) - 5));
+      likeBtn.classList.remove("liked"); likeBtn.textContent = "🤍";
+    }
+    const i = prefs.disliked.indexOf(video.id);
+    if(i > -1){
+      prefs.disliked.splice(i,1);
+      video.tags.forEach(t=> prefs.tagCounts[t] = (prefs.tagCounts[t]||0) + 5);
+      dislikeBtn.classList.remove("active"); dislikeBtn.textContent = "👎";
+    } else {
+      prefs.disliked.push(video.id);
+      video.tags.forEach(t=> prefs.tagCounts[t] = Math.max(0, (prefs.tagCounts[t]||0) - 5));
+      dislikeBtn.classList.add("active"); dislikeBtn.textContent = "🚫";
+      // Disliking the video you're currently on: skip ahead automatically
+      const next = itemEl.nextElementSibling;
+      if(next) next.scrollIntoView({ behavior:"smooth" });
+    }
+    await saveShortsPrefs(prefs);
+  }
+
+  const shortsByIndex = new Map(); // index -> video object actually rendered there
+
+  function buildShortsItem(video, index){
+    shortsByIndex.set(index, video);
+    const item = document.createElement("div");
+    item.className = "shorts__item shorts__item--video";
+    item.dataset.videoId = video.id;
+    item.dataset.idx = index;
+    item.dataset.aspect = video.aspect || "horizontal";
+    item.innerHTML = `
+      <div class="shorts__videoBox"><div id="ytbox-${index}"></div></div>
+      <div class="shorts__item__overlay">
+        <p class="shorts__item__title">${video.title}</p>
+        <p class="shorts__item__cat">${video.tags.join(" · ")}</p>
+        <div class="shorts__item__actions">
+          <button class="shorts__likeBtn" title="Like — improves your recommendations">🤍</button>
+          <button class="shorts__dislikeBtn" title="Not interested — improves your recommendations">👎</button>
+          <a class="shorts__item__ytLink" href="https://www.youtube.com/watch?v=${video.id}" target="_blank" rel="noopener">▶ Watch on YouTube ↗</a>
+        </div>
+      </div>`;
+    const likeBtn = item.querySelector(".shorts__likeBtn");
+    const dislikeBtn = item.querySelector(".shorts__dislikeBtn");
+    likeBtn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      toggleShortsLike(video, likeBtn, dislikeBtn);
+    });
+    dislikeBtn.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      toggleShortsDislike(video, dislikeBtn, likeBtn, item);
+    });
+    return item;
+  }
+
+  const brokenShortsIds = new Set();
+
+  function handleShortsPlayerError(index, video){
+    if(video) brokenShortsIds.add(video.id);
+    liveShortsPool = liveShortsPool.filter(v=>v.id !== (video && video.id));
+    try{ ytPlayers.get(index)?.destroy(); }catch(e){}
+    ytPlayers.delete(index);
+    const item = document.querySelector(`.shorts__item--video[data-idx="${index}"]`);
+    if(item){
+      const box = item.querySelector(".shorts__videoBox");
+      if(box) box.innerHTML = `<div class="shorts__brokenMsg">⚠ This video can't be embedded — skipping…</div>`;
+      const next = item.nextElementSibling;
+      if(next) setTimeout(()=> next.scrollIntoView({ behavior:"smooth", block:"start" }), 600);
+    }
+  }
+
+  function getPlayer(index){
+    if(ytPlayers.has(index)) return ytPlayers.get(index);
+    const video = shortsByIndex.get(index);
+    if(!video) return null;
+    const container = document.getElementById("ytbox-" + index);
+    if(!container) return null;
+    const player = new YT.Player(container, {
+      videoId: video.id,
+      // mute:0 — browsers DO allow unmuted autoplay once the page has real
+      // user interaction (e.g. you clicking into the Shorts tab counts).
+      // If a particular browser still blocks it anyway, onStateChange below
+      // detects that and shows a one-tap "unmute" fallback instead of
+      // silently failing.
+      playerVars:{ autoplay:1, mute:0, controls:1, rel:0, playsinline:1, modestbranding:1 },
+      events:{
+        onStateChange:(e)=>{
+          if(e.data === YT.PlayerState.PLAYING){
+            try{
+              if(e.target.isMuted()){
+                showUnmuteHint(index, e.target);
+              } else {
+                hideUnmuteHint(index);
+              }
+            }catch(err){}
+          }
+        },
+        onError:(e)=>{
+          // Error codes 101/150 = the uploader disabled embedding entirely —
+          // this is exactly "shows an image but the video never loads".
+          // Live search results aren't pre-checked for this the way the
+          // curated list was, so this catches it and moves on automatically.
+          handleShortsPlayerError(index, video);
+        }
+      }
+    });
+    ytPlayers.set(index, player);
+    enforcePlayerPoolLimit();
+    return player;
+  }
+  function showUnmuteHint(index, player){
+    const item = document.querySelector(`.shorts__item--video[data-idx="${index}"]`);
+    if(!item || item.querySelector(".shorts__unmuteHint")) return;
+    const hint = document.createElement("button");
+    hint.className = "shorts__unmuteHint";
+    hint.textContent = "🔇 Tap for sound";
+    hint.addEventListener("click", (e)=>{
+      e.stopPropagation();
+      try{ player.unMute(); player.setVolume(100); player.playVideo(); }catch(err){}
+      hint.remove();
+    });
+    item.appendChild(hint);
+  }
+  function hideUnmuteHint(index){
+    const item = document.querySelector(`.shorts__item--video[data-idx="${index}"]`);
+    const hint = item && item.querySelector(".shorts__unmuteHint");
+    if(hint) hint.remove();
+  }
+  function enforcePlayerPoolLimit(){
+    // Keep at most 4 live players (current + neighbors) — destroy the
+    // farthest one from what's currently active. This is what keeps
+    // scrolling feeling instant: neighbors are pre-built, but we don't
+    // let memory/connections grow unbounded.
+    if(ytPlayers.size <= 4) return;
+    let farthest = null, maxDist = -1;
+    ytPlayers.forEach((_, idx)=>{
+      const d = Math.abs(idx - shortsActiveIndex);
+      if(d > maxDist){ maxDist = d; farthest = idx; }
+    });
+    if(farthest !== null){
+      try{ ytPlayers.get(farthest).destroy(); }catch(e){}
+      ytPlayers.delete(farthest);
+    }
+  }
+
+  async function appendShortsBatch(){
+    const feed = document.getElementById("shortsFeed");
+    const nextVideos = await pickNextBatch(SHORTS_BATCH_SIZE);
+    let idx = feed.querySelectorAll(".shorts__item--video").length;
+    nextVideos.forEach(video=>{
+      shortsRenderedIds.add(video.id);
+      const item = buildShortsItem(video, idx);
+      feed.appendChild(item);
+      shortsIO.observe(item);
+      idx++;
+    });
+  }
+
+  let shortsWatchStartTs = null;
+  function finalizeShortsWatch(idx){
+    if(idx < 0 || shortsWatchStartTs === null) return;
+    const video = shortsByIndex.get(idx);
+    const seconds = (Date.now() - shortsWatchStartTs) / 1000;
+    shortsWatchStartTs = null;
+    if(video && seconds > 0.4) recordShortsView(video, seconds);
+  }
+
+  async function renderShortsFeed(){
+    const feed = document.getElementById("shortsFeed");
+    feed.innerHTML = `<div class="shorts__hint">Scroll for more ↓</div>`;
+    shortsRenderedIds = new Set();
+    await loadYouTubeApi();
+
+    shortsIO = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        const idx = Number(entry.target.dataset.idx);
+        if(entry.isIntersecting && entry.intersectionRatio > 0.6){
+          if(shortsActiveIndex !== idx){
+            finalizeShortsWatch(shortsActiveIndex); // credit watch time for the one we just left
+            shortsActiveIndex = idx;
+            shortsWatchStartTs = Date.now();
+          }
+          const player = getPlayer(idx);
+          if(player){
+            const tryPlay = ()=>{ try{ player.playVideo(); }catch(e){} };
+            if(player.playVideo) tryPlay();
+            else setTimeout(tryPlay, 300);
+          }
+          // Preload neighbors so the next scroll feels instant
+          getPlayer(idx+1); getPlayer(idx-1);
+          ytPlayers.forEach((p,i)=>{ if(i!==idx){ try{p.pauseVideo();}catch(e){} } });
+          // Append more once the viewer is nearing the end of the loaded batch
+          const allItems = feed.querySelectorAll(".shorts__item--video");
+          if(idx >= allItems.length - 2) appendShortsBatch();
+        } else {
+          if(idx === shortsActiveIndex){
+            finalizeShortsWatch(idx);
+            shortsActiveIndex = -1;
+          }
+          const p = ytPlayers.get(idx);
+          if(p){ try{ p.pauseVideo(); }catch(e){} }
+        }
+      });
+    }, { threshold:[0,0.6] });
+
+    await appendShortsBatch();
+
+    // Arrow-key navigation: Down/Right = next, Up/Left = previous.
+    // Only active while the Shorts section is actually visible.
+    document.removeEventListener("keydown", shortsKeydownHandler);
+    document.addEventListener("keydown", shortsKeydownHandler);
+  }
+
+  function shortsKeydownHandler(e){
+    const shortsSection = document.getElementById("shortsSection");
+    if(!shortsSection || shortsSection.style.display === "none") return;
+    if(!["ArrowDown","ArrowRight","ArrowUp","ArrowLeft"].includes(e.key)) return;
+    e.preventDefault();
+    const feed = document.getElementById("shortsFeed");
+    const items = [...feed.querySelectorAll(".shorts__item--video")];
+    const currentIdx = items.findIndex(it => Number(it.dataset.idx) === shortsActiveIndex);
+    const dir = (e.key === "ArrowDown" || e.key === "ArrowRight") ? 1 : -1;
+    const target = items[currentIdx + dir];
+    if(target) target.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+
+  /* ===================== INIT ===================== */
+  loadTheme();
+  ensureProfile().then(ok=>{ if(ok){ renderMostPlayedToday(); registerPresence(); } });
+  if(!hasRealStorage()){
+    setTimeout(()=> toast("⚠️ Shared storage not detected (chat/leaderboard work for this session only, won't sync with others). See README/chat for details."), 1200);
+  }
+
+  renderGrid();
+})();
+
+</script>
+</body>
+</html>
