@@ -2723,7 +2723,13 @@ ENGINES.breakout = function(stage){
         <p class="videoCard__tags">${v.tags.join(" · ")}</p>
       </div>`;
     card.addEventListener("click", ()=> openLongVideo(v));
-    grid.appendChild(card);
+    // Insert BEFORE the load-more button rather than always appending to the
+    // end — otherwise, since this can run mid-loop across several awaited
+    // steps, new cards could land after the button while it's still in the
+    // DOM, leaving it visually buried/misplaced instead of at the bottom.
+    const existingBtn = document.getElementById("loadMoreVideosBtn");
+    if(existingBtn) grid.insertBefore(card, existingBtn);
+    else grid.appendChild(card);
   }
 
   /* ----- Live long-video search via Invidious (reuses the same
@@ -2754,7 +2760,10 @@ ENGINES.breakout = function(stage){
     grid.appendChild(btn);
   }
 
+  let longVideoLoadInProgress = false;
   async function loadMoreLongVideos(){
+    if(longVideoLoadInProgress) return; // ignore rapid double-clicks
+    longVideoLoadInProgress = true;
     const btn = document.getElementById("loadMoreVideosBtn");
     if(btn){ btn.textContent = "Loading…"; btn.disabled = true; }
 
@@ -2783,6 +2792,7 @@ ENGINES.breakout = function(stage){
       // stuck disabled again, even if something throws unexpectedly.
       document.getElementById("loadMoreVideosBtn")?.remove();
       renderLoadMoreVideosButton();
+      longVideoLoadInProgress = false;
     }
     if(added === 0){
       toast("No new live results right now (instances may be slow) — try again in a moment.");
@@ -3137,7 +3147,11 @@ ENGINES.breakout = function(stage){
 
   async function getShortsCandidatePool(){
     const live = await fetchLiveShortsPool();
-    return live && live.length ? live : SHORTS_VIDEOS;
+    // Merge, don't replace — a tiny live result set was wiping out the
+    // whole 28-video curated pool, which is exactly why it stopped finding
+    // anything new after a few videos. Curated content is always available
+    // as the baseline; live results are a bonus on top of it.
+    return live && live.length ? SHORTS_VIDEOS.concat(live) : SHORTS_VIDEOS;
   }
 
   const SHORTS_BATCH_SIZE = 5;
@@ -3396,17 +3410,24 @@ ENGINES.breakout = function(stage){
     }
   }
 
+  let shortsAppendInProgress = false;
   async function appendShortsBatch(){
-    const feed = document.getElementById("shortsFeed");
-    const nextVideos = await pickNextBatch(SHORTS_BATCH_SIZE);
-    let idx = feed.querySelectorAll(".shorts__item--video").length;
-    nextVideos.forEach(video=>{
-      shortsRenderedIds.add(video.id);
-      const item = buildShortsItem(video, idx);
-      feed.appendChild(item);
-      shortsIO.observe(item);
-      idx++;
-    });
+    if(shortsAppendInProgress) return; // a previous call is still in flight — without this guard,
+    shortsAppendInProgress = true;     // fast scrolling could trigger this multiple times before the
+    try{                                // first finishes, computing the same starting index twice and
+      const feed = document.getElementById("shortsFeed");
+      const nextVideos = await pickNextBatch(SHORTS_BATCH_SIZE);
+      let idx = feed.querySelectorAll(".shorts__item--video").length;
+      nextVideos.forEach(video=>{
+        shortsRenderedIds.add(video.id);
+        const item = buildShortsItem(video, idx);
+        feed.appendChild(item);
+        shortsIO.observe(item);
+        idx++;
+      });
+    } finally {
+      shortsAppendInProgress = false;
+    }
   }
 
   let shortsWatchStartTs = null;
