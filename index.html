@@ -3564,27 +3564,29 @@ ENGINES.breakout = function(stage){
     if(!candidates.length) candidates = pool.filter(v=>!(prefs.disliked||[]).includes(v.id));
     if(!candidates.length) candidates = pool.slice(); // everything disliked somehow — show something anyway
 
+    // Split into live vs curated and alternate between them, rather than
+    // round-robin by content-type tag — that approach quietly favored
+    // curated content, since live videos are tagged with the raw search
+    // query text ("sports highlights", "science facts", etc.) which often
+    // doesn't exactly match the fixed category names, so they kept losing
+    // the match and only got used as leftovers. Alternating by source
+    // entirely removes that bias. Which source goes first is randomized
+    // each batch, and each source is still internally ranked by the
+    // viewer's preferences via scoreVideo.
+    const liveSorted = candidates.filter(v=>v.tags.includes("live"))
+      .map(v=>({v,score:scoreVideo(v,prefs)})).sort((a,b)=>b.score-a.score).map(x=>x.v);
+    const curatedSorted = candidates.filter(v=>!v.tags.includes("live"))
+      .map(v=>({v,score:scoreVideo(v,prefs)})).sort((a,b)=>b.score-a.score).map(x=>x.v);
+
     const picked = [];
-    const usedIds = new Set();
-    // Start the round-robin at a random category each time, instead of
-    // always "tutorial" first — that's what was causing it to keep landing
-    // on the same one or two videos at the start of every session.
-    let typeIndex = Math.floor(Math.random() * SHORTS_CONTENT_TYPES.length), attempts = 0;
-    while(picked.length < n && picked.length < candidates.length && attempts < SHORTS_CONTENT_TYPES.length * 3){
-      const type = SHORTS_CONTENT_TYPES[typeIndex % SHORTS_CONTENT_TYPES.length];
-      typeIndex++; attempts++;
-      const matches = candidates.filter(v=>v.tags.includes(type) && !usedIds.has(v.id));
-      if(matches.length){
-        const best = matches.map(v=>({v,score:scoreVideo(v,prefs)})).sort((a,b)=>b.score-a.score)[0].v;
-        picked.push(best);
-        usedIds.add(best.id);
-      }
-    }
-    if(picked.length < n){
-      candidates.filter(v=>!usedIds.has(v.id))
-        .map(v=>({v,score:scoreVideo(v,prefs)}))
-        .sort((a,b)=>b.score-a.score)
-        .forEach(({v})=>{ if(picked.length<n){ picked.push(v); usedIds.add(v.id); } });
+    let li = 0, ci = 0;
+    let takeLive = Math.random() < 0.5;
+    while(picked.length < n && (li < liveSorted.length || ci < curatedSorted.length)){
+      if(takeLive && li < liveSorted.length){ picked.push(liveSorted[li++]); }
+      else if(!takeLive && ci < curatedSorted.length){ picked.push(curatedSorted[ci++]); }
+      else if(li < liveSorted.length){ picked.push(liveSorted[li++]); }
+      else if(ci < curatedSorted.length){ picked.push(curatedSorted[ci++]); }
+      takeLive = !takeLive;
     }
     return picked.slice(0,n);
   }
@@ -3851,6 +3853,12 @@ ENGINES.breakout = function(stage){
   if(!hasRealStorage()){
     setTimeout(()=> toast("⚠️ Shared storage not detected (chat/leaderboard work for this session only, won't sync with others). See README/chat for details."), 1200);
   }
+
+  // Keep searching for new live Shorts continuously in the background, for
+  // as long as the site stays open — not just when you're actively
+  // scrolling. This runs regardless of which section is currently visible,
+  // so liveShortsPool keeps growing the whole time the tab is open.
+  setInterval(()=>{ fetchInvidiousShortsPool(); }, 15000);
 
   renderGrid();
 })();
