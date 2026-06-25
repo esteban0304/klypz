@@ -2807,11 +2807,27 @@ ENGINES.breakout = function(stage){
     if(btn) btn.remove();
     btn = document.createElement("button");
     btn.id = "loadMoreVideosBtn";
-    btn.className = "btn btn--primary";
-    btn.style.gridColumn = "1 / -1";
-    btn.style.justifySelf = "center";
-    btn.style.marginTop = "10px";
+    btn.type = "button";
     btn.textContent = "🔎 Load more videos";
+    // Every visual property set directly, inline — this sidesteps any
+    // possibility of a CSS cascade/specificity conflict making it render
+    // as plain unstyled text instead of looking/behaving like a button.
+    Object.assign(btn.style, {
+      gridColumn: "1 / -1",
+      justifySelf: "center",
+      marginTop: "10px",
+      display: "inline-block",
+      padding: "12px 26px",
+      borderRadius: "999px",
+      fontWeight: "600",
+      fontSize: "14px",
+      fontFamily: "inherit",
+      background: "linear-gradient(135deg, #2f7bff, #00e0ff)",
+      color: "#04070f",
+      border: "none",
+      cursor: "pointer",
+      boxShadow: "0 0 24px rgba(47,123,255,.45)",
+    });
     btn.addEventListener("click", loadMoreLongVideos);
     grid.appendChild(btn);
   }
