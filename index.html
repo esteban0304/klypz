@@ -2742,6 +2742,20 @@ ENGINES.breakout = function(stage){
     { id:"duGeeNsQb8o", title:"35 Smart and Unusual Everyday Life Hacks", tags:["lifehacks"] },
     { id:"Ss7oMtMs3hk", title:"Nature's Most Extraordinary Moments — Full Episode", tags:["documentary","nature"] },
     { id:"k9fBEc-dRYI", title:"The Secret Life of Trees — Nature Documentary", tags:["documentary","nature"] },
+    { id:"UwDwizVsUG8", title:"We Asked MKBHD About His 'Devastating' Reviews", tags:["tech","interview"] },
+    { id:"WiH2T933xn8", title:"Personal Finance Basics: A Beginner's Guide", tags:["finance","education"] },
+    { id:"G-HYSrR8-J4", title:"The Best Introduction to Personal Finance", tags:["finance","education"] },
+    { id:"CZhhHYpuW9M", title:"Personal Finance 101 — A Beginner's Guide to Money", tags:["finance","education"] },
+    { id:"-7b1KJfPeAQ", title:"Beginner's Guide to Personal Finance", tags:["finance","education"] },
+    { id:"gYSleaZ0Bq0", title:"Personal Finance For Beginners", tags:["finance","education"] },
+    { id:"3NycM9lYdRI", title:"Relaxing Piano Music — Our Journey", tags:["music","relaxing"] },
+    { id:"4khIPP--FDU", title:"Beautiful Piano Music — Study, Sleep, Meditation", tags:["music","relaxing"] },
+    { id:"jzAxf1t9b-k", title:"Feels Like Home — Relaxing Piano for Focus", tags:["music","relaxing"] },
+    { id:"hlWiI4xVXKY", title:"Sunny Mornings — Relaxing Piano & Guitar With Birdsong", tags:["music","relaxing"] },
+    { id:"EN84zyEcqBY", title:"The Best Beautiful and Relaxing Piano Music", tags:["music","relaxing"] },
+    { id:"-b4BjxrIp8o", title:"Beautiful Piano Music, Vol. 3", tags:["music","relaxing"] },
+    { id:"lCOF9LN_Zxs", title:"Beautiful Piano Music, Vol. 1", tags:["music","relaxing"] },
+    { id:"77ZozI0rw7w", title:"Relaxing Piano Music With Water Sounds", tags:["music","relaxing"] },
   ];
 
   function renderVideosGrid(){
@@ -3172,12 +3186,20 @@ ENGINES.breakout = function(stage){
         onReady:(e)=>{
           try{
             e.target.playVideo();
-            // Reflect whatever the browser actually decided about sound,
-            // rather than assuming — this is what makes the button accurate
-            // instead of just optimistic.
+            // YouTube's player frequently ignores mute:0 in the initial
+            // config for autoplay videos and starts muted anyway — calling
+            // unMute()/setVolume() explicitly after the player is ready is
+            // the pattern that actually works reliably, rather than relying
+            // on the config alone.
+            e.target.unMute();
+            e.target.setVolume(100);
             setTimeout(()=>{
-              try{ if(muteBtn) muteBtn.textContent = e.target.isMuted() ? "🔇" : "🔊"; }catch(err){}
-            }, 300);
+              try{
+                e.target.unMute();
+                e.target.setVolume(100);
+                if(muteBtn) muteBtn.textContent = e.target.isMuted() ? "🔇" : "🔊";
+              }catch(err){}
+            }, 400);
           }catch(err){}
         },
         onError:(e)=>{
