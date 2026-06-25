@@ -454,6 +454,12 @@ button:focus-visible, input:focus-visible, li:focus-visible{
 }
 .shorts__dislikeBtn:hover{transform:scale(1.1);}
 .shorts__dislikeBtn.active{background:rgba(124,137,173,.3); border-color:var(--muted);}
+.shorts__muteBtn{
+  font-size:22px; background:rgba(0,0,0,.4); border-radius:50%;
+  width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+  border:1px solid rgba(255,255,255,.3); transition:transform .12s;
+}
+.shorts__muteBtn:hover{transform:scale(1.1);}
 .shorts__videoBox{
   position:absolute; inset:0; background:#000;
   display:flex; align-items:center; justify-content:center; overflow:hidden;
@@ -2742,7 +2748,6 @@ ENGINES.breakout = function(stage){
     const grid = document.getElementById("videosGrid");
     grid.innerHTML = "";
     VIDEOS_LONG.forEach(v=> appendVideoCard(v));
-    renderLoadMoreVideosButton();
   }
 
   function appendVideoCard(v){
@@ -2759,81 +2764,7 @@ ENGINES.breakout = function(stage){
         <p class="videoCard__tags">${v.tags.join(" · ")}</p>
       </div>`;
     card.addEventListener("click", ()=> openLongVideo(v));
-    // Insert BEFORE the load-more button rather than always appending to the
-    // end — otherwise, since this can run mid-loop across several awaited
-    // steps, new cards could land after the button while it's still in the
-    // DOM, leaving it visually buried/misplaced instead of at the bottom.
-    const existingBtn = document.getElementById("loadMoreVideosBtn");
-    if(existingBtn) grid.insertBefore(card, existingBtn);
-    else grid.appendChild(card);
-  }
-
-  /* ----- Live long-video search via Invidious (reuses the same
-     invidiousSearch() helper defined below with the Shorts code) -----
-     Filters to videos LONGER than 60 seconds, so this stays distinct
-     from the Shorts feed instead of duplicating it. */
-  const LONG_VIDEO_SEARCH_QUERIES = [
-    "documentary", "cooking recipe full video", "travel vlog", "music concert",
-    "tech review", "science explained", "history documentary", "comedy sketch",
-    "sports highlights full", "gaming let's play", "art tutorial", "finance explained",
-    "nature wildlife", "space exploration", "fitness full workout"
-  ];
-  const nextLongVideoQuery = makeQueryCycler(LONG_VIDEO_SEARCH_QUERIES);
-  const videosLoadedIds = new Set(VIDEOS_LONG.map(v=>v.id));
-
-  function renderLoadMoreVideosButton(){
-    const grid = document.getElementById("videosGrid");
-    let btn = document.getElementById("loadMoreVideosBtn");
-    if(btn) btn.remove();
-    btn = document.createElement("button");
-    btn.id = "loadMoreVideosBtn";
-    btn.className = "btn btn--primary";
-    btn.style.gridColumn = "1 / -1";
-    btn.style.justifySelf = "center";
-    btn.style.marginTop = "10px";
-    btn.textContent = "🔎 Load more videos";
-    btn.addEventListener("click", loadMoreLongVideos);
-    grid.appendChild(btn);
-  }
-
-  let longVideoLoadInProgress = false;
-  async function loadMoreLongVideos(){
-    if(longVideoLoadInProgress) return; // ignore rapid double-clicks
-    longVideoLoadInProgress = true;
-    const btn = document.getElementById("loadMoreVideosBtn");
-    if(btn){ btn.textContent = "Loading…"; btn.disabled = true; }
-
-    let added = 0;
-    try{
-      // Try up to 3 query/page combos in this one click — since each combo
-      // might come back empty (instance hiccup, or a query that's run dry),
-      // a single attempt understated how much is actually available.
-      for(let attempt = 0; attempt < 3 && added === 0; attempt++){
-        const { query, page } = nextLongVideoQuery();
-        const items = await invidiousSearch(query, page); // shared helper, also used by Shorts live search
-        if(!items) continue;
-        items
-          .filter(it => it.type === "video" && typeof it.lengthSeconds === "number" && it.lengthSeconds > 60)
-          .forEach(it=>{
-            if(videosLoadedIds.has(it.videoId)) return;
-            videosLoadedIds.add(it.videoId);
-            appendVideoCard({ id: it.videoId, title: it.title, tags: ["live", query] });
-            added++;
-          });
-      }
-    }catch(e){
-      console.error("loadMoreLongVideos failed:", e);
-      toast("⚠️ Load more error: " + (e && e.message ? e.message : e));
-    }finally{
-      // This runs no matter what happened above — the button can never get
-      // stuck disabled again, even if something throws unexpectedly.
-      document.getElementById("loadMoreVideosBtn")?.remove();
-      renderLoadMoreVideosButton();
-      longVideoLoadInProgress = false;
-    }
-    if(added === 0){
-      toast("No new live results right now (instances may be slow) — try again in a moment.");
-    }
+    grid.appendChild(card);
   }
 
   function openLongVideo(video){
@@ -3046,166 +2977,25 @@ ENGINES.breakout = function(stage){
     { id:"aHHi296ZPXs", title:"Nature Moments That Should Have Been Impossible", tags:["animals","nature"], aspect:"vertical" },
   ];
 
-  /* ----- Live video search via Invidious (no API key, no Google account) -----
-     Invidious is an open-source YouTube front-end with a public JSON API.
-     Public instances change over time, so we try several in order and use
-     whichever one actually responds. This is the primary live-search path
-     since it needs zero signup; the YouTube Data API key below is kept as
-     a secondary option for anyone who can use it. */
-  const INVIDIOUS_INSTANCES = [
-    "https://inv.nadeko.net",
-    "https://invidious.nerdvpn.de",
-    "https://inv.thepixora.com",
-  ];
-  const SHORTS_SEARCH_QUERIES = [
-    "gaming shorts", "comedy shorts", "life hacks shorts", "cooking shorts",
-    "travel shorts", "tech shorts", "sports highlights shorts", "music shorts",
-    "animal shorts", "science facts shorts", "diy shorts", "art shorts",
-    "dance shorts", "satisfying shorts", "news shorts"
-  ];
-  let liveShortsPool = []; // accumulates across many fetches — never overwritten/capped
-
-  // Generic "what to search next" tracker — cycles through every query once
-  // (page 1) before repeating any of them on page 2, then page 3, etc.
-  // This is what actually fixes "limited videos": without it, repeated
-  // fetches kept landing on the same query's same first page and finding
-  // nothing new to add.
-  function makeQueryCycler(queries){
-    const tried = new Set();
-    let page = 1;
-    return function next(){
-      for(const q of queries){
-        const key = page + ":" + q;
-        if(!tried.has(key)){ tried.add(key); return { query:q, page }; }
-      }
-      page++;
-      const q = queries[0];
-      tried.add(page + ":" + q);
-      return { query:q, page };
-    };
-  }
-  const nextShortsQuery = makeQueryCycler(SHORTS_SEARCH_QUERIES);
-
-  async function fetchWithTimeout(url, ms){
-    const controller = new AbortController();
-    const timer = setTimeout(()=> controller.abort(), ms);
-    try{
-      const res = await fetch(url, { signal: controller.signal });
-      return res;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  async function invidiousSearch(query, page){
-    // Race all instances in parallel with a per-instance timeout, instead of
-    // trying them one at a time. The old sequential version could hang
-    // indefinitely if the first instance was slow/unresponsive (no timeout
-    // at all), which looked exactly like "the second click doesn't work" —
-    // it wasn't erroring, it was just stuck waiting.
-    const attempts = INVIDIOUS_INSTANCES.map(async (base)=>{
-      const url = `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video${page>1?`&page=${page}`:""}`;
-      const res = await fetchWithTimeout(url, 6000);
-      if(!res.ok) throw new Error("HTTP " + res.status);
-      const items = await res.json();
-      if(!Array.isArray(items) || !items.length) throw new Error("empty response");
-      return items;
-    });
-    try{
-      return await Promise.any(attempts);
-    }catch(aggregateError){
-      return null; // every instance failed or timed out
-    }
-  }
-
-  async function fetchInvidiousShortsPool(){
-    const { query, page } = nextShortsQuery();
-    const items = await invidiousSearch(query, page);
-    if(!items) return null;
-    const seenIds = new Set(liveShortsPool.map(v=>v.id));
-    const underThirty = items
-      .filter(it => it.type === "video" && typeof it.lengthSeconds === "number" && it.lengthSeconds > 0 && it.lengthSeconds <= 30)
-      .filter(it => !seenIds.has(it.videoId))
-      .map(it => ({
-        id: it.videoId,
-        title: it.title,
-        tags: ["live", query.replace(" shorts","")],
-        aspect: "horizontal", // unknown true aspect from search metadata alone — letterboxed safely either way
-      }));
-    if(underThirty.length){
-      liveShortsPool = liveShortsPool.concat(underThirty);
-    }
-    return liveShortsPool.length ? liveShortsPool : null;
-  }
-
-  /* ----- Optional secondary path: YouTube Data API v3 (needs a key) -----
-     Only used if you've pasted a key below AND Invidious didn't return
-     anything usable. Get a free key at console.cloud.google.com → enable
-     "YouTube Data API v3" → Credentials → Create API Key. */
-  const YOUTUBE_API_KEY = ""; // <-- optional, only used if Invidious is unavailable
-
-  function parseIsoDurationToSeconds(iso){
-    const m = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso || "");
-    if(!m) return null;
-    const h = parseInt(m[1]||0,10), mins = parseInt(m[2]||0,10), s = parseInt(m[3]||0,10);
-    return h*3600 + mins*60 + s;
-  }
-
-  async function fetchYouTubeApiShortsPool(){
-    if(!YOUTUBE_API_KEY) return null;
-    try{
-      const query = SHORTS_SEARCH_QUERIES[Math.floor(Math.random()*SHORTS_SEARCH_QUERIES.length)];
-      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoDuration=short&maxResults=25&q=${encodeURIComponent(query)}&key=${YOUTUBE_API_KEY}`;
-      const searchRes = await fetch(searchUrl).then(r=>r.json());
-      const ids = (searchRes.items || []).map(it=>it.id.videoId).filter(Boolean);
-      if(!ids.length) return null;
-
-      const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${ids.join(",")}&key=${YOUTUBE_API_KEY}`;
-      const detailsRes = await fetch(detailsUrl).then(r=>r.json());
-
-      const underThirty = (detailsRes.items || [])
-        .map(item=>({
-          id: item.id,
-          title: item.snippet.title,
-          seconds: parseIsoDurationToSeconds(item.contentDetails.duration),
-          tags: ["live", (item.snippet.tags && item.snippet.tags[0]) || "gaming"],
-        }))
-        .filter(v => v.seconds !== null && v.seconds <= 30);
-
-      return underThirty.length ? underThirty : null;
-    }catch(e){
-      console.error("YouTube API search failed:", e);
-      return null;
-    }
-  }
-
-  async function fetchLiveShortsPool(){
-    // Always attempts one more fetch to top up the pool — this is the fix:
-    // the old version returned a cached result forever after the first
-    // success, so it could never grow past whatever the first query found.
-    const invidiousResult = await fetchInvidiousShortsPool();
-    if(invidiousResult) return invidiousResult;
-    if(liveShortsPool.length) return liveShortsPool; // this fetch found nothing new, but keep what we have
-    const ytApiResult = await fetchYouTubeApiShortsPool();
-    if(ytApiResult) return ytApiResult;
-    return null;
-  }
-
-  async function getShortsCandidatePool(){
-    const live = await fetchLiveShortsPool();
-    // Merge, don't replace — a tiny live result set was wiping out the
-    // whole 28-video curated pool, which is exactly why it stopped finding
-    // anything new after a few videos. Curated content is always available
-    // as the baseline; live results are a bonus on top of it.
-    return live && live.length ? SHORTS_VIDEOS.concat(live) : SHORTS_VIDEOS;
-  }
+  /* ===================== SHORTS PLAYER — SIMPLIFIED =====================
+     Rebuilt from scratch to remove two sources of repeated, hard-to-pin-down
+     bugs: (1) the Invidious live-search dependency, which added network
+     uncertainty and a lot of moving parts for what turned out to be
+     marginal benefit, and (2) the multi-player "pool" that pre-built
+     neighboring players — clever in theory, but every eviction destroyed
+     the DOM container along with the video, which is what kept causing
+     Shorts to silently stop working partway through a session. This
+     version only ever has ONE player alive at a time: scrolling to a new
+     video fully destroys the old one and builds exactly one fresh player
+     in the new spot. Simpler, and there's no pool state to get out of sync. */
 
   const SHORTS_BATCH_SIZE = 5;
   let shortsIO = null;
   let shortsRenderedIds = new Set();
-  const ytPlayers = new Map();   // index -> YT.Player
-  let ytApiPromise = null;
   let shortsActiveIndex = -1;
+  let activeShortsPlayer = null;
+  let activeShortsPlayerIndex = -1;
+  let ytApiPromise = null;
 
   function loadYouTubeApi(){
     if(ytApiPromise) return ytApiPromise;
@@ -3220,40 +3010,29 @@ ENGINES.breakout = function(stage){
     return ytApiPromise;
   }
 
-  /* ----- Simple content-based recommender -----
-     Tracks how many times the viewer has watched (or liked) each tag.
-     Unseen candidates are scored by summing the viewer's affinity for their
-     tags (+ a touch of randomness so the feed doesn't feel robotic), then
-     the highest-scoring ones get appended next as they scroll. Likes count
-     for more than passive views, same idea as real recommendation systems
-     use implicit + explicit signals. */
+  /* ----- Simple content-based recommender (curated list only — no live
+     search dependency, so this always has something to show) ----- */
   async function getShortsPrefs(){
     return storeGet("shortsPrefs", false, { tagCounts:{}, liked:[], disliked:[] });
   }
   async function saveShortsPrefs(prefs){ return storeSet("shortsPrefs", prefs, false); }
   function scoreVideo(video, prefs){
-    if(prefs.disliked && prefs.disliked.includes(video.id)) return -9999; // effectively excluded
+    if(prefs.disliked && prefs.disliked.includes(video.id)) return -9999;
     let score = 0;
     video.tags.forEach(t=> score += (prefs.tagCounts[t] || 0));
-    if(prefs.liked && prefs.liked.includes(video.id)) score += 5; // small nudge to resurface liked content occasionally
-    return score + Math.random() * 0.75; // light shuffle so it's not robotic
+    if(prefs.liked && prefs.liked.includes(video.id)) score += 5;
+    return score + Math.random() * 0.75;
   }
-  const SHORTS_CONTENT_TYPES = ["tutorial","satisfying","cooking","tech","dance","science","animals","travel","sports","fitness","space","music","history"];
+  const SHORTS_CONTENT_TYPES = ["tutorial","satisfying","cooking","tech","dance","science","animals","travel","sports","fitness","space","music","history","nature"];
 
   async function pickNextBatch(n){
     const prefs = await getShortsPrefs();
-    const pool = await getShortsCandidatePool();
-    let candidates = pool.filter(v=>!shortsRenderedIds.has(v.id) && !(prefs.disliked||[]).includes(v.id) && !brokenShortsIds.has(v.id));
-    if(!candidates.length) candidates = pool.filter(v=>!(prefs.disliked||[]).includes(v.id) && !brokenShortsIds.has(v.id));
-    if(!candidates.length) candidates = pool.filter(v=>!brokenShortsIds.has(v.id));
-    if(!candidates.length) candidates = pool.slice(); // truly nothing left — give up excluding, show something
+    let candidates = SHORTS_VIDEOS.filter(v=>!shortsRenderedIds.has(v.id) && !(prefs.disliked||[]).includes(v.id));
+    if(!candidates.length) candidates = SHORTS_VIDEOS.filter(v=>!(prefs.disliked||[]).includes(v.id));
+    if(!candidates.length) candidates = SHORTS_VIDEOS.slice(); // everything disliked somehow — show something anyway
 
     const picked = [];
     const usedIds = new Set();
-
-    // Round-robin across content types first, so one category (e.g. trailers,
-    // which happen to outnumber the others) can't dominate a batch just by
-    // having more entries. Within each type, pick the viewer's best-scoring match.
     let typeIndex = 0, attempts = 0;
     while(picked.length < n && picked.length < candidates.length && attempts < SHORTS_CONTENT_TYPES.length * 3){
       const type = SHORTS_CONTENT_TYPES[typeIndex % SHORTS_CONTENT_TYPES.length];
@@ -3265,7 +3044,6 @@ ENGINES.breakout = function(stage){
         usedIds.add(best.id);
       }
     }
-    // Fill any remaining slots with the best-scoring leftovers regardless of type
     if(picked.length < n){
       candidates.filter(v=>!usedIds.has(v.id))
         .map(v=>({v,score:scoreVideo(v,prefs)}))
@@ -3275,12 +3053,8 @@ ENGINES.breakout = function(stage){
     return picked.slice(0,n);
   }
 
-  /* ----- Watch-time weighted view tracking -----
-     A 1-second glance and a 25-second full watch shouldn't count the same.
-     Each tag's weight grows with how long the viewer actually watched,
-     capped so one long-open tab doesn't dominate the whole profile. */
   async function recordShortsView(video, watchedSeconds){
-    const weight = Math.max(0.25, Math.min(watchedSeconds / 3, 8)); // ~3s watched = +1 weight, capped at 8
+    const weight = Math.max(0.25, Math.min(watchedSeconds / 3, 8));
     const prefs = await getShortsPrefs();
     video.tags.forEach(t=> prefs.tagCounts[t] = (prefs.tagCounts[t]||0) + weight);
     await saveShortsPrefs(prefs);
@@ -3288,7 +3062,6 @@ ENGINES.breakout = function(stage){
 
   async function toggleShortsLike(video, likeBtn, dislikeBtn){
     const prefs = await getShortsPrefs();
-    // Remove any existing dislike first — like and dislike are mutually exclusive
     const dIdx = prefs.disliked.indexOf(video.id);
     if(dIdx > -1){
       prefs.disliked.splice(dIdx,1);
@@ -3310,7 +3083,6 @@ ENGINES.breakout = function(stage){
 
   async function toggleShortsDislike(video, dislikeBtn, likeBtn, itemEl){
     const prefs = await getShortsPrefs();
-    // Remove any existing like first — like and dislike are mutually exclusive
     const lIdx = prefs.liked.indexOf(video.id);
     if(lIdx > -1){
       prefs.liked.splice(lIdx,1);
@@ -3326,14 +3098,13 @@ ENGINES.breakout = function(stage){
       prefs.disliked.push(video.id);
       video.tags.forEach(t=> prefs.tagCounts[t] = Math.max(0, (prefs.tagCounts[t]||0) - 5));
       dislikeBtn.classList.add("active"); dislikeBtn.textContent = "🚫";
-      // Disliking the video you're currently on: skip ahead automatically
       const next = itemEl.nextElementSibling;
       if(next) next.scrollIntoView({ behavior:"smooth" });
     }
     await saveShortsPrefs(prefs);
   }
 
-  const shortsByIndex = new Map(); // index -> video object actually rendered there
+  const shortsByIndex = new Map();
 
   function buildShortsItem(video, index){
     shortsByIndex.set(index, video);
@@ -3350,145 +3121,91 @@ ENGINES.breakout = function(stage){
         <div class="shorts__item__actions">
           <button class="shorts__likeBtn" title="Like — improves your recommendations">🤍</button>
           <button class="shorts__dislikeBtn" title="Not interested — improves your recommendations">👎</button>
+          <button class="shorts__muteBtn" title="Toggle sound">🔊</button>
           <a class="shorts__item__ytLink" href="https://www.youtube.com/watch?v=${video.id}" target="_blank" rel="noopener">▶ Watch on YouTube ↗</a>
         </div>
       </div>`;
     const likeBtn = item.querySelector(".shorts__likeBtn");
     const dislikeBtn = item.querySelector(".shorts__dislikeBtn");
-    likeBtn.addEventListener("click", (e)=>{
+    const muteBtn = item.querySelector(".shorts__muteBtn");
+    likeBtn.addEventListener("click", (e)=>{ e.stopPropagation(); toggleShortsLike(video, likeBtn, dislikeBtn); });
+    dislikeBtn.addEventListener("click", (e)=>{ e.stopPropagation(); toggleShortsDislike(video, dislikeBtn, likeBtn, item); });
+    muteBtn.addEventListener("click", (e)=>{
       e.stopPropagation();
-      toggleShortsLike(video, likeBtn, dislikeBtn);
-    });
-    dislikeBtn.addEventListener("click", (e)=>{
-      e.stopPropagation();
-      toggleShortsDislike(video, dislikeBtn, likeBtn, item);
+      // A direct click is a guaranteed user gesture — this always works,
+      // regardless of whatever the browser's autoplay-with-sound policy
+      // decided to do on its own.
+      if(!activeShortsPlayer || activeShortsPlayerIndex !== index) return;
+      try{
+        if(activeShortsPlayer.isMuted()){
+          activeShortsPlayer.unMute(); activeShortsPlayer.setVolume(100);
+          muteBtn.textContent = "🔊";
+        } else {
+          activeShortsPlayer.mute();
+          muteBtn.textContent = "🔇";
+        }
+      }catch(err){}
     });
     return item;
   }
 
-  const brokenShortsIds = new Set();
-
-  function handleShortsPlayerError(index, video){
-    if(video) brokenShortsIds.add(video.id);
-    liveShortsPool = liveShortsPool.filter(v=>v.id !== (video && video.id));
-    try{ ytPlayers.get(index)?.destroy(); }catch(e){}
-    ytPlayers.delete(index);
-    const item = document.querySelector(`.shorts__item--video[data-idx="${index}"]`);
-    if(item){
-      const box = item.querySelector(".shorts__videoBox");
-      if(box) box.innerHTML = `<div class="shorts__brokenMsg">⚠ This video can't be embedded — skipping…</div>`;
-      const next = item.nextElementSibling;
-      if(next) setTimeout(()=> next.scrollIntoView({ behavior:"smooth", block:"start" }), 600);
+  function destroyActiveShortsPlayer(){
+    if(activeShortsPlayer){
+      try{ activeShortsPlayer.destroy(); }catch(e){}
     }
+    activeShortsPlayer = null;
+    activeShortsPlayerIndex = -1;
   }
 
-  function getPlayer(index){
-    if(ytPlayers.has(index)) return ytPlayers.get(index);
+  function playShortAt(index){
+    if(activeShortsPlayerIndex === index && activeShortsPlayer) return; // already the one playing
+    destroyActiveShortsPlayer();
     const video = shortsByIndex.get(index);
-    if(!video) return null;
+    if(!video) return;
     const container = document.getElementById("ytbox-" + index);
-    if(!container) return null;
-    const player = new YT.Player(container, {
+    if(!container) return; // shouldn't happen now — there's no pool eviction to remove it
+    const muteBtn = document.querySelector(`.shorts__item--video[data-idx="${index}"] .shorts__muteBtn`);
+    activeShortsPlayer = new YT.Player(container, {
       videoId: video.id,
-      // mute:0 — browsers DO allow unmuted autoplay once the page has real
-      // user interaction (e.g. you clicking into the Shorts tab counts).
-      // If a particular browser still blocks it anyway, onStateChange below
-      // detects that and shows a one-tap "unmute" fallback instead of
-      // silently failing.
       playerVars:{ autoplay:1, mute:0, controls:1, rel:0, playsinline:1, modestbranding:1 },
       events:{
-        onStateChange:(e)=>{
-          if(e.data === YT.PlayerState.PLAYING){
-            try{
-              if(e.target.isMuted()){
-                showUnmuteHint(index, e.target);
-              } else {
-                hideUnmuteHint(index);
-              }
-            }catch(err){}
-          }
+        onReady:(e)=>{
+          try{
+            e.target.playVideo();
+            // Reflect whatever the browser actually decided about sound,
+            // rather than assuming — this is what makes the button accurate
+            // instead of just optimistic.
+            setTimeout(()=>{
+              try{ if(muteBtn) muteBtn.textContent = e.target.isMuted() ? "🔇" : "🔊"; }catch(err){}
+            }, 300);
+          }catch(err){}
         },
         onError:(e)=>{
-          // Error codes 101/150 = the uploader disabled embedding entirely —
-          // this is exactly "shows an image but the video never loads".
-          // Live search results aren't pre-checked for this the way the
-          // curated list was, so this catches it and moves on automatically.
-          handleShortsPlayerError(index, video);
+          // Uploader disabled embedding for this one — skip ahead automatically.
+          const item = document.querySelector(`.shorts__item--video[data-idx="${index}"]`);
+          if(item){
+            const box = item.querySelector(".shorts__videoBox");
+            if(box) box.innerHTML = `<div class="shorts__brokenMsg">⚠ This video can't be embedded — skipping…</div>`;
+            const next = item.nextElementSibling;
+            if(next) setTimeout(()=> next.scrollIntoView({ behavior:"smooth", block:"start" }), 500);
+          }
         }
       }
     });
-    ytPlayers.set(index, player);
-    enforcePlayerPoolLimit();
-    return player;
-  }
-  function showUnmuteHint(index, player){
-    const item = document.querySelector(`.shorts__item--video[data-idx="${index}"]`);
-    if(!item || item.querySelector(".shorts__unmuteHint")) return;
-    const hint = document.createElement("button");
-    hint.className = "shorts__unmuteHint";
-    hint.textContent = "🔇 Tap for sound";
-    hint.addEventListener("click", (e)=>{
-      e.stopPropagation();
-      try{ player.unMute(); player.setVolume(100); player.playVideo(); }catch(err){}
-      hint.remove();
-    });
-    item.appendChild(hint);
-  }
-  function hideUnmuteHint(index){
-    const item = document.querySelector(`.shorts__item--video[data-idx="${index}"]`);
-    const hint = item && item.querySelector(".shorts__unmuteHint");
-    if(hint) hint.remove();
-  }
-  function enforcePlayerPoolLimit(){
-    // Keep at most 4 live players (current + neighbors) — destroy the
-    // farthest one from what's currently active. This is what keeps
-    // scrolling feeling instant: neighbors are pre-built, but we don't
-    // let memory/connections grow unbounded.
-    if(ytPlayers.size <= 4) return;
-    let farthest = null, maxDist = -1;
-    ytPlayers.forEach((_, idx)=>{
-      const d = Math.abs(idx - shortsActiveIndex);
-      if(d > maxDist){ maxDist = d; farthest = idx; }
-    });
-    if(farthest !== null){
-      try{ ytPlayers.get(farthest).destroy(); }catch(e){}
-      ytPlayers.delete(farthest);
-      // destroy() removes the entire <iframe> — and since the IFrame API
-      // had replaced our container div with that iframe in the first
-      // place, the container is now gone too, not just the video. Without
-      // rebuilding an empty one here, ever revisiting this index (scrolling
-      // back, or a fast-scroll eviction before you actually reached it)
-      // would find nothing to build a new player into and just show
-      // nothing. This was the real cause of Shorts "stopping" partway
-      // through a scrolling session.
-      const item = document.querySelector(`.shorts__item--video[data-idx="${farthest}"]`);
-      const box = item && item.querySelector(".shorts__videoBox");
-      if(box && !document.getElementById("ytbox-" + farthest)){
-        const freshContainer = document.createElement("div");
-        freshContainer.id = "ytbox-" + farthest;
-        box.appendChild(freshContainer);
-      }
-    }
+    activeShortsPlayerIndex = index;
   }
 
-  let shortsAppendInProgress = false;
   async function appendShortsBatch(){
-    if(shortsAppendInProgress) return; // a previous call is still in flight — without this guard,
-    shortsAppendInProgress = true;     // fast scrolling could trigger this multiple times before the
-    try{                                // first finishes, computing the same starting index twice and
-      const feed = document.getElementById("shortsFeed");
-      const nextVideos = await pickNextBatch(SHORTS_BATCH_SIZE);
-      let idx = feed.querySelectorAll(".shorts__item--video").length;
-      nextVideos.forEach(video=>{
-        shortsRenderedIds.add(video.id);
-        const item = buildShortsItem(video, idx);
-        feed.appendChild(item);
-        shortsIO.observe(item);
-        idx++;
-      });
-    } finally {
-      shortsAppendInProgress = false;
-    }
+    const feed = document.getElementById("shortsFeed");
+    const nextVideos = await pickNextBatch(SHORTS_BATCH_SIZE);
+    let idx = feed.querySelectorAll(".shorts__item--video").length;
+    nextVideos.forEach(video=>{
+      shortsRenderedIds.add(video.id);
+      const item = buildShortsItem(video, idx);
+      feed.appendChild(item);
+      shortsIO.observe(item);
+      idx++;
+    });
   }
 
   let shortsWatchStartTs = null;
@@ -3504,6 +3221,7 @@ ENGINES.breakout = function(stage){
     const feed = document.getElementById("shortsFeed");
     feed.innerHTML = `<div class="shorts__hint">Scroll for more ↓</div>`;
     shortsRenderedIds = new Set();
+    destroyActiveShortsPlayer();
     await loadYouTubeApi();
 
     shortsIO = new IntersectionObserver((entries)=>{
@@ -3511,37 +3229,22 @@ ENGINES.breakout = function(stage){
         const idx = Number(entry.target.dataset.idx);
         if(entry.isIntersecting && entry.intersectionRatio > 0.6){
           if(shortsActiveIndex !== idx){
-            finalizeShortsWatch(shortsActiveIndex); // credit watch time for the one we just left
+            finalizeShortsWatch(shortsActiveIndex);
             shortsActiveIndex = idx;
             shortsWatchStartTs = Date.now();
           }
-          const player = getPlayer(idx);
-          if(player){
-            const tryPlay = ()=>{ try{ player.playVideo(); }catch(e){} };
-            if(player.playVideo) tryPlay();
-            else setTimeout(tryPlay, 300);
-          }
-          // Preload neighbors so the next scroll feels instant
-          getPlayer(idx+1); getPlayer(idx-1);
-          ytPlayers.forEach((p,i)=>{ if(i!==idx){ try{p.pauseVideo();}catch(e){} } });
-          // Append more once the viewer is nearing the end of the loaded batch
+          playShortAt(idx);
           const allItems = feed.querySelectorAll(".shorts__item--video");
           if(idx >= allItems.length - 2) appendShortsBatch();
-        } else {
-          if(idx === shortsActiveIndex){
-            finalizeShortsWatch(idx);
-            shortsActiveIndex = -1;
-          }
-          const p = ytPlayers.get(idx);
-          if(p){ try{ p.pauseVideo(); }catch(e){} }
+        } else if(idx === shortsActiveIndex){
+          finalizeShortsWatch(idx);
+          shortsActiveIndex = -1;
         }
       });
     }, { threshold:[0,0.6] });
 
     await appendShortsBatch();
 
-    // Arrow-key navigation: Down/Right = next, Up/Left = previous.
-    // Only active while the Shorts section is actually visible.
     document.removeEventListener("keydown", shortsKeydownHandler);
     document.addEventListener("keydown", shortsKeydownHandler);
   }
