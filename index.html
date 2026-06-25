@@ -2296,6 +2296,13 @@ ENGINES.breakout = function(stage){
       el.style.border="1px solid #2f7bff"; el.style.color="#e7ecfb";
       el.style.padding="12px 20px"; el.style.borderRadius="999px"; el.style.fontSize="13px";
       el.style.zIndex="300"; el.style.boxShadow="0 0 24px rgba(47,123,255,.35)";
+      el.style.opacity = "0";
+      // Critical: without this, this fixed, high-z-index element silently
+      // intercepts clicks/hover for anything underneath it at that screen
+      // position — even while fully transparent — which is exactly what was
+      // blocking the real "Load more videos" button whenever it scrolled
+      // into that same bottom-center area of the viewport.
+      el.style.pointerEvents = "none";
       document.body.appendChild(el);
     }
     el.textContent = msg;
