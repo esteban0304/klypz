@@ -550,10 +550,30 @@ button:focus-visible, input:focus-visible, li:focus-visible{
 .appCard__icon img{width:32px; height:32px; object-fit:contain;}
 .appCard__name{font-weight:600; font-size:14px;}
 .appCard__desc{font-size:11px; color:var(--muted);}
-/* Much larger app modal — closer to fullscreen than the other modals */
-.appPlayerCard{max-width:1100px; width:92vw; max-height:88vh; overflow-y:auto;}
-.appPlayerBox{min-height:80px;}
-.appPlayerBox iframe{width:100%; min-height:70vh; border:none; border-radius:8px;}
+/* Much larger app modal — closer to fullscreen than the other modals,
+   styled like a computer/browser window. */
+.appPlayerCard{
+  max-width:1100px; width:92vw; max-height:88vh; overflow:hidden;
+  padding:0; display:flex; flex-direction:column;
+}
+.computerFrame__bar{
+  display:flex; align-items:center; gap:8px; padding:12px 16px;
+  background:#1b2138; border-bottom:1px solid var(--line); flex-shrink:0;
+}
+.computerFrame__dot{width:12px; height:12px; border-radius:50%; flex-shrink:0;}
+.computerFrame__title{
+  font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px;
+  margin-left:8px; color:var(--text);
+}
+.computerFrame__openSite{
+  margin-left:auto; font-size:12px; color:var(--cyan); white-space:nowrap;
+}
+.computerFrame__close{
+  width:28px; height:28px; border-radius:8px; background:var(--panel-2);
+  border:1px solid var(--line); font-size:13px; margin-left:12px; flex-shrink:0;
+}
+.appPlayerBox{min-height:80px; overflow-y:auto; flex:1;}
+.appPlayerBox iframe{width:100%; min-height:75vh; border:none; display:block;}
 
 /* ===================== HOME SECTION ===================== */
 .homeSection{padding:48px 32px; height:calc(100vh - 65px); overflow-y:auto;}
@@ -1041,9 +1061,15 @@ html[data-theme="light"] .hero{
 
 <!-- ===== APP EMBED MODAL ===== -->
 <div class="modalOverlay" id="appPlayerOverlay">
-  <div class="modalCard appPlayerCard">
-    <button class="modalCard__close" id="appPlayerClose">✕</button>
-    <h3 class="modalCard__title" id="appPlayerTitle">App</h3>
+  <div class="modalCard appPlayerCard computerFrame">
+    <div class="computerFrame__bar">
+      <span class="computerFrame__dot" style="background:#ff5f56"></span>
+      <span class="computerFrame__dot" style="background:#ffbd2e"></span>
+      <span class="computerFrame__dot" style="background:#27c93f"></span>
+      <span class="computerFrame__title" id="appPlayerTitle">App</span>
+      <a class="computerFrame__openSite" id="appPlayerOpenSite" href="#" target="_blank" rel="noopener" style="display:none;">Open full site ↗</a>
+      <button class="computerFrame__close" id="appPlayerClose">✕</button>
+    </div>
     <div class="appPlayerBox" id="appPlayerBox"></div>
   </div>
 </div>
@@ -3017,10 +3043,12 @@ ENGINES.breakout = function(stage){
      already used throughout the rest of the site. */
   const APPS = [
     { id:"spotify", name:"Spotify", icon:"https://cdn.simpleicons.org/spotify/1DB954", iconBg:"#0c1326", desc:"Music & podcasts",
+      siteUrl:"https://open.spotify.com",
       render:()=>`<iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWvHBEQLnV1N?utm_source=oembed"
         width="100%" height="500" frameBorder="0" allowfullscreen=""
         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>` },
     { id:"tiktok", name:"TikTok", icon:"https://cdn.simpleicons.org/tiktok/ffffff", iconBg:"#000000", desc:"Short videos",
+      siteUrl:"https://www.tiktok.com",
       render:(container)=>{
         container.innerHTML = `<blockquote class="tiktok-embed" cite="https://www.tiktok.com/@scout2015/video/6718335390845095173"
           data-video-id="6718335390845095173" style="max-width:325px;min-width:280px;margin:0 auto;">
@@ -3036,23 +3064,29 @@ ENGINES.breakout = function(stage){
         }
       } },
     { id:"twitch", name:"Twitch", icon:"https://cdn.simpleicons.org/twitch/9146FF", iconBg:"#0c1326", desc:"Live streams",
+      siteUrl:"https://www.twitch.tv",
       note:"Twitch's embed requires a 'parent' domain parameter matching wherever this file is actually hosted — it won't load inside this chat's preview, but will once you deploy the file to a real domain.",
       render:()=>`<iframe src="https://player.twitch.tv/?channel=esl_csgo&parent=${encodeURIComponent(location.hostname || "localhost")}&muted=true"
         height="500" width="100%" allowfullscreen frameBorder="0"></iframe>` },
     { id:"discord", name:"Discord", icon:"https://cdn.simpleicons.org/discord/5865F2", iconBg:"#0c1326", desc:"Community chat",
+      siteUrl:"https://discord.com",
       note:"Showing WidgetBot's own official demo server as an example — swap in your own server/channel ID from widgetbot.io to use your real community.",
       render:()=>`<iframe src="https://e.widgetbot.io/channels/299881420891881473/355719584830980096"
         height="600" width="100%" allow="clipboard-write; fullscreen" frameBorder="0"></iframe>` },
     { id:"soundcloud", name:"SoundCloud", icon:"https://cdn.simpleicons.org/soundcloud/FF5500", iconBg:"#0c1326", desc:"Music & audio",
+      siteUrl:"https://soundcloud.com",
       render:()=>`<iframe width="100%" height="500" scrolling="no" frameBorder="no" allow="autoplay"
         src="https://w.soundcloud.com/player/?url=https://api.soundcloud.com/tracks/293&color=%232f7bff&auto_play=false&show_artwork=true"></iframe>` },
     { id:"youtube", name:"YouTube", icon:"https://cdn.simpleicons.org/youtube/FF0000", iconBg:"#0c1326", desc:"Videos",
+      siteUrl:"https://www.youtube.com",
       render:()=>`<iframe width="100%" height="600" src="https://www.youtube.com/embed/yAi0MYo5Mzw"
         title="YouTube" frameBorder="0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>` },
     { id:"vimeo", name:"Vimeo", icon:"https://cdn.simpleicons.org/vimeo/1AB7EA", iconBg:"#0c1326", desc:"Video hosting",
+      siteUrl:"https://vimeo.com",
       render:()=>`<iframe src="https://player.vimeo.com/video/76979871" width="100%" height="500" frameBorder="0"
         allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>` },
     { id:"twitter", name:"X / Twitter", icon:"https://cdn.simpleicons.org/x/ffffff", iconBg:"#000000", desc:"Social timeline",
+      siteUrl:"https://twitter.com",
       render:(container)=>{
         container.innerHTML = `<a class="twitter-timeline" data-height="600" data-theme="dark" href="https://twitter.com/Twitter?ref_src=twsrc%5Etfw">Tweets by Twitter</a>`;
         if(!document.getElementById("twitter-embed-script")){
@@ -3066,6 +3100,7 @@ ENGINES.breakout = function(stage){
         }
       } },
     { id:"maps", name:"Google Maps", icon:"https://cdn.simpleicons.org/googlemaps/4285F4", iconBg:"#0c1326", desc:"Maps & places",
+      siteUrl:"https://maps.google.com",
       render:()=>`<iframe width="100%" height="500" frameBorder="0" style="border:0"
         src="https://www.google.com/maps?q=Eiffel+Tower&output=embed" allowfullscreen loading="lazy"></iframe>` },
     { id:"whatsapp", name:"WhatsApp", icon:"https://cdn.simpleicons.org/whatsapp/25D366", iconBg:"#0c1326", desc:"Open a chat",
@@ -3104,6 +3139,13 @@ ENGINES.breakout = function(stage){
       note.style.fontSize = "12px"; note.style.color = "var(--muted)"; note.style.marginTop = "12px";
       note.textContent = app.note;
       box.appendChild(note);
+    }
+    const openSiteLink = document.getElementById("appPlayerOpenSite");
+    if(app.siteUrl){
+      openSiteLink.href = app.siteUrl;
+      openSiteLink.style.display = "inline";
+    } else {
+      openSiteLink.style.display = "none";
     }
     document.getElementById("appPlayerOverlay").classList.add("open");
   }
