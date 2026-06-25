@@ -2756,12 +2756,15 @@ ENGINES.breakout = function(stage){
     { id:"-b4BjxrIp8o", title:"Beautiful Piano Music, Vol. 3", tags:["music","relaxing"] },
     { id:"lCOF9LN_Zxs", title:"Beautiful Piano Music, Vol. 1", tags:["music","relaxing"] },
     { id:"77ZozI0rw7w", title:"Relaxing Piano Music With Water Sounds", tags:["music","relaxing"] },
+    { id:"I753-8PIjd0", title:"Journey To The Edge Of The Universe — Full Documentary", tags:["documentary","space"] },
+    { id:"uSMGENDH_QI", title:"Cosmic Dawn — NASA+ Original Documentary", tags:["documentary","space"] },
   ];
 
   function renderVideosGrid(){
     const grid = document.getElementById("videosGrid");
     grid.innerHTML = "";
     VIDEOS_LONG.forEach(v=> appendVideoCard(v));
+    renderLoadMoreVideosButton();
   }
 
   function appendVideoCard(v){
@@ -2778,7 +2781,74 @@ ENGINES.breakout = function(stage){
         <p class="videoCard__tags">${v.tags.join(" · ")}</p>
       </div>`;
     card.addEventListener("click", ()=> openLongVideo(v));
-    grid.appendChild(card);
+    // Insert BEFORE the load-more button, not after — keeps the button
+    // pinned to the bottom regardless of how many cards get added mid-loop.
+    const existingBtn = document.getElementById("loadMoreVideosBtn");
+    if(existingBtn) grid.insertBefore(card, existingBtn);
+    else grid.appendChild(card);
+  }
+
+  /* ----- Long Videos live search (>60 seconds, reuses the shared
+     invidiousSearch() helper defined above with the Shorts code) ----- */
+  const LONG_VIDEO_SEARCH_QUERIES = [
+    "documentary", "cooking recipe full video", "travel vlog", "music concert",
+    "tech review", "science explained", "history documentary", "comedy sketch",
+    "sports highlights full", "gaming let's play", "art tutorial", "finance explained",
+    "nature wildlife", "space exploration", "fitness full workout"
+  ];
+  const nextLongVideoQuery = makeQueryCycler(LONG_VIDEO_SEARCH_QUERIES);
+  const videosLoadedIds = new Set(VIDEOS_LONG.map(v=>v.id));
+
+  function renderLoadMoreVideosButton(){
+    const grid = document.getElementById("videosGrid");
+    let btn = document.getElementById("loadMoreVideosBtn");
+    if(btn) btn.remove();
+    btn = document.createElement("button");
+    btn.id = "loadMoreVideosBtn";
+    btn.className = "btn btn--primary";
+    btn.style.gridColumn = "1 / -1";
+    btn.style.justifySelf = "center";
+    btn.style.marginTop = "10px";
+    btn.textContent = "🔎 Load more videos";
+    btn.addEventListener("click", loadMoreLongVideos);
+    grid.appendChild(btn);
+  }
+
+  let longVideoLoadInProgress = false;
+  async function loadMoreLongVideos(){
+    if(longVideoLoadInProgress) return; // ignore rapid double-clicks
+    longVideoLoadInProgress = true;
+    const btn = document.getElementById("loadMoreVideosBtn");
+    if(btn){ btn.textContent = "Loading…"; btn.disabled = true; }
+
+    let added = 0;
+    try{
+      for(let attempt = 0; attempt < 3 && added === 0; attempt++){
+        const { query, page } = nextLongVideoQuery();
+        const items = await invidiousSearch(query, page);
+        if(!items) continue;
+        items
+          .filter(it => it.type === "video" && typeof it.lengthSeconds === "number" && it.lengthSeconds > 60)
+          .forEach(it=>{
+            if(videosLoadedIds.has(it.videoId)) return;
+            videosLoadedIds.add(it.videoId);
+            appendVideoCard({ id: it.videoId, title: it.title, tags: ["live", query] });
+            added++;
+          });
+      }
+    }catch(e){
+      console.error("loadMoreLongVideos failed:", e);
+      toast("⚠️ Load more error: " + (e && e.message ? e.message : e));
+    }finally{
+      // Always runs — the button can never get stuck disabled again, even
+      // if something throws unexpectedly.
+      document.getElementById("loadMoreVideosBtn")?.remove();
+      renderLoadMoreVideosButton();
+      longVideoLoadInProgress = false;
+    }
+    if(added === 0){
+      toast("No new live results right now (instances may be slow) — try again in a moment.");
+    }
   }
 
   function openLongVideo(video){
@@ -2991,17 +3061,97 @@ ENGINES.breakout = function(stage){
     { id:"aHHi296ZPXs", title:"Nature Moments That Should Have Been Impossible", tags:["animals","nature"], aspect:"vertical" },
   ];
 
-  /* ===================== SHORTS PLAYER — SIMPLIFIED =====================
-     Rebuilt from scratch to remove two sources of repeated, hard-to-pin-down
-     bugs: (1) the Invidious live-search dependency, which added network
-     uncertainty and a lot of moving parts for what turned out to be
-     marginal benefit, and (2) the multi-player "pool" that pre-built
-     neighboring players — clever in theory, but every eviction destroyed
-     the DOM container along with the video, which is what kept causing
-     Shorts to silently stop working partway through a session. This
-     version only ever has ONE player alive at a time: scrolling to a new
-     video fully destroys the old one and builds exactly one fresh player
-     in the new spot. Simpler, and there's no pool state to get out of sync. */
+  /* ===================== LIVE SEARCH VIA INVIDIOUS =====================
+     Re-added on top of the now-simplified player architecture. The bugs
+     from before were mostly in the old multi-player POOL (which destroyed
+     DOM containers on eviction) — not in this search/fetch logic itself,
+     so this part is largely unchanged from the version that worked
+     correctly. Shared by both Shorts and Long Videos below. */
+  const INVIDIOUS_INSTANCES = [
+    "https://inv.nadeko.net",
+    "https://invidious.nerdvpn.de",
+    "https://inv.thepixora.com",
+  ];
+
+  function makeQueryCycler(queries){
+    const tried = new Set();
+    let page = 1;
+    return function next(){
+      for(const q of queries){
+        const key = page + ":" + q;
+        if(!tried.has(key)){ tried.add(key); return { query:q, page }; }
+      }
+      page++;
+      const q = queries[0];
+      tried.add(page + ":" + q);
+      return { query:q, page };
+    };
+  }
+
+  async function fetchWithTimeout(url, ms){
+    const controller = new AbortController();
+    const timer = setTimeout(()=> controller.abort(), ms);
+    try{
+      const res = await fetch(url, { signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function invidiousSearch(query, page){
+    // Race all instances in parallel with a per-instance timeout, so a
+    // slow/dead instance can't block the others.
+    const attempts = INVIDIOUS_INSTANCES.map(async (base)=>{
+      const url = `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video${page>1?`&page=${page}`:""}`;
+      const res = await fetchWithTimeout(url, 6000);
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const items = await res.json();
+      if(!Array.isArray(items) || !items.length) throw new Error("empty response");
+      return items;
+    });
+    try{
+      return await Promise.any(attempts);
+    }catch(aggregateError){
+      return null; // every instance failed or timed out
+    }
+  }
+
+  /* ----- Shorts live pool (≤30 seconds, accumulates across fetches) ----- */
+  const SHORTS_SEARCH_QUERIES = [
+    "gaming shorts", "comedy shorts", "life hacks shorts", "cooking shorts",
+    "travel shorts", "tech shorts", "sports highlights shorts", "music shorts",
+    "animal shorts", "science facts shorts", "diy shorts", "art shorts",
+    "dance shorts", "satisfying shorts", "news shorts"
+  ];
+  const nextShortsQuery = makeQueryCycler(SHORTS_SEARCH_QUERIES);
+  let liveShortsPool = [];
+
+  async function fetchInvidiousShortsPool(){
+    const { query, page } = nextShortsQuery();
+    const items = await invidiousSearch(query, page);
+    if(!items) return null;
+    const seenIds = new Set(liveShortsPool.map(v=>v.id));
+    const underThirty = items
+      .filter(it => it.type === "video" && typeof it.lengthSeconds === "number" && it.lengthSeconds > 0 && it.lengthSeconds <= 30)
+      .filter(it => !seenIds.has(it.videoId))
+      .map(it => ({
+        id: it.videoId,
+        title: it.title,
+        tags: ["live", query.replace(" shorts","")],
+        aspect: "horizontal", // unknown true aspect from search metadata alone — letterboxed safely either way
+      }));
+    if(underThirty.length) liveShortsPool = liveShortsPool.concat(underThirty);
+    return liveShortsPool.length ? liveShortsPool : null;
+  }
+
+  async function getShortsCandidatePool(){
+    const live = await fetchInvidiousShortsPool();
+    // Merge, never replace — this is what makes it safe to depend on live
+    // results without risking an empty/tiny pool if the network has a bad
+    // moment. Curated content is always there as the floor.
+    return live && live.length ? SHORTS_VIDEOS.concat(live) : SHORTS_VIDEOS;
+  }
 
   const SHORTS_BATCH_SIZE = 5;
   let shortsIO = null;
@@ -3041,9 +3191,10 @@ ENGINES.breakout = function(stage){
 
   async function pickNextBatch(n){
     const prefs = await getShortsPrefs();
-    let candidates = SHORTS_VIDEOS.filter(v=>!shortsRenderedIds.has(v.id) && !(prefs.disliked||[]).includes(v.id));
-    if(!candidates.length) candidates = SHORTS_VIDEOS.filter(v=>!(prefs.disliked||[]).includes(v.id));
-    if(!candidates.length) candidates = SHORTS_VIDEOS.slice(); // everything disliked somehow — show something anyway
+    const pool = await getShortsCandidatePool();
+    let candidates = pool.filter(v=>!shortsRenderedIds.has(v.id) && !(prefs.disliked||[]).includes(v.id));
+    if(!candidates.length) candidates = pool.filter(v=>!(prefs.disliked||[]).includes(v.id));
+    if(!candidates.length) candidates = pool.slice(); // everything disliked somehow — show something anyway
 
     const picked = [];
     const usedIds = new Set();
