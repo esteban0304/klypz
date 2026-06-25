@@ -3459,22 +3459,37 @@ ENGINES.breakout = function(stage){
   ];
   const nextShortsQuery = makeQueryCycler(SHORTS_SEARCH_QUERIES);
   let liveShortsPool = [];
+  let liveShortsDiagnosticShown = false;
 
   async function fetchInvidiousShortsPool(){
     const { query, page } = nextShortsQuery();
     const items = await invidiousSearch(query, page);
+    if(!liveShortsDiagnosticShown){
+      liveShortsDiagnosticShown = true;
+      if(!items){
+        toast("🔴 Live search: no response from any Invidious instance (likely unreachable from your network) — using the curated list only.");
+      }
+    }
     if(!items) return null;
     const seenIds = new Set(liveShortsPool.map(v=>v.id));
     const underThirty = items
       .filter(it => it.type === "video" && typeof it.lengthSeconds === "number" && it.lengthSeconds > 0 && it.lengthSeconds <= 30)
-      .filter(it => !seenIds.has(it.videoId))
-      .map(it => ({
+      .filter(it => !seenIds.has(it.videoId));
+    if(liveShortsDiagnosticShown && liveShortsPool.length === 0){
+      // First successful response — report exactly what came back, since an
+      // empty result here (search worked, but 0 passed the ≤30s filter) is a
+      // very different situation from "no response at all" above.
+      toast(items.length
+        ? `🟢 Live search responded: ${items.length} results, ${underThirty.length} passed the ≤30s filter.`
+        : `🟡 Live search responded but returned 0 results for this query.`);
+    }
+    const mapped = underThirty.map(it => ({
         id: it.videoId,
         title: it.title,
         tags: ["live", query.replace(" shorts","")],
         aspect: "horizontal", // unknown true aspect from search metadata alone — letterboxed safely either way
       }));
-    if(underThirty.length) liveShortsPool = liveShortsPool.concat(underThirty);
+    if(mapped.length) liveShortsPool = liveShortsPool.concat(mapped);
     return liveShortsPool.length ? liveShortsPool : null;
   }
 
