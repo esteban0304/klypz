@@ -3462,34 +3462,40 @@ ENGINES.breakout = function(stage){
   let liveShortsDiagnosticShown = false;
 
   async function fetchInvidiousShortsPool(){
-    const { query, page } = nextShortsQuery();
-    const items = await invidiousSearch(query, page);
-    if(!liveShortsDiagnosticShown){
-      liveShortsDiagnosticShown = true;
-      if(!items){
-        toast("🔴 Live search: no response from any Invidious instance (likely unreachable from your network) — using the curated list only.");
-      }
-    }
-    if(!items) return null;
-    const seenIds = new Set(liveShortsPool.map(v=>v.id));
-    const underThirty = items
-      .filter(it => it.type === "video" && typeof it.lengthSeconds === "number" && it.lengthSeconds > 0 && it.lengthSeconds <= 30)
-      .filter(it => !seenIds.has(it.videoId));
-    if(liveShortsDiagnosticShown && liveShortsPool.length === 0){
-      // First successful response — report exactly what came back, since an
-      // empty result here (search worked, but 0 passed the ≤30s filter) is a
-      // very different situation from "no response at all" above.
-      toast(items.length
-        ? `🟢 Live search responded: ${items.length} results, ${underThirty.length} passed the ≤30s filter.`
-        : `🟡 Live search responded but returned 0 results for this query.`);
-    }
-    const mapped = underThirty.map(it => ({
+    // Generic search has no duration filter built in (unlike the official
+    // YouTube API), so any single query can easily come back with zero
+    // results ≤30s purely by chance — that's exactly what was happening.
+    // Trying several queries in one fetch fixes that without changing what
+    // "counts" as a Short.
+    let totalChecked = 0, totalQualified = 0, gotAnyResponse = false;
+    for(let attempt = 0; attempt < 5; attempt++){
+      const { query, page } = nextShortsQuery();
+      const items = await invidiousSearch(query, page);
+      if(!items) continue;
+      gotAnyResponse = true;
+      totalChecked += items.length;
+      const seenIds = new Set(liveShortsPool.map(v=>v.id));
+      const qualifying = items
+        .filter(it => it.type === "video" && typeof it.lengthSeconds === "number" && it.lengthSeconds > 0 && it.lengthSeconds <= 30)
+        .filter(it => !seenIds.has(it.videoId));
+      totalQualified += qualifying.length;
+      const mapped = qualifying.map(it => ({
         id: it.videoId,
         title: it.title,
         tags: ["live", query.replace(" shorts","")],
         aspect: "horizontal", // unknown true aspect from search metadata alone — letterboxed safely either way
       }));
-    if(mapped.length) liveShortsPool = liveShortsPool.concat(mapped);
+      if(mapped.length) liveShortsPool = liveShortsPool.concat(mapped);
+      if(liveShortsPool.length >= 5) break; // enough for a full batch, stop early
+    }
+    if(!liveShortsDiagnosticShown){
+      liveShortsDiagnosticShown = true;
+      if(!gotAnyResponse){
+        toast("🔴 Live search: no response from any Invidious instance (likely unreachable from your network) — using the curated list only.");
+      } else {
+        toast(`🟢 Live search: checked ${totalChecked} results across multiple queries, ${totalQualified} passed the ≤30s filter.`);
+      }
+    }
     return liveShortsPool.length ? liveShortsPool : null;
   }
 
