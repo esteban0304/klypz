@@ -3466,11 +3466,11 @@ ENGINES.breakout = function(stage){
   let liveShortsDiagnosticShown = false;
 
   async function fetchInvidiousShortsPool(){
-    // Generic search has no duration filter built in (unlike the official
-    // YouTube API), so any single query can easily come back with zero
-    // results ≤30s purely by chance — that's exactly what was happening.
-    // Trying several queries in one fetch fixes that without changing what
-    // "counts" as a Short.
+    // No longer enforcing a 30-second cutoff — YouTube's own definition of
+    // "Shorts" is about the vertical format, not a strict time limit (their
+    // own Shorts can run up to 3 minutes now). The duration=short param on
+    // the search request already biases results toward short-form content;
+    // we just trust that instead of double-filtering on top of it.
     let totalChecked = 0, totalQualified = 0, gotAnyResponse = false;
     for(let attempt = 0; attempt < 5; attempt++){
       const { query, page } = nextShortsQuery();
@@ -3480,7 +3480,7 @@ ENGINES.breakout = function(stage){
       totalChecked += items.length;
       const seenIds = new Set(liveShortsPool.map(v=>v.id));
       const qualifying = items
-        .filter(it => it.type === "video" && typeof it.lengthSeconds === "number" && it.lengthSeconds > 0 && it.lengthSeconds <= 30)
+        .filter(it => it.type === "video")
         .filter(it => !seenIds.has(it.videoId));
       totalQualified += qualifying.length;
       const mapped = qualifying.map(it => ({
@@ -3497,7 +3497,7 @@ ENGINES.breakout = function(stage){
       if(!gotAnyResponse){
         toast("🔴 Live search: no response from any Invidious instance (likely unreachable from your network) — using the curated list only.");
       } else {
-        toast(`🟢 Live search: checked ${totalChecked} results across multiple queries, ${totalQualified} passed the ≤30s filter.`);
+        toast(`🟢 Live search: checked ${totalChecked} results across multiple queries, ${totalQualified} qualified.`);
       }
     }
     return liveShortsPool.length ? liveShortsPool : null;
