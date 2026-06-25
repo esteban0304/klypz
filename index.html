@@ -959,6 +959,40 @@ html[data-theme="light"] .hero{
 // Cards without a matching engine show a friendly "coming soon" state —
 // exactly like real game hubs do while back-filling their library.
 
+// Global error catcher — surfaces ANY uncaught error directly on the page
+// as a visible red banner, so problems can be diagnosed without opening
+// browser dev tools at all. This catches things even outside what's been
+// explicitly try/caught elsewhere in the code below.
+window.addEventListener("error", function(e){
+  showErrorBanner("JS Error: " + e.message + " (line " + e.lineno + ")");
+});
+window.addEventListener("unhandledrejection", function(e){
+  showErrorBanner("Promise error: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
+});
+function showErrorBanner(text){
+  let banner = document.getElementById("globalErrorBanner");
+  if(!banner){
+    banner = document.createElement("div");
+    banner.id = "globalErrorBanner";
+    banner.style.position = "fixed";
+    banner.style.bottom = "0";
+    banner.style.left = "0";
+    banner.style.right = "0";
+    banner.style.background = "#7a1230";
+    banner.style.color = "#fff";
+    banner.style.padding = "10px 16px";
+    banner.style.fontSize = "13px";
+    banner.style.fontFamily = "monospace";
+    banner.style.zIndex = "99999";
+    banner.style.maxHeight = "30vh";
+    banner.style.overflowY = "auto";
+    document.body.appendChild(banner);
+  }
+  const line = document.createElement("div");
+  line.textContent = text;
+  banner.appendChild(line);
+}
+
 const GAMES = [
   { id:"snake",    title:"Neon Snake",      cat:"arcade",   emoji:"🐍", badge:"HOT",  engine:"snake" },
   { id:"2048",     title:"2048 Drift",      cat:"puzzle",   emoji:"🔢", badge:"NEW",  engine:"twozerofoureight" },
@@ -2787,6 +2821,7 @@ ENGINES.breakout = function(stage){
       }
     }catch(e){
       console.error("loadMoreLongVideos failed:", e);
+      toast("⚠️ Load more error: " + (e && e.message ? e.message : e));
     }finally{
       // This runs no matter what happened above — the button can never get
       // stuck disabled again, even if something throws unexpectedly.
