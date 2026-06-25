@@ -3432,11 +3432,15 @@ ENGINES.breakout = function(stage){
     }
   }
 
-  async function invidiousSearch(query, page){
+  async function invidiousSearch(query, page, duration){
     // Race all instances in parallel with a per-instance timeout, so a
-    // slow/dead instance can't block the others.
+    // slow/dead instance can't block the others. duration is Invidious's
+    // own official filter ("short"/"medium"/"long") — using it for Shorts
+    // is what actually fixes the near-zero qualification rate, since plain
+    // keyword search returns a real mix of video lengths regardless of
+    // what's in the query text.
     const attempts = INVIDIOUS_INSTANCES.map(async (base)=>{
-      const url = `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video${page>1?`&page=${page}`:""}`;
+      const url = `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video${page>1?`&page=${page}`:""}${duration?`&duration=${duration}`:""}`;
       const res = await fetchWithTimeout(url, 6000);
       if(!res.ok) throw new Error("HTTP " + res.status);
       const items = await res.json();
@@ -3470,7 +3474,7 @@ ENGINES.breakout = function(stage){
     let totalChecked = 0, totalQualified = 0, gotAnyResponse = false;
     for(let attempt = 0; attempt < 5; attempt++){
       const { query, page } = nextShortsQuery();
-      const items = await invidiousSearch(query, page);
+      const items = await invidiousSearch(query, page, "short");
       if(!items) continue;
       gotAnyResponse = true;
       totalChecked += items.length;
