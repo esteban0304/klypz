@@ -3046,6 +3046,34 @@ ENGINES.breakout = function(stage){
     { id:"soundcloud", name:"SoundCloud", icon:"https://cdn.simpleicons.org/soundcloud/FF5500", iconBg:"#0c1326", desc:"Music & audio",
       render:()=>`<iframe width="100%" height="500" scrolling="no" frameBorder="no" allow="autoplay"
         src="https://w.soundcloud.com/player/?url=https://api.soundcloud.com/tracks/293&color=%232f7bff&auto_play=false&show_artwork=true"></iframe>` },
+    { id:"youtube", name:"YouTube", icon:"https://cdn.simpleicons.org/youtube/FF0000", iconBg:"#0c1326", desc:"Videos",
+      render:()=>`<iframe width="100%" height="600" src="https://www.youtube.com/embed/yAi0MYo5Mzw"
+        title="YouTube" frameBorder="0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>` },
+    { id:"vimeo", name:"Vimeo", icon:"https://cdn.simpleicons.org/vimeo/1AB7EA", iconBg:"#0c1326", desc:"Video hosting",
+      render:()=>`<iframe src="https://player.vimeo.com/video/76979871" width="100%" height="500" frameBorder="0"
+        allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>` },
+    { id:"twitter", name:"X / Twitter", icon:"https://cdn.simpleicons.org/x/ffffff", iconBg:"#000000", desc:"Social timeline",
+      render:(container)=>{
+        container.innerHTML = `<a class="twitter-timeline" data-height="600" data-theme="dark" href="https://twitter.com/Twitter?ref_src=twsrc%5Etfw">Tweets by Twitter</a>`;
+        if(!document.getElementById("twitter-embed-script")){
+          const s = document.createElement("script");
+          s.id = "twitter-embed-script";
+          s.src = "https://platform.twitter.com/widgets.js";
+          s.async = true;
+          document.body.appendChild(s);
+        } else if(window.twttr && window.twttr.widgets){
+          window.twttr.widgets.load(container);
+        }
+      } },
+    { id:"maps", name:"Google Maps", icon:"https://cdn.simpleicons.org/googlemaps/4285F4", iconBg:"#0c1326", desc:"Maps & places",
+      render:()=>`<iframe width="100%" height="500" frameBorder="0" style="border:0"
+        src="https://www.google.com/maps?q=Eiffel+Tower&output=embed" allowfullscreen loading="lazy"></iframe>` },
+    { id:"whatsapp", name:"WhatsApp", icon:"https://cdn.simpleicons.org/whatsapp/25D366", iconBg:"#0c1326", desc:"Open a chat",
+      note:"WhatsApp has no web embed technology either — like iMessage, it's app-to-app messaging, not something that can live inside a page. This opens a real WhatsApp chat in a new tab instead of faking an inline widget.",
+      render:()=>{ window.open("https://wa.me/", "_blank"); return `<p style="text-align:center;color:var(--muted);padding:40px;">Opened WhatsApp in a new tab.</p>`; } },
+    { id:"imessage", name:"Message", icon:"https://cdn.simpleicons.org/apple/ffffff", iconBg:"#000000", desc:"Open Messages",
+      note:"iMessage genuinely has no embeddable web version at all — not even Apple's own sites can put an iMessage window inside a page. This is a real 'sms:' link that opens your device's own Messages app, the same idea as a mailto: link for email.",
+      render:()=>{ window.location.href = "sms:"; return `<p style="text-align:center;color:var(--muted);padding:40px;">Opening your device's Messages app…</p>`; } },
   ];
 
   function renderAppsGrid(){
