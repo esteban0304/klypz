@@ -534,7 +534,7 @@ button:focus-visible, input:focus-visible, li:focus-visible{
 .appsSection__head h2{font-family:'Rajdhani',sans-serif; margin:0 0 4px; font-size:22px;}
 .appsSection__head p{color:var(--muted); font-size:13px; margin:0 0 18px; max-width:640px;}
 .appsGrid{
-  display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:18px;
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:18px;
 }
 .appCard{
   background:var(--panel); border:1px solid var(--line); border-radius:14px;
@@ -545,12 +545,42 @@ button:focus-visible, input:focus-visible, li:focus-visible{
 .appCard:hover{transform:translateY(-3px); border-color:var(--blue);}
 .appCard__icon{
   width:56px; height:56px; border-radius:16px; display:flex; align-items:center;
-  justify-content:center; font-size:26px;
+  justify-content:center; font-size:26px; overflow:hidden;
 }
+.appCard__icon img{width:32px; height:32px; object-fit:contain;}
 .appCard__name{font-weight:600; font-size:14px;}
 .appCard__desc{font-size:11px; color:var(--muted);}
-.appPlayerCard{max-width:500px;}
+/* Much larger app modal — closer to fullscreen than the other modals */
+.appPlayerCard{max-width:1100px; width:92vw; max-height:88vh; overflow-y:auto;}
 .appPlayerBox{min-height:80px;}
+.appPlayerBox iframe{width:100%; min-height:70vh; border:none; border-radius:8px;}
+
+/* ===================== HOME SECTION ===================== */
+.homeSection{padding:48px 32px; height:calc(100vh - 65px); overflow-y:auto;}
+.homeHero{text-align:center; max-width:640px; margin:0 auto 36px;}
+.homeHero__eyebrow{
+  font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:2px;
+  color:var(--cyan); margin:0 0 8px;
+}
+.homeHero__title{
+  font-family:'Rajdhani',sans-serif; font-weight:700; font-size:48px; margin:0 0 12px;
+  text-shadow:0 0 24px rgba(47,123,255,.45);
+}
+.homeHero__desc{color:var(--muted); font-size:15px; margin:0;}
+.homeGrid{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr));
+  gap:20px; max-width:980px; margin:0 auto;
+}
+.homeCard{
+  background:var(--panel); border:1px solid var(--line); border-radius:16px;
+  padding:30px 20px; text-align:center; cursor:pointer;
+  transition:transform .15s, border-color .15s, box-shadow .15s;
+}
+.homeCard:hover{transform:translateY(-4px); border-color:var(--blue); box-shadow:0 8px 28px rgba(47,123,255,.25);}
+.homeCard__icon{font-size:36px; margin-bottom:10px;}
+.homeCard__title{font-family:'Rajdhani',sans-serif; font-weight:700; font-size:17px; margin:0 0 4px;}
+.homeCard__desc{font-size:12px; color:var(--muted); margin:0;}
+.welcomeText{font-size:13px; color:var(--text); line-height:1.6; margin:0 0 14px;}
 
 /* ===================== MOST PLAYED TODAY ===================== */
 .grid--row{
@@ -728,7 +758,8 @@ html[data-theme="light"] .hero{
 <div class="appShell">
   <!-- ===== SECTION RAIL ===== -->
   <nav class="sectionRail">
-    <button class="sectionRail__btn active" data-section="gaming" title="Gaming">🎮</button>
+    <button class="sectionRail__btn active" data-section="home" title="Home">🏠</button>
+    <button class="sectionRail__btn" data-section="gaming" title="Gaming">🎮</button>
     <button class="sectionRail__btn" data-section="messaging" title="Messaging">💬</button>
     <button class="sectionRail__btn" data-section="shorts" title="Shorts">📱</button>
     <button class="sectionRail__btn" data-section="videos" title="Videos">📺</button>
@@ -759,8 +790,49 @@ html[data-theme="light"] .hero{
   </div>
   </header>
 
+  <!-- ===== HOME SECTION (landing page) ===== -->
+  <div class="homeSection" id="homeSection">
+    <div class="homeHero">
+      <p class="homeHero__eyebrow">WELCOME TO</p>
+      <h1 class="homeHero__title">KL<span class="brand__name--accent">YP</span></h1>
+      <p class="homeHero__desc">Play, connect, and discover — games, shorts, videos, and more, all in one place.</p>
+    </div>
+    <div class="homeGrid">
+      <div class="homeCard" data-go="gaming">
+        <div class="homeCard__icon">🎮</div>
+        <p class="homeCard__title">Games</p>
+        <p class="homeCard__desc">Browse and play the full catalog</p>
+      </div>
+      <div class="homeCard" data-go="shorts">
+        <div class="homeCard__icon">📱</div>
+        <p class="homeCard__title">Shorts</p>
+        <p class="homeCard__desc">Swipe through quick clips</p>
+      </div>
+      <div class="homeCard" data-go="videos">
+        <div class="homeCard__icon">📺</div>
+        <p class="homeCard__title">Videos</p>
+        <p class="homeCard__desc">Watch longer-form content</p>
+      </div>
+      <div class="homeCard" data-go="messaging">
+        <div class="homeCard__icon">💬</div>
+        <p class="homeCard__title">Chat</p>
+        <p class="homeCard__desc">Talk with the community</p>
+      </div>
+      <div class="homeCard" data-go="apps">
+        <div class="homeCard__icon">🧩</div>
+        <p class="homeCard__title">Apps</p>
+        <p class="homeCard__desc">Spotify, TikTok, and more</p>
+      </div>
+      <div class="homeCard" data-action="leaderboard">
+        <div class="homeCard__icon">🏆</div>
+        <p class="homeCard__title">Leaderboard</p>
+        <p class="homeCard__desc">See where you rank</p>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== GAMING SECTION ===== -->
-  <div class="shell" id="gamingSection">
+  <div class="shell" id="gamingSection" style="display:none;">
 
   <!-- ===== SIDEBAR ===== -->
   <aside class="sidebar">
@@ -926,6 +998,21 @@ html[data-theme="light"] .hero{
     <h3 class="modalCard__title">🏆 Leaderboard</h3>
     <p class="modalCard__note">Shared across everyone using this site — top players by XP.</p>
     <ol class="leaderboardList" id="leaderboardList"></ol>
+  </div>
+</div>
+
+<!-- ===== WELCOME MODAL (shown once, first visit) ===== -->
+<div class="modalOverlay" id="welcomeOverlay">
+  <div class="modalCard" style="text-align:left; max-width:480px;">
+    <h3 class="modalCard__title">🚀 Welcome to Klyp!</h3>
+    <p class="welcomeText">Klyp is more than just a gaming website—it's a place to play, connect, and discover. Whether you're here to challenge yourself with games, chat with friends, watch short videos, explore long-form content, or climb the leaderboards, there's always something new waiting for you.</p>
+    <p class="welcomeText">
+      🎮 Play games &nbsp; 💬 Chat with the community &nbsp; 📱 Watch and share shorts<br>
+      🎥 Discover videos &nbsp; 🏆 Earn XP and climb the leaderboard &nbsp; 👤 Customize your profile
+    </p>
+    <p class="welcomeText">Be respectful, have fun, and make yourself at home. The Klyp community is built by its users, and every player helps make it better.</p>
+    <p class="welcomeText">Enjoy your stay and start exploring! ✨</p>
+    <button class="btn btn--primary modalCard__wide" id="welcomeDismiss">Let's go!</button>
   </div>
 </div>
 
@@ -2673,35 +2760,67 @@ ENGINES.breakout = function(stage){
     storeSet("theme", next, false);
   });
 
-  /* ===================== SECTION SWITCHING (Gaming / Messaging / Shorts / Videos) ===================== */
+  /* ===================== SECTION SWITCHING (Home / Gaming / Messaging / Shorts / Videos / Apps) ===================== */
   let messagingPollTimer = null;
   let shortsRendered = false;
   let videosRendered = false;
   let appsRendered = false;
 
-  document.querySelectorAll(".sectionRail__btn").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      document.querySelectorAll(".sectionRail__btn").forEach(b=>b.classList.remove("active"));
-      btn.classList.add("active");
-      const section = btn.dataset.section;
-      document.getElementById("gamingSection").style.display = section==="gaming" ? "" : "none";
-      document.getElementById("messagingSection").style.display = section==="messaging" ? "" : "none";
-      document.getElementById("shortsSection").style.display = section==="shorts" ? "" : "none";
-      document.getElementById("videosSection").style.display = section==="videos" ? "" : "none";
-      document.getElementById("appsSection").style.display = section==="apps" ? "" : "none";
-
-      if(section==="messaging"){
-        ensureProfile().then(ok=>{ if(ok){ renderContactList(); refreshMessages(); startMessagingPoll(); } });
-      } else stopMessagingPoll();
-
-      if(section!=="shorts" && typeof finalizeShortsWatch === "function" && typeof shortsActiveIndex !== "undefined"){
-        finalizeShortsWatch(shortsActiveIndex);
-        shortsActiveIndex = -1;
-      }
-      if(section==="shorts" && !shortsRendered){ renderShortsFeed(); shortsRendered = true; }
-      if(section==="videos" && !videosRendered){ renderVideosGrid(); videosRendered = true; }
-      if(section==="apps" && !appsRendered){ renderAppsGrid(); appsRendered = true; }
+  function switchToSection(section){
+    document.querySelectorAll(".sectionRail__btn").forEach(b=>{
+      b.classList.toggle("active", b.dataset.section === section);
     });
+    document.getElementById("homeSection").style.display = section==="home" ? "" : "none";
+    document.getElementById("gamingSection").style.display = section==="gaming" ? "" : "none";
+    document.getElementById("messagingSection").style.display = section==="messaging" ? "" : "none";
+    document.getElementById("shortsSection").style.display = section==="shorts" ? "" : "none";
+    document.getElementById("videosSection").style.display = section==="videos" ? "" : "none";
+    document.getElementById("appsSection").style.display = section==="apps" ? "" : "none";
+
+    if(section==="messaging"){
+      ensureProfile().then(ok=>{ if(ok){ renderContactList(); refreshMessages(); startMessagingPoll(); } });
+    } else stopMessagingPoll();
+
+    if(section!=="shorts" && typeof finalizeShortsWatch === "function" && typeof shortsActiveIndex !== "undefined"){
+      finalizeShortsWatch(shortsActiveIndex);
+      shortsActiveIndex = -1;
+    }
+    if(section==="shorts" && !shortsRendered){ renderShortsFeed(); shortsRendered = true; }
+    if(section==="videos" && !videosRendered){ renderVideosGrid(); videosRendered = true; }
+    if(section==="apps" && !appsRendered){ renderAppsGrid(); appsRendered = true; }
+  }
+
+  document.querySelectorAll(".sectionRail__btn").forEach(btn=>{
+    btn.addEventListener("click", ()=> switchToSection(btn.dataset.section));
+  });
+
+  // Clicking the Klyp logo always returns to the home page.
+  document.querySelector('a.brand[data-route="home"]').addEventListener("click", (e)=>{
+    e.preventDefault();
+    switchToSection("home");
+  });
+
+  // Home page cards: most navigate to a section; "Leaderboard" opens that modal directly.
+  document.querySelectorAll(".homeCard").forEach(card=>{
+    card.addEventListener("click", ()=>{
+      if(card.dataset.action === "leaderboard"){
+        document.getElementById("leaderboardBtn").click();
+        return;
+      }
+      switchToSection(card.dataset.go);
+    });
+  });
+
+  // Welcome popup — shown once per device, then remembered via storage.
+  (async ()=>{
+    const seen = await storeGet("welcomeSeen", false, false);
+    if(!seen){
+      document.getElementById("welcomeOverlay").classList.add("open");
+    }
+  })();
+  document.getElementById("welcomeDismiss").addEventListener("click", ()=>{
+    document.getElementById("welcomeOverlay").classList.remove("open");
+    storeSet("welcomeSeen", true, false);
   });
 
   /* ===================== MESSAGING (public chat + contacts + private DMs) ===================== */
@@ -2897,11 +3016,11 @@ ENGINES.breakout = function(stage){
      official, intended embed widgets — same idea as the YouTube embeds
      already used throughout the rest of the site. */
   const APPS = [
-    { id:"spotify", name:"Spotify", icon:"🎧", iconBg:"#1DB954", desc:"Music & podcasts",
+    { id:"spotify", name:"Spotify", icon:"https://cdn.simpleicons.org/spotify/1DB954", iconBg:"#0c1326", desc:"Music & podcasts",
       render:()=>`<iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWvHBEQLnV1N?utm_source=oembed"
-        width="100%" height="352" frameBorder="0" allowfullscreen=""
+        width="100%" height="500" frameBorder="0" allowfullscreen=""
         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>` },
-    { id:"tiktok", name:"TikTok", icon:"🎵", iconBg:"#000000", desc:"Short videos",
+    { id:"tiktok", name:"TikTok", icon:"https://cdn.simpleicons.org/tiktok/ffffff", iconBg:"#000000", desc:"Short videos",
       render:(container)=>{
         container.innerHTML = `<blockquote class="tiktok-embed" cite="https://www.tiktok.com/@scout2015/video/6718335390845095173"
           data-video-id="6718335390845095173" style="max-width:325px;min-width:280px;margin:0 auto;">
@@ -2916,10 +3035,17 @@ ENGINES.breakout = function(stage){
           window.tiktokEmbed.lib.render(container.querySelectorAll(".tiktok-embed"));
         }
       } },
-    { id:"twitch", name:"Twitch", icon:"🎮", iconBg:"#9146FF", desc:"Live streams",
-      note:"Twitch's embed requires a 'parent' domain parameter matching wherever this file is actually hosted — it won't load inside this chat's preview, but will once you deploy the file to a real domain (see the Netlify steps from earlier).",
+    { id:"twitch", name:"Twitch", icon:"https://cdn.simpleicons.org/twitch/9146FF", iconBg:"#0c1326", desc:"Live streams",
+      note:"Twitch's embed requires a 'parent' domain parameter matching wherever this file is actually hosted — it won't load inside this chat's preview, but will once you deploy the file to a real domain.",
       render:()=>`<iframe src="https://player.twitch.tv/?channel=esl_csgo&parent=${encodeURIComponent(location.hostname || "localhost")}&muted=true"
-        height="300" width="100%" allowfullscreen frameBorder="0"></iframe>` },
+        height="500" width="100%" allowfullscreen frameBorder="0"></iframe>` },
+    { id:"discord", name:"Discord", icon:"https://cdn.simpleicons.org/discord/5865F2", iconBg:"#0c1326", desc:"Community chat",
+      note:"Showing WidgetBot's own official demo server as an example — swap in your own server/channel ID from widgetbot.io to use your real community.",
+      render:()=>`<iframe src="https://e.widgetbot.io/channels/299881420891881473/355719584830980096"
+        height="600" width="100%" allow="clipboard-write; fullscreen" frameBorder="0"></iframe>` },
+    { id:"soundcloud", name:"SoundCloud", icon:"https://cdn.simpleicons.org/soundcloud/FF5500", iconBg:"#0c1326", desc:"Music & audio",
+      render:()=>`<iframe width="100%" height="500" scrolling="no" frameBorder="no" allow="autoplay"
+        src="https://w.soundcloud.com/player/?url=https://api.soundcloud.com/tracks/293&color=%232f7bff&auto_play=false&show_artwork=true"></iframe>` },
   ];
 
   function renderAppsGrid(){
@@ -2929,7 +3055,7 @@ ENGINES.breakout = function(stage){
       const card = document.createElement("div");
       card.className = "appCard";
       card.innerHTML = `
-        <div class="appCard__icon" style="background:${app.iconBg}">${app.icon}</div>
+        <div class="appCard__icon" style="background:${app.iconBg}"><img src="${app.icon}" alt="${app.name}" loading="lazy"></div>
         <div class="appCard__name">${app.name}</div>
         <div class="appCard__desc">${app.desc}</div>`;
       card.addEventListener("click", ()=> openApp(app));
