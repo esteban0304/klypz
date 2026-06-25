@@ -3407,6 +3407,21 @@ ENGINES.breakout = function(stage){
     if(farthest !== null){
       try{ ytPlayers.get(farthest).destroy(); }catch(e){}
       ytPlayers.delete(farthest);
+      // destroy() removes the entire <iframe> — and since the IFrame API
+      // had replaced our container div with that iframe in the first
+      // place, the container is now gone too, not just the video. Without
+      // rebuilding an empty one here, ever revisiting this index (scrolling
+      // back, or a fast-scroll eviction before you actually reached it)
+      // would find nothing to build a new player into and just show
+      // nothing. This was the real cause of Shorts "stopping" partway
+      // through a scrolling session.
+      const item = document.querySelector(`.shorts__item--video[data-idx="${farthest}"]`);
+      const box = item && item.querySelector(".shorts__videoBox");
+      if(box && !document.getElementById("ytbox-" + farthest)){
+        const freshContainer = document.createElement("div");
+        freshContainer.id = "ytbox-" + farthest;
+        box.appendChild(freshContainer);
+      }
     }
   }
 
