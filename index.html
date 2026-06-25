@@ -440,6 +440,8 @@ button:focus-visible, input:focus-visible, li:focus-visible{
   font-size:12px; font-weight:600; color:#fff; border:1px solid rgba(255,255,255,.5);
 }
 .shorts__item__actions{display:flex; align-items:center; gap:12px; margin-top:10px;}
+.shorts__likeWrap{display:flex; flex-direction:column; align-items:center; gap:2px;}
+.shorts__likeCount{font-size:11px; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.6);}
 .shorts__likeBtn{
   font-size:22px; background:rgba(0,0,0,.4); border-radius:50%;
   width:42px; height:42px; display:flex; align-items:center; justify-content:center;
@@ -3177,7 +3179,17 @@ ENGINES.breakout = function(stage){
   /* ----- Simple content-based recommender (curated list only — no live
      search dependency, so this always has something to show) ----- */
   async function getShortsPrefs(){
-    return storeGet("shortsPrefs", false, { tagCounts:{}, liked:[], disliked:[] });
+    // Defensive against stale saved data from an earlier version of this
+    // code that didn't have all these fields yet — without this, reading
+    // e.g. prefs.disliked on an old saved object missing that key throws
+    // "Cannot read properties of undefined", which silently kills the
+    // click handler. This is exactly what made like/dislike "not work".
+    const stored = await storeGet("shortsPrefs", false, null);
+    return {
+      tagCounts: (stored && stored.tagCounts) || {},
+      liked: (stored && stored.liked) || [],
+      disliked: (stored && stored.disliked) || [],
+    };
   }
   async function saveShortsPrefs(prefs){ return storeSet("shortsPrefs", prefs, false); }
   function scoreVideo(video, prefs){
@@ -3225,7 +3237,13 @@ ENGINES.breakout = function(stage){
     await saveShortsPrefs(prefs);
   }
 
-  async function toggleShortsLike(video, likeBtn, dislikeBtn){
+  async function refreshLikeCount(videoId, countEl){
+    const agg = await storeGet("shortsLikeCounts:"+videoId, true, { count:0 });
+    if(countEl) countEl.textContent = agg.count || 0;
+    return agg.count || 0;
+  }
+
+  async function toggleShortsLike(video, likeBtn, dislikeBtn, likeCountEl){
     const prefs = await getShortsPrefs();
     const dIdx = prefs.disliked.indexOf(video.id);
     if(dIdx > -1){
@@ -3234,15 +3252,20 @@ ENGINES.breakout = function(stage){
       dislikeBtn.classList.remove("active"); dislikeBtn.textContent = "👎";
     }
     const i = prefs.liked.indexOf(video.id);
+    const agg = await storeGet("shortsLikeCounts:"+video.id, true, { count:0 });
     if(i > -1){
       prefs.liked.splice(i,1);
       video.tags.forEach(t=> prefs.tagCounts[t] = Math.max(0, (prefs.tagCounts[t]||0) - 5));
       likeBtn.classList.remove("liked"); likeBtn.textContent = "🤍";
+      agg.count = Math.max(0, (agg.count||0) - 1);
     } else {
       prefs.liked.push(video.id);
       video.tags.forEach(t=> prefs.tagCounts[t] = (prefs.tagCounts[t]||0) + 5);
       likeBtn.classList.add("liked"); likeBtn.textContent = "❤️";
+      agg.count = (agg.count||0) + 1;
     }
+    await storeSet("shortsLikeCounts:"+video.id, agg, true);
+    if(likeCountEl) likeCountEl.textContent = agg.count;
     await saveShortsPrefs(prefs);
   }
 
@@ -3284,17 +3307,26 @@ ENGINES.breakout = function(stage){
         <p class="shorts__item__title">${video.title}</p>
         <p class="shorts__item__cat">${video.tags.join(" · ")}</p>
         <div class="shorts__item__actions">
-          <button class="shorts__likeBtn" title="Like — improves your recommendations">🤍</button>
+          <div class="shorts__likeWrap">
+            <button class="shorts__likeBtn" title="Like — improves your recommendations">🤍</button>
+            <span class="shorts__likeCount">0</span>
+          </div>
           <button class="shorts__dislikeBtn" title="Not interested — improves your recommendations">👎</button>
           <button class="shorts__muteBtn" title="Toggle sound">🔊</button>
           <a class="shorts__item__ytLink" href="https://www.youtube.com/watch?v=${video.id}" target="_blank" rel="noopener">▶ Watch on YouTube ↗</a>
         </div>
       </div>`;
     const likeBtn = item.querySelector(".shorts__likeBtn");
+    const likeCountEl = item.querySelector(".shorts__likeCount");
     const dislikeBtn = item.querySelector(".shorts__dislikeBtn");
     const muteBtn = item.querySelector(".shorts__muteBtn");
-    likeBtn.addEventListener("click", (e)=>{ e.stopPropagation(); toggleShortsLike(video, likeBtn, dislikeBtn); });
+    likeBtn.addEventListener("click", (e)=>{ e.stopPropagation(); toggleShortsLike(video, likeBtn, dislikeBtn, likeCountEl); });
     dislikeBtn.addEventListener("click", (e)=>{ e.stopPropagation(); toggleShortsDislike(video, dislikeBtn, likeBtn, item); });
+    refreshLikeCount(video.id, likeCountEl);
+    getShortsPrefs().then(prefs=>{
+      if(prefs.liked.includes(video.id)){ likeBtn.classList.add("liked"); likeBtn.textContent = "❤️"; }
+      if(prefs.disliked.includes(video.id)){ dislikeBtn.classList.add("active"); dislikeBtn.textContent = "🚫"; }
+    });
     muteBtn.addEventListener("click", (e)=>{
       e.stopPropagation();
       // A direct click is a guaranteed user gesture — this always works,
@@ -3330,9 +3362,13 @@ ENGINES.breakout = function(stage){
     const container = document.getElementById("ytbox-" + index);
     if(!container) return; // shouldn't happen now — there's no pool eviction to remove it
     const muteBtn = document.querySelector(`.shorts__item--video[data-idx="${index}"] .shorts__muteBtn`);
+    const videoBox = container.parentElement; // .shorts__videoBox, still exists after the inner div gets replaced
     activeShortsPlayer = new YT.Player(container, {
       videoId: video.id,
-      playerVars:{ autoplay:1, mute:0, controls:1, rel:0, playsinline:1, modestbranding:1 },
+      // controls:0 — this removes YouTube's own native control bar, which
+      // is exactly the thing that was popping up on click and not going
+      // away on its own. We supply our own tap-to-pause below instead.
+      playerVars:{ autoplay:1, mute:0, controls:0, rel:0, playsinline:1, modestbranding:1 },
       events:{
         onReady:(e)=>{
           try{
@@ -3366,6 +3402,21 @@ ENGINES.breakout = function(stage){
       }
     });
     activeShortsPlayerIndex = index;
+
+    // Our own simple tap-to-pause, replacing YouTube's native control bar
+    // (which we just turned off above). One click toggles play/pause —
+    // nothing pops up and stays on screen the way the native bar did.
+    if(videoBox && !videoBox.dataset.tapBound){
+      videoBox.dataset.tapBound = "1";
+      videoBox.addEventListener("click", ()=>{
+        if(!activeShortsPlayer || activeShortsPlayerIndex !== index) return;
+        try{
+          const state = activeShortsPlayer.getPlayerState();
+          if(state === YT.PlayerState.PLAYING) activeShortsPlayer.pauseVideo();
+          else activeShortsPlayer.playVideo();
+        }catch(err){}
+      });
+    }
   }
 
   async function appendShortsBatch(){
