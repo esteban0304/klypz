@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Klyp — Games, Chat & Shorts</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://www.youtube.com">
 <link rel="preconnect" href="https://i.ytimg.com">
@@ -146,23 +147,27 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   100%{ transform:rotateY(360deg)  scale(1);    }
 }
 .hexWave{
-  position:absolute; inset:0; z-index:5001; overflow:visible;
+  position:absolute; inset:0; z-index:5001; overflow:visible; perspective:1000px;
 }
 .hexCell{
   position:absolute; width:var(--hw); height:var(--hh);
-  background:#ffffff;
-  clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+.hexInner{
+  position:absolute; inset:0;
   transform-style:preserve-3d;
+  transition:transform .5s ease;
+}
+.hexInner.flip{
+  transform:rotateY(180deg);
+}
+.hexFace{
+  position:absolute; inset:0;
+  clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
   backface-visibility:hidden;
+  background-repeat:no-repeat;
 }
-.hexCell.flip{
-  animation:hexFlip .5s ease forwards;
-}
-@keyframes hexFlip{
-  0%{   transform:rotateY(0deg);   background:#ffffff; }
-  50%{  transform:rotateY(90deg);  background:#0c1326; }
-  100%{ transform:rotateY(0deg);   background:#060a14; }
-}
+.hexFront{ background-color:#ffffff; }
+.hexBack{ background-color:#060a14; transform:rotateY(180deg); }
 ul{margin:0;padding:0;list-style:none;}
 input{font-family:inherit;}
 
@@ -4285,42 +4290,84 @@ ENGINES.breakout = function(stage){
     }
   });
 
-  function buildHexWave(onDone){
+  async function buildHexWaveWithScreenshots(onDone){
     const wave = document.getElementById("hexWave");
     wave.innerHTML = "";
+    const vw = window.innerWidth, vh = window.innerHeight;
     const hexW = 70, hexH = 80;
     const colSpacing = hexW * 0.75;
-    // Start one full column/row BEFORE the edge (negative offset) and add
-    // extra columns/rows on top of the viewport size — this is what makes
-    // hexagons genuinely get cut off by the screen edge on all four sides,
-    // instead of leaving a gap where a partial hexagon would otherwise be.
-    const cols = Math.ceil(window.innerWidth / colSpacing) + 4;
-    const rows = Math.ceil(window.innerHeight / hexH) + 4;
+    const cols = Math.ceil(vw / colSpacing) + 4;
+    const rows = Math.ceil(vh / hexH) + 4;
     const startCol = -2, startRow = -2;
     document.documentElement.style.setProperty("--hw", hexW + "px");
     document.documentElement.style.setProperty("--hh", hexH + "px");
 
+    // Capture the study page first, while it's still the only thing
+    // visible — this becomes every hex's front face.
+    let studyUrl = null;
+    try{
+      const studyCanvas = await html2canvas(document.getElementById("studyMode"), {
+        useCORS:true, allowTaint:false, backgroundColor:"#ffffff", width:vw, height:vh, scale:1,
+      });
+      studyUrl = studyCanvas.toDataURL();
+    }catch(e){ console.error("study capture failed:", e); }
+
+    // Build all the hex cells now, fronts showing the study capture — this
+    // is the moment the overlay actually appears, and since the front face
+    // IS the real study page, nothing visually changes yet.
     const cells = [];
     for(let col = startCol; col < cols; col++){
       for(let row = startRow; row < rows; row++){
-        const cell = document.createElement("div");
-        cell.className = "hexCell";
         const x = col * colSpacing;
         const y = row * hexH + (((col % 2) + 2) % 2 === 1 ? hexH/2 : 0);
+        const cell = document.createElement("div");
+        cell.className = "hexCell";
         cell.style.left = x + "px";
         cell.style.top = y + "px";
+        cell.innerHTML = `<div class="hexInner"><div class="hexFace hexFront"></div><div class="hexFace hexBack"></div></div>`;
+        const front = cell.querySelector(".hexFront");
+        if(studyUrl){
+          front.style.backgroundImage = `url(${studyUrl})`;
+          front.style.backgroundSize = `${vw}px ${vh}px`;
+          front.style.backgroundPosition = `${-x}px ${-y}px`;
+        }
         wave.appendChild(cell);
-        cells.push({ el: cell, diag: (row - startRow) + (col - startCol) });
+        cells.push({ el: cell, x, y, diag: (row - startRow) + (col - startCol) });
       }
     }
+
+    // Now reveal Klyp behind the overlay (it's naturally hidden from view
+    // since the hex fronts currently covering the screen still show the
+    // study capture) and capture it the same way.
+    document.getElementById("klypMode").style.display = "";
+    renderGrid();
+    let klypUrl = null;
+    try{
+      const klypCanvas = await html2canvas(document.getElementById("klypMode"), {
+        useCORS:true, allowTaint:false, backgroundColor:"#060a14", width:vw, height:vh, scale:1,
+      });
+      klypUrl = klypCanvas.toDataURL();
+    }catch(e){ console.error("klyp capture failed:", e); }
+    document.getElementById("studyMode").style.display = "none"; // real page swap, invisible — overlay still fully covers it
+
+    cells.forEach(c=>{
+      const back = c.el.querySelector(".hexBack");
+      if(klypUrl){
+        back.style.backgroundImage = `url(${klypUrl})`;
+        back.style.backgroundSize = `${vw}px ${vh}px`;
+        back.style.backgroundPosition = `${-c.x}px ${-c.y}px`;
+      }
+    });
+
     const maxDiag = Math.max(...cells.map(c=>c.diag)) || 1;
     const totalWaveMs = 900;
     cells.forEach(c=>{
       const delay = (c.diag / maxDiag) * totalWaveMs;
-      c.el.style.animationDelay = delay + "ms";
-      setTimeout(()=> c.el.classList.add("flip"), 10);
+      const inner = c.el.querySelector(".hexInner");
+      inner.style.transitionDelay = delay + "ms";
+      setTimeout(()=> inner.classList.add("flip"), 10);
     });
-    setTimeout(onDone, totalWaveMs + 550);
+    setTimeout(onDone, totalWaveMs + 600);
   }
 
   function triggerKlypTransition(){
@@ -4336,18 +4383,9 @@ ENGINES.breakout = function(stage){
     }, 320);
 
     setTimeout(()=>{
-      buildHexWave(()=>{
-        // Swap the actual page content once the hex wave has visually
-        // covered the screen — by the time it's mid-animation the viewer
-        // is looking at the hex overlay, not the page underneath, so this
-        // swap is invisible.
-        document.getElementById("studyMode").style.display = "none";
-        document.getElementById("klypMode").style.display = "";
-        renderGrid();
-        setTimeout(()=>{
-          overlay.classList.remove("active");
-          coin.classList.remove("flipping");
-        }, 200);
+      buildHexWaveWithScreenshots(()=>{
+        overlay.classList.remove("active");
+        coin.classList.remove("flipping");
       });
     }, 700);
   }
