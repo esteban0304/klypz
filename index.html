@@ -3047,10 +3047,12 @@ ENGINES.breakout = function(stage){
     data.forEach(m=>{
       const div = document.createElement("div");
       const mine = profile && m.username === profile.username;
+      const isModerator = profile && profile.username === "izerna";
+      const canDelete = mine || isModerator;
       div.className = "msg " + (mine ? "mine" : "theirs");
       const time = new Date(m.created_at).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-      div.innerHTML = `<div class="msg__meta">${mine ? "You" : m.username} · ${time}${mine ? ' <button class="msg__deleteBtn" title="Delete">🗑</button>' : ""}</div>${escapeHtml(m.body)}`;
-      if(mine){
+      div.innerHTML = `<div class="msg__meta">${mine ? "You" : m.username} · ${time}${canDelete ? ' <button class="msg__deleteBtn" title="Delete">🗑</button>' : ""}</div>${escapeHtml(m.body)}`;
+      if(canDelete){
         div.querySelector(".msg__deleteBtn").addEventListener("click", async (e)=>{
           e.stopPropagation();
           if(!confirm("Delete this message?")) return;
