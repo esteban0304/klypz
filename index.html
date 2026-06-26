@@ -43,6 +43,126 @@ body{
 }
 a{color:inherit;text-decoration:none;}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+
+/* ===================== STUDY MODE (default landing, white theme) ===================== */
+#studyMode{
+  --s-bg:#ffffff; --s-panel:#f6f7f9; --s-line:#e6e8ec; --s-text:#1c2230;
+  --s-muted:#6b7280; --s-accent:#2f6fed; --s-accent2:#19b37c;
+  background:var(--s-bg); color:var(--s-text); min-height:100vh;
+  font-family:'Inter',sans-serif;
+}
+.study__topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 40px; border-bottom:1px solid var(--s-line); background:#fff;
+  position:sticky; top:0; z-index:10;
+}
+.study__brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px;}
+.study__logoMark{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:36px; height:36px; border-radius:10px; background:var(--s-accent);
+  font-size:18px; color:#fff;
+}
+.study__nav{display:flex; gap:28px;}
+.study__nav a{font-size:14px; font-weight:600; color:var(--s-muted);}
+.study__nav a:hover{color:var(--s-accent);}
+.study__hero{
+  text-align:center; padding:80px 24px 60px; max-width:680px; margin:0 auto;
+}
+.study__eyebrow{
+  font-size:12px; font-weight:700; letter-spacing:2px; color:var(--s-accent2); margin:0 0 14px;
+}
+.study__heroTitle{
+  font-size:44px; font-weight:800; line-height:1.15; margin:0 0 18px; letter-spacing:-.5px;
+}
+.study__heroDesc{font-size:16px; color:var(--s-muted); margin:0; line-height:1.6;}
+.study__section{max-width:760px; margin:0 auto; padding:36px 24px;}
+.study__sectionTitle{font-size:20px; font-weight:800; margin:0 0 18px;}
+.study__timerCard, .study__taskCard{
+  background:var(--s-panel); border:1px solid var(--s-line); border-radius:18px; padding:32px;
+  text-align:center;
+}
+.study__timerDisplay{font-size:64px; font-weight:800; letter-spacing:1px; margin-bottom:20px; font-family:'JetBrains Mono',monospace;}
+.study__timerModes{display:flex; gap:10px; justify-content:center; margin-bottom:24px; flex-wrap:wrap;}
+.study__modeBtn{
+  padding:8px 16px; border-radius:999px; font-size:13px; font-weight:600;
+  background:#fff; border:1px solid var(--s-line); color:var(--s-muted);
+}
+.study__modeBtn.active{background:var(--s-accent); color:#fff; border-color:var(--s-accent);}
+.study__timerControls{display:flex; gap:12px; justify-content:center;}
+.study__btn{
+  padding:11px 24px; border-radius:999px; font-weight:700; font-size:14px;
+  background:#fff; border:1px solid var(--s-line); color:var(--s-text);
+}
+.study__btn--primary{background:var(--s-accent); color:#fff; border-color:var(--s-accent);}
+.study__taskForm{display:flex; gap:10px; margin-bottom:18px;}
+.study__taskForm input{
+  flex:1; padding:11px 16px; border-radius:10px; border:1px solid var(--s-line);
+  font-size:14px; font-family:inherit;
+}
+.study__taskList{list-style:none; margin:0; padding:0; text-align:left;}
+.study__taskList li{
+  display:flex; align-items:center; gap:10px; padding:10px 4px;
+  border-bottom:1px solid var(--s-line); font-size:14px;
+}
+.study__taskList li.done{color:var(--s-muted); text-decoration:line-through;}
+.study__taskList input[type="checkbox"]{width:18px; height:18px; flex-shrink:0;}
+.study__taskList .study__taskDelete{margin-left:auto; color:var(--s-muted); font-size:13px;}
+.study__tipCard{
+  background:var(--s-panel); border:1px solid var(--s-line); border-radius:18px;
+  padding:28px 32px; font-size:15px; line-height:1.6;
+}
+.study__resourceGrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:16px;}
+.study__resourceCard{
+  background:var(--s-panel); border:1px solid var(--s-line); border-radius:14px;
+  padding:24px 12px; text-align:center; font-size:13px; font-weight:600;
+}
+.study__resourceIcon{font-size:26px; margin-bottom:8px;}
+.study__footer{
+  text-align:center; padding:40px 24px; color:var(--s-muted); font-size:13px;
+  border-top:1px solid var(--s-line); margin-top:20px;
+}
+
+/* ===================== TRANSITION OVERLAY (coin flip + hexagon wave) ===================== */
+.transitionOverlay{
+  position:fixed; inset:0; z-index:5000; pointer-events:none;
+  display:none; perspective:1200px;
+}
+.transitionOverlay.active{display:block;}
+.coinLogo{
+  position:fixed; top:20px; right:20px; left:auto; width:64px; height:64px;
+  margin:0; border-radius:16px;
+  display:flex; align-items:center; justify-content:center; font-size:30px;
+  background:#2f6fed; color:#fff; z-index:5002;
+  transform-style:preserve-3d; opacity:0;
+}
+.coinLogo.flipping{
+  opacity:1;
+  animation:coinFlip 0.7s cubic-bezier(.45,.05,.55,.95) forwards;
+}
+@keyframes coinFlip{
+  0%{   transform:rotateY(0deg)    scale(1);    }
+  45%{  transform:rotateY(180deg)  scale(1.15) scaleX(0.06); }
+  50%{  transform:rotateY(180deg)  scale(1.15) scaleX(0.06); }
+  100%{ transform:rotateY(360deg)  scale(1);    }
+}
+.hexWave{
+  position:absolute; inset:0; z-index:5001; overflow:visible;
+}
+.hexCell{
+  position:absolute; width:var(--hw); height:var(--hh);
+  background:#ffffff;
+  clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  transform-style:preserve-3d;
+  backface-visibility:hidden;
+}
+.hexCell.flip{
+  animation:hexFlip .5s ease forwards;
+}
+@keyframes hexFlip{
+  0%{   transform:rotateY(0deg);   background:#ffffff; }
+  50%{  transform:rotateY(90deg);  background:#0c1326; }
+  100%{ transform:rotateY(0deg);   background:#060a14; }
+}
 ul{margin:0;padding:0;list-style:none;}
 input{font-family:inherit;}
 
@@ -778,7 +898,79 @@ html[data-theme="light"] .hero{
 </head>
 <body>
 
-<div class="appShell">
+<!-- ===================== STUDY MODE (default landing) ===================== -->
+<div id="studyMode">
+  <header class="study__topbar">
+    <div class="study__brand">
+      <span class="study__logoMark" id="studyLogo">📚</span>
+      <span class="study__brandName">StudyHub</span>
+    </div>
+    <nav class="study__nav">
+      <a href="#study-timer">Timer</a>
+      <a href="#study-tasks">Tasks</a>
+      <a href="#study-tips">Tips</a>
+      <a href="#study-resources">Resources</a>
+    </nav>
+  </header>
+
+  <section class="study__hero">
+    <p class="study__eyebrow">FOCUS · LEARN · GROW</p>
+    <h1 class="study__heroTitle">Your study session,<br>organized.</h1>
+    <p class="study__heroDesc">A simple focus timer, a task list, and a few good habits — that's most of what studying well actually takes.</p>
+  </section>
+
+  <section class="study__section" id="study-timer">
+    <h2 class="study__sectionTitle">⏱ Focus Timer</h2>
+    <div class="study__timerCard">
+      <div class="study__timerDisplay" id="studyTimerDisplay">25:00</div>
+      <div class="study__timerModes">
+        <button class="study__modeBtn active" data-mins="25">Focus 25</button>
+        <button class="study__modeBtn" data-mins="5">Break 5</button>
+        <button class="study__modeBtn" data-mins="15">Long Break 15</button>
+      </div>
+      <div class="study__timerControls">
+        <button class="study__btn study__btn--primary" id="studyTimerStart">Start</button>
+        <button class="study__btn" id="studyTimerReset">Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="study__section" id="study-tasks">
+    <h2 class="study__sectionTitle">✅ Tasks</h2>
+    <div class="study__taskCard">
+      <form class="study__taskForm" id="studyTaskForm">
+        <input type="text" id="studyTaskInput" placeholder="Add a task..." autocomplete="off">
+        <button type="submit" class="study__btn study__btn--primary">Add</button>
+      </form>
+      <ul class="study__taskList" id="studyTaskList"></ul>
+    </div>
+  </section>
+
+  <section class="study__section" id="study-tips">
+    <h2 class="study__sectionTitle">💡 Study Tip</h2>
+    <div class="study__tipCard" id="studyTipCard">Loading a tip…</div>
+  </section>
+
+  <section class="study__section" id="study-resources">
+    <h2 class="study__sectionTitle">📂 Resources</h2>
+    <div class="study__resourceGrid">
+      <div class="study__resourceCard"><div class="study__resourceIcon">🗂</div><p>Note Organization</p></div>
+      <div class="study__resourceCard"><div class="study__resourceIcon">🧠</div><p>Active Recall</p></div>
+      <div class="study__resourceCard"><div class="study__resourceIcon">🔁</div><p>Spaced Repetition</p></div>
+      <div class="study__resourceCard"><div class="study__resourceIcon">🗣</div><p>Practice Explaining</p></div>
+    </div>
+  </section>
+
+  <footer class="study__footer">StudyHub — built for focused, steady progress.</footer>
+</div>
+
+<!-- ===================== TRANSITION OVERLAY ===================== -->
+<div id="transitionOverlay" class="transitionOverlay">
+  <div class="coinLogo" id="coinLogo">📚</div>
+  <div class="hexWave" id="hexWave"></div>
+</div>
+
+<div class="appShell" id="klypMode" style="display:none;">
   <!-- ===== SECTION RAIL ===== -->
   <nav class="sectionRail">
     <button class="sectionRail__btn active" data-section="home" title="Home">🏠</button>
@@ -983,13 +1175,12 @@ html[data-theme="light"] .hero{
 
 <!-- ===== WEB VIEWER (limited iframe viewer, see README) ===== -->
 <div class="viewerOverlay" id="viewerOverlay">
-<!-- In the viewerOverlay HTML (add the proxy toggle button) -->
-<div class="viewerOverlay__bar">
-  <button id="viewerBack" title="Back">←</button>
-  <input id="viewerUrl" type="text" placeholder="https://example.com" />
-  <button id="viewerGo">Go</button>
-  <button id="viewerClose">✕</button>
-</div>
+  <div class="viewerOverlay__bar">
+    <button id="viewerBack" title="Back">←</button>
+    <input id="viewerUrl" type="text" placeholder="https://example.com" />
+    <button id="viewerGo">Go</button>
+    <button id="viewerClose">✕</button>
+  </div>
   <div class="viewerOverlay__notice" id="viewerNotice"></div>
   <iframe id="viewerFrame" class="viewerOverlay__frame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
 </div>
@@ -1780,9 +1971,9 @@ const GAMES = [
     embedUrl:"https://iDev.Games/embed/rayifox",
     img:"https://idev.games/cachedImages/319/97724.jpg",
     embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/rayifox" },
-  { id:"idev-apple-a-day", title:"Apple a Day", cat:"arcade", emoji:"🍎", badge:null,
-    embedUrl:"https://iDev.Games/embed/apple-a-day",
-    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/apple-a-day" },
+  { id:"idev-the-apple", title:"The Apple", cat:"arcade", emoji:"🍎", badge:null,
+    embedUrl:"https://iDev.Games/embed/the-apple",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/the-apple" },
   { id:"idev-angry-car", title:"Angry Car", cat:"action", emoji:"🚗", badge:null,
     embedUrl:"https://iDev.Games/embed/angry-car",
     embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/angry-car" },
@@ -2558,74 +2749,40 @@ ENGINES.breakout = function(stage){
     toastTimer = setTimeout(()=>{ el.style.transition="opacity .4s"; el.style.opacity="0"; }, 2600);
   }
 
-  /* ---------------- WEB VIEWER ---------------- */
-const viewerOverlay = document.getElementById("viewerOverlay");
-const viewerFrame   = document.getElementById("viewerFrame");
-const viewerUrl     = document.getElementById("viewerUrl");
-const viewerNotice  = document.getElementById("viewerNotice");
+  /* ---------------- WEB VIEWER ----------------
+     Limited, same-origin-friendly iframe viewer.
+     This is NOT a circumvention proxy: sites that block framing
+     (X-Frame-Options / CSP frame-ancestors) will refuse to load here,
+     exactly as they should. See README for details.
+  ------------------------------------------------- */
+  const viewerOverlay = document.getElementById("viewerOverlay");
+  const viewerFrame = document.getElementById("viewerFrame");
+  const viewerUrl = document.getElementById("viewerUrl");
+  const viewerNotice = document.getElementById("viewerNotice");
 
-// Cloudflare Worker relay pool — add more worker URLs here as fallbacks.
-// Each is a self-hosted Worker (worker.js in this repo) deployed on a
-// separate Cloudflare account. On a 502 the viewer auto-rotates to the next.
-const PROXY_RELAYS = [
-  url => `https://divine-haze-f254.frenchgamer3000.workers.dev/?url=${encodeURIComponent(url)}`,
-];
-let currentRelayIndex = 0;
-
-function normalizeUrl(val) {
-  val = val.trim();
-  if (!val) return null;
-  if (!/^https?:\/\//i.test(val)) val = "https://" + val;
-  return val;
-}
-
-function getProxiedUrl(targetUrl) {
-  const relay = PROXY_RELAYS[currentRelayIndex % PROXY_RELAYS.length];
-  return relay(targetUrl);
-}
-
-function openViewer() {
-  viewerOverlay.classList.add("open");
-  viewerNotice.innerHTML =
-    `🛡️ <strong>Proxy active</strong> — browsing via Cloudflare Worker. ` +
-    `Most sites load fine. If a page fails, ` +
-    `<a href="#" id="switchRelayLink" style="color:var(--cyan);">try another relay</a>.`;
-
-  // Wire up the inline "try another relay" link each time the viewer opens
-  requestAnimationFrame(() => {
-    const link = document.getElementById("switchRelayLink");
-    if (link) link.addEventListener("click", e => {
-      e.preventDefault();
-      currentRelayIndex++;
-      const u = normalizeUrl(viewerUrl.value);
-      if (u) { viewerFrame.src = getProxiedUrl(u); toast("Switched relay — reloading…"); }
-    });
+  function openViewer(){
+    viewerOverlay.classList.add("open");
+    viewerNotice.textContent = "Heads up: many sites block embedding (X-Frame-Options/CSP) and won't load here — that's the site's own security setting, not a bug.";
+  }
+  function loadUrl(){
+    let val = viewerUrl.value.trim();
+    if(!val) return;
+    if(!/^https?:\/\//i.test(val)) val = "https://" + val;
+    viewerFrame.src = val;
+  }
+  document.querySelectorAll('[data-route="browser"]').forEach(btn=>{
+    btn.addEventListener("click", openViewer);
   });
-}
+  document.getElementById("viewerGo").addEventListener("click", loadUrl);
+  viewerUrl.addEventListener("keydown", (e)=>{ if(e.key==="Enter") loadUrl(); });
+  document.getElementById("viewerBack").addEventListener("click", ()=>{
+    try{ viewerFrame.contentWindow.history.back(); }catch(_e){ /* cross-origin: ignored */ }
+  });
+  document.getElementById("viewerClose").addEventListener("click", ()=>{
+    viewerOverlay.classList.remove("open");
+    viewerFrame.src = "about:blank";
+  });
 
-function loadUrl() {
-  const targetUrl = normalizeUrl(viewerUrl.value);
-  if (!targetUrl) return;
-  const proxied = getProxiedUrl(targetUrl);
-  viewerFrame.src = proxied;
-  toast("Loading via proxy…");
-}
-
-document.querySelectorAll('[data-route="browser"]').forEach(btn => {
-  btn.addEventListener("click", openViewer);
-});
-
-document.getElementById("viewerGo").addEventListener("click", loadUrl);
-viewerUrl.addEventListener("keydown", e => { if (e.key === "Enter") loadUrl(); });
-
-document.getElementById("viewerBack").addEventListener("click", () => {
-  try { viewerFrame.contentWindow.history.back(); } catch (_) {}
-});
-
-document.getElementById("viewerClose").addEventListener("click", () => {
-  viewerOverlay.classList.remove("open");
-  viewerFrame.src = "about:blank";
-});
   /* ===================== STORAGE HELPERS ===================== */
   // window.storage is a Claude-artifact-preview-only API — it does NOT
   // exist once this file is downloaded and opened/hosted on its own.
@@ -3133,11 +3290,47 @@ document.getElementById("viewerClose").addEventListener("click", () => {
     { id:"uSMGENDH_QI", title:"Cosmic Dawn — NASA+ Original Documentary", tags:["documentary","space"] },
   ];
 
-  function renderVideosGrid(){
+  let renderedVideoEntries = []; // { el, video } — tracked so the grid can be re-sorted later
+
+  async function getLongVideoPrefs(){
+    const stored = await storeGet("longVideoPrefs", false, null);
+    return { tagCounts: (stored && stored.tagCounts) || {} };
+  }
+  async function saveLongVideoPrefs(prefs){ return storeSet("longVideoPrefs", prefs, false); }
+  function scoreLongVideo(v, prefs){
+    let score = 0;
+    v.tags.forEach(t=> score += (prefs.tagCounts[t] || 0));
+    // Jitter is intentionally large relative to early preference weights —
+    // with no viewing history yet, this makes the order look genuinely
+    // random; as tags accumulate weight from what you actually watch, they
+    // gradually start winning out over the randomness instead of needing a
+    // separate "first load is random, then personalize" special case.
+    return score + Math.random() * 3;
+  }
+  async function recordLongVideoView(v){
+    const prefs = await getLongVideoPrefs();
+    v.tags.forEach(t=> prefs.tagCounts[t] = (prefs.tagCounts[t]||0) + 3);
+    await saveLongVideoPrefs(prefs);
+  }
+  async function reorderVideoGrid(){
+    const prefs = await getLongVideoPrefs();
+    const sorted = renderedVideoEntries.slice()
+      .sort((a,b)=> scoreLongVideo(b.video, prefs) - scoreLongVideo(a.video, prefs));
+    const grid = document.getElementById("videosGrid");
+    const btn = document.getElementById("loadMoreVideosBtn");
+    sorted.forEach(entry=>{
+      if(btn) grid.insertBefore(entry.el, btn);
+      else grid.appendChild(entry.el);
+    });
+  }
+
+  async function renderVideosGrid(){
     const grid = document.getElementById("videosGrid");
     grid.innerHTML = "";
+    renderedVideoEntries = [];
     VIDEOS_LONG.forEach(v=> appendVideoCard(v));
     renderLoadMoreVideosButton();
+    await reorderVideoGrid(); // personalized order — looks random until you've watched a few
   }
 
   function appendVideoCard(v){
@@ -3159,6 +3352,7 @@ document.getElementById("viewerClose").addEventListener("click", () => {
     const existingBtn = document.getElementById("loadMoreVideosBtn");
     if(existingBtn) grid.insertBefore(card, existingBtn);
     else grid.appendChild(card);
+    renderedVideoEntries.push({ el: card, video: v });
   }
 
   /* ----- Long Videos live search (>60 seconds, reuses the shared
@@ -3233,6 +3427,7 @@ document.getElementById("viewerClose").addEventListener("click", () => {
       // if something throws unexpectedly.
       document.getElementById("loadMoreVideosBtn")?.remove();
       renderLoadMoreVideosButton();
+      await reorderVideoGrid(); // newly-added videos are all from one query/topic — re-sort so they don't show up as a visible cluster
       longVideoLoadInProgress = false;
     }
     if(added === 0){
@@ -3245,6 +3440,7 @@ document.getElementById("viewerClose").addEventListener("click", () => {
     document.getElementById("videoPlayerBox").innerHTML =
       `<iframe src="https://www.youtube.com/embed/${video.id}?autoplay=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
     document.getElementById("videoPlayerOverlay").classList.add("open");
+    recordLongVideoView(video);
   }
   document.getElementById("videoPlayerClose").addEventListener("click", ()=>{
     document.getElementById("videoPlayerOverlay").classList.remove("open");
@@ -3959,6 +4155,201 @@ document.getElementById("viewerClose").addEventListener("click", () => {
     const dir = (e.key === "ArrowDown" || e.key === "ArrowRight") ? 1 : -1;
     const target = items[currentIdx + dir];
     if(target) target.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+
+  /* ===================== STUDY MODE FEATURES ===================== */
+  // Pomodoro-style timer
+  let studyTimerSeconds = 25*60, studyTimerInterval = null, studyTimerRunning = false;
+  function studyFormatTime(s){
+    const m = Math.floor(s/60), sec = s%60;
+    return `${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+  }
+  function studyUpdateDisplay(){
+    const el = document.getElementById("studyTimerDisplay");
+    if(el) el.textContent = studyFormatTime(studyTimerSeconds);
+  }
+  document.querySelectorAll(".study__modeBtn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".study__modeBtn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      studyTimerSeconds = parseInt(btn.dataset.mins,10)*60;
+      studyUpdateDisplay();
+      if(studyTimerRunning){ clearInterval(studyTimerInterval); studyTimerRunning=false;
+        document.getElementById("studyTimerStart").textContent = "Start"; }
+    });
+  });
+  document.getElementById("studyTimerStart")?.addEventListener("click", (e)=>{
+    if(studyTimerRunning){
+      clearInterval(studyTimerInterval); studyTimerRunning = false; e.target.textContent = "Start";
+      return;
+    }
+    studyTimerRunning = true; e.target.textContent = "Pause";
+    studyTimerInterval = setInterval(()=>{
+      studyTimerSeconds--;
+      if(studyTimerSeconds <= 0){
+        clearInterval(studyTimerInterval); studyTimerRunning = false;
+        document.getElementById("studyTimerStart").textContent = "Start";
+        studyTimerSeconds = 0;
+      }
+      studyUpdateDisplay();
+    }, 1000);
+  });
+  document.getElementById("studyTimerReset")?.addEventListener("click", ()=>{
+    clearInterval(studyTimerInterval); studyTimerRunning = false;
+    document.getElementById("studyTimerStart").textContent = "Start";
+    const activeBtn = document.querySelector(".study__modeBtn.active");
+    studyTimerSeconds = activeBtn ? parseInt(activeBtn.dataset.mins,10)*60 : 25*60;
+    studyUpdateDisplay();
+  });
+
+  // Task list, persisted locally
+  async function getStudyTasks(){ return storeGet("studyTasks", false, []); }
+  async function saveStudyTasks(tasks){ return storeSet("studyTasks", tasks, false); }
+  async function renderStudyTasks(){
+    const tasks = await getStudyTasks();
+    const list = document.getElementById("studyTaskList");
+    if(!list) return;
+    list.innerHTML = "";
+    tasks.forEach((t, i)=>{
+      const li = document.createElement("li");
+      if(t.done) li.classList.add("done");
+      li.innerHTML = `<input type="checkbox" ${t.done?"checked":""}> <span>${t.text}</span> <span class="study__taskDelete">✕</span>`;
+      li.querySelector('input[type="checkbox"]').addEventListener("change", async ()=>{
+        tasks[i].done = !tasks[i].done; await saveStudyTasks(tasks); renderStudyTasks();
+      });
+      li.querySelector(".study__taskDelete").addEventListener("click", async ()=>{
+        tasks.splice(i,1); await saveStudyTasks(tasks); renderStudyTasks();
+      });
+      list.appendChild(li);
+    });
+  }
+  document.getElementById("studyTaskForm")?.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const input = document.getElementById("studyTaskInput");
+    const text = input.value.trim();
+    if(!text) return;
+    const tasks = await getStudyTasks();
+    tasks.push({ text, done:false });
+    await saveStudyTasks(tasks);
+    input.value = "";
+    renderStudyTasks();
+  });
+  renderStudyTasks();
+
+  // Original study tips (written for this site, not quoted from anywhere)
+  const STUDY_TIPS = [
+    "Studying in short, focused blocks with real breaks works better than one long unbroken session.",
+    "Testing yourself on material — even badly — teaches you more than re-reading it ever will.",
+    "Explaining a topic out loud, as if teaching it to someone else, exposes the gaps in your understanding fast.",
+    "Spreading review sessions out over several days beats cramming the night before, even with the same total time.",
+    "Writing things down by hand tends to stick better than typing them, especially for first-pass notes.",
+    "A specific, smaller goal for a session ('finish these 10 problems') works better than a vague one ('study math').",
+  ];
+  function renderStudyTip(){
+    const el = document.getElementById("studyTipCard");
+    if(el) el.textContent = STUDY_TIPS[Math.floor(Math.random()*STUDY_TIPS.length)];
+  }
+  renderStudyTip();
+
+  /* ===================== SECRET TRANSITION: STUDY → KLYP ===================== */
+  const KLYP_SEQUENCE = ["k","l","y","p"];
+  let klypSequenceProgress = 0;
+  let equalsPressCount = 0;
+  document.addEventListener("keydown", (e)=>{
+    const inKlypMode = document.getElementById("studyMode").style.display === "none";
+
+    if(inKlypMode){
+      // Press "=" twice to switch back to Study mode — instantly, no animation.
+      if(e.key === "="){
+        equalsPressCount++;
+        if(equalsPressCount >= 2){
+          equalsPressCount = 0;
+          document.getElementById("klypMode").style.display = "none";
+          document.getElementById("studyMode").style.display = "";
+        }
+      } else {
+        equalsPressCount = 0;
+      }
+      return;
+    }
+
+    const key = e.key.toLowerCase();
+    if(key === KLYP_SEQUENCE[klypSequenceProgress]){
+      klypSequenceProgress++;
+      if(klypSequenceProgress === KLYP_SEQUENCE.length){
+        klypSequenceProgress = 0;
+        triggerKlypTransition();
+      }
+    } else {
+      klypSequenceProgress = (key === KLYP_SEQUENCE[0]) ? 1 : 0;
+    }
+  });
+
+  function buildHexWave(onDone){
+    const wave = document.getElementById("hexWave");
+    wave.innerHTML = "";
+    const hexW = 70, hexH = 80;
+    const colSpacing = hexW * 0.75;
+    // Start one full column/row BEFORE the edge (negative offset) and add
+    // extra columns/rows on top of the viewport size — this is what makes
+    // hexagons genuinely get cut off by the screen edge on all four sides,
+    // instead of leaving a gap where a partial hexagon would otherwise be.
+    const cols = Math.ceil(window.innerWidth / colSpacing) + 4;
+    const rows = Math.ceil(window.innerHeight / hexH) + 4;
+    const startCol = -2, startRow = -2;
+    document.documentElement.style.setProperty("--hw", hexW + "px");
+    document.documentElement.style.setProperty("--hh", hexH + "px");
+
+    const cells = [];
+    for(let col = startCol; col < cols; col++){
+      for(let row = startRow; row < rows; row++){
+        const cell = document.createElement("div");
+        cell.className = "hexCell";
+        const x = col * colSpacing;
+        const y = row * hexH + (((col % 2) + 2) % 2 === 1 ? hexH/2 : 0);
+        cell.style.left = x + "px";
+        cell.style.top = y + "px";
+        wave.appendChild(cell);
+        cells.push({ el: cell, diag: (row - startRow) + (col - startCol) });
+      }
+    }
+    const maxDiag = Math.max(...cells.map(c=>c.diag)) || 1;
+    const totalWaveMs = 900;
+    cells.forEach(c=>{
+      const delay = (c.diag / maxDiag) * totalWaveMs;
+      c.el.style.animationDelay = delay + "ms";
+      setTimeout(()=> c.el.classList.add("flip"), 10);
+    });
+    setTimeout(onDone, totalWaveMs + 550);
+  }
+
+  function triggerKlypTransition(){
+    const overlay = document.getElementById("transitionOverlay");
+    const coin = document.getElementById("coinLogo");
+    overlay.classList.add("active");
+    coin.classList.add("flipping");
+
+    setTimeout(()=>{
+      // Mid-flip is the natural moment to swap the coin's icon, since the
+      // coin is edge-on (effectively invisible) right at this instant.
+      coin.textContent = "🎮";
+    }, 320);
+
+    setTimeout(()=>{
+      buildHexWave(()=>{
+        // Swap the actual page content once the hex wave has visually
+        // covered the screen — by the time it's mid-animation the viewer
+        // is looking at the hex overlay, not the page underneath, so this
+        // swap is invisible.
+        document.getElementById("studyMode").style.display = "none";
+        document.getElementById("klypMode").style.display = "";
+        renderGrid();
+        setTimeout(()=>{
+          overlay.classList.remove("active");
+          coin.classList.remove("flipping");
+        }, 200);
+      });
+    }, 700);
   }
 
   /* ===================== INIT ===================== */
