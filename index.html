@@ -4258,14 +4258,19 @@ ENGINES.breakout = function(stage){
 
   /* ===================== SECRET TRANSITION: STUDY → KLYP ===================== */
   const KLYP_SEQUENCE = ["k","l","y","p"];
+  const SEQUENCE_MAX_GAP_MS = 1200; // too long a pause between keys resets progress
   let klypSequenceProgress = 0;
   let equalsPressCount = 0;
+  let lastSequenceKeyTime = 0;
   document.addEventListener("keydown", (e)=>{
     const inKlypMode = document.getElementById("studyMode").style.display === "none";
+    const now = Date.now();
 
     if(inKlypMode){
       // Press "=" twice to switch back to Study mode — instantly, no animation.
       if(e.key === "="){
+        if(now - lastSequenceKeyTime > SEQUENCE_MAX_GAP_MS) equalsPressCount = 0;
+        lastSequenceKeyTime = now;
         equalsPressCount++;
         if(equalsPressCount >= 2){
           equalsPressCount = 0;
@@ -4279,7 +4284,11 @@ ENGINES.breakout = function(stage){
     }
 
     const key = e.key.toLowerCase();
+    if(klypSequenceProgress > 0 && now - lastSequenceKeyTime > SEQUENCE_MAX_GAP_MS){
+      klypSequenceProgress = 0; // took too long between keys — start over
+    }
     if(key === KLYP_SEQUENCE[klypSequenceProgress]){
+      lastSequenceKeyTime = now;
       klypSequenceProgress++;
       if(klypSequenceProgress === KLYP_SEQUENCE.length){
         klypSequenceProgress = 0;
@@ -4287,14 +4296,30 @@ ENGINES.breakout = function(stage){
       }
     } else {
       klypSequenceProgress = (key === KLYP_SEQUENCE[0]) ? 1 : 0;
+      if(klypSequenceProgress === 1) lastSequenceKeyTime = now;
     }
   });
+
+  function cropCanvasToDataUrl(sourceCanvas, x, y, w, h){
+    const small = document.createElement("canvas");
+    small.width = w; small.height = h;
+    const ctx = small.getContext("2d");
+    ctx.drawImage(sourceCanvas, x, y, w, h, 0, 0, w, h);
+    return small.toDataURL();
+  }
 
   async function buildHexWaveWithScreenshots(onDone){
     const wave = document.getElementById("hexWave");
     wave.innerHTML = "";
     const vw = window.innerWidth, vh = window.innerHeight;
-    const hexW = 70, hexH = 80;
+    // Bigger hexagons = far fewer cells to animate at once — this and the
+    // per-hex image cropping below are what actually fix the lag. The
+    // previous version gave every single cell (200+) its own FULL
+    // viewport-sized background image and let CSS background-position
+    // crop it down — meaning the browser was decoding/compositing 200+
+    // full-screen-sized images simultaneously. Each hex now gets one tiny
+    // pre-cropped image instead, which is dramatically cheaper.
+    const hexW = 110, hexH = 125;
     const colSpacing = hexW * 0.75;
     const cols = Math.ceil(vw / colSpacing) + 4;
     const rows = Math.ceil(vh / hexH) + 4;
@@ -4304,17 +4329,17 @@ ENGINES.breakout = function(stage){
 
     // Capture the study page first, while it's still the only thing
     // visible — this becomes every hex's front face.
-    let studyUrl = null;
+    let studyCanvas = null;
     try{
-      const studyCanvas = await html2canvas(document.getElementById("studyMode"), {
+      studyCanvas = await html2canvas(document.getElementById("studyMode"), {
         useCORS:true, allowTaint:false, backgroundColor:"#ffffff", width:vw, height:vh, scale:1,
       });
-      studyUrl = studyCanvas.toDataURL();
     }catch(e){ console.error("study capture failed:", e); }
 
-    // Build all the hex cells now, fronts showing the study capture — this
-    // is the moment the overlay actually appears, and since the front face
-    // IS the real study page, nothing visually changes yet.
+    // Build all the hex cells now, each front face a small pre-cropped
+    // slice of the study capture — this is the moment the overlay
+    // actually appears, and since the front face IS the real study page,
+    // nothing visually changes yet.
     const cells = [];
     for(let col = startCol; col < cols; col++){
       for(let row = startRow; row < rows; row++){
@@ -4325,39 +4350,45 @@ ENGINES.breakout = function(stage){
         cell.style.left = x + "px";
         cell.style.top = y + "px";
         cell.innerHTML = `<div class="hexInner"><div class="hexFace hexFront"></div><div class="hexFace hexBack"></div></div>`;
-        const front = cell.querySelector(".hexFront");
-        if(studyUrl){
-          front.style.backgroundImage = `url(${studyUrl})`;
-          front.style.backgroundSize = `${vw}px ${vh}px`;
-          front.style.backgroundPosition = `${-x}px ${-y}px`;
+        if(studyCanvas){
+          const front = cell.querySelector(".hexFront");
+          front.style.backgroundImage = `url(${cropCanvasToDataUrl(studyCanvas, x, y, hexW, hexH)})`;
+          front.style.backgroundSize = "cover";
         }
         wave.appendChild(cell);
         cells.push({ el: cell, x, y, diag: (row - startRow) + (col - startCol) });
       }
     }
 
+    // Force the browser to actually paint the hex overlay before doing
+    // anything else — without this wait, setting klypMode visible could
+    // happen before the overlay has fully rendered on screen, letting the
+    // real Klyp page flash through underneath for a frame or two. Double
+    // rAF reliably waits for one full paint cycle to complete.
+    await new Promise(resolve=>{
+      requestAnimationFrame(()=> requestAnimationFrame(resolve));
+    });
+
     // Now reveal Klyp behind the overlay (it's naturally hidden from view
     // since the hex fronts currently covering the screen still show the
     // study capture) and capture it the same way.
     document.getElementById("klypMode").style.display = "";
     renderGrid();
-    let klypUrl = null;
+    let klypCanvas = null;
     try{
-      const klypCanvas = await html2canvas(document.getElementById("klypMode"), {
+      klypCanvas = await html2canvas(document.getElementById("klypMode"), {
         useCORS:true, allowTaint:false, backgroundColor:"#060a14", width:vw, height:vh, scale:1,
       });
-      klypUrl = klypCanvas.toDataURL();
     }catch(e){ console.error("klyp capture failed:", e); }
     document.getElementById("studyMode").style.display = "none"; // real page swap, invisible — overlay still fully covers it
 
-    cells.forEach(c=>{
-      const back = c.el.querySelector(".hexBack");
-      if(klypUrl){
-        back.style.backgroundImage = `url(${klypUrl})`;
-        back.style.backgroundSize = `${vw}px ${vh}px`;
-        back.style.backgroundPosition = `${-c.x}px ${-c.y}px`;
-      }
-    });
+    if(klypCanvas){
+      cells.forEach(c=>{
+        const back = c.el.querySelector(".hexBack");
+        back.style.backgroundImage = `url(${cropCanvasToDataUrl(klypCanvas, c.x, c.y, hexW, hexH)})`;
+        back.style.backgroundSize = "cover";
+      });
+    }
 
     const maxDiag = Math.max(...cells.map(c=>c.diag)) || 1;
     const totalWaveMs = 900;
@@ -4365,6 +4396,12 @@ ENGINES.breakout = function(stage){
       const delay = (c.diag / maxDiag) * totalWaveMs;
       const inner = c.el.querySelector(".hexInner");
       inner.style.transitionDelay = delay + "ms";
+      // Once this hex finishes flipping, remove it entirely — by then the
+      // real Klyp page is already genuinely visible underneath (identical
+      // to what the back face shows), so there's nothing lost, and it
+      // means far fewer elements are still being composited as the wave
+      // finishes, instead of all 100+ sitting there fully flipped.
+      inner.addEventListener("transitionend", ()=> c.el.remove(), { once:true });
       setTimeout(()=> inner.classList.add("flip"), 10);
     });
     setTimeout(onDone, totalWaveMs + 600);
