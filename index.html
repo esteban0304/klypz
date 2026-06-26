@@ -988,7 +988,6 @@ html[data-theme="light"] .hero{
   <button id="viewerBack" title="Back">←</button>
   <input id="viewerUrl" type="text" placeholder="https://example.com" />
   <button id="viewerGo">Go</button>
-  <button id="proxyToggle" class="viewerProxyBtn" title="Toggle ProxyScrape Mode">🛡️ ProxyScrape OFF</button>
   <button id="viewerClose">✕</button>
 </div>
   <div class="viewerOverlay__notice" id="viewerNotice"></div>
@@ -2560,105 +2559,64 @@ ENGINES.breakout = function(stage){
   }
 
   /* ---------------- WEB VIEWER ---------------- */
-/* ===================== WEB VIEWER WITH FREE PROXIES ===================== */
-/* ===================== WEB VIEWER WITH PROXYSCRAPE ===================== */
 const viewerOverlay = document.getElementById("viewerOverlay");
-const viewerFrame = document.getElementById("viewerFrame");
-const viewerUrl = document.getElementById("viewerUrl");
-const viewerNotice = document.getElementById("viewerNotice");
-const proxyToggle = document.getElementById("proxyToggle");
+const viewerFrame   = document.getElementById("viewerFrame");
+const viewerUrl     = document.getElementById("viewerUrl");
+const viewerNotice  = document.getElementById("viewerNotice");
 
-let proxyEnabled = false;
-let proxyList = [];
+// Cloudflare Worker relay pool — add more worker URLs here as fallbacks.
+// Each is a self-hosted Worker (worker.js in this repo) deployed on a
+// separate Cloudflare account. On a 502 the viewer auto-rotates to the next.
+const PROXY_RELAYS = [
+  url => `https://divine-haze-f254.frenchgamer3000.workers.dev/?url=${encodeURIComponent(url)}`,
+];
+let currentRelayIndex = 0;
 
-async function loadProxySetting() {
-  proxyEnabled = await storeGet("proxyEnabled", false, false);
-  updateProxyUI();
-}
-
-function updateProxyUI() {
-  proxyToggle.textContent = proxyEnabled ? "🛡️ ProxyScrape ON" : "🛡️ ProxyScrape OFF";
-  proxyToggle.style.background = proxyEnabled ? "rgba(0,224,255,0.25)" : "";
-  proxyToggle.style.borderColor = proxyEnabled ? "var(--cyan)" : "var(--line)";
-}
-
-async function toggleProxy() {
-  proxyEnabled = !proxyEnabled;
-  await storeSet("proxyEnabled", proxyEnabled, false);
-  updateProxyUI();
-
-  if (proxyEnabled && proxyList.length === 0) {
-    toast("Fetching fresh proxies from ProxyScrape...");
-    await fetchProxyList();
-  }
-  toast(proxyEnabled ? "ProxyScrape mode ON — using fresh free proxies" : "Direct mode restored");
-}
-
-// Fetch fresh proxy list from ProxyScrape
-async function fetchProxyList() {
-  try {
-    const res = await fetch("https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text");
-    const text = await res.text();
-    const lines = text.trim().split('\n');
-    
-    proxyList = lines
-      .filter(line => line.includes('http://'))  // prefer http proxies
-      .map(line => line.trim().replace('http://', ''))
-      .filter(Boolean);
-    
-    console.log(`Loaded ${proxyList.length} proxies from ProxyScrape`);
-    if (proxyList.length > 0) toast(`Loaded ${proxyList.length} fresh proxies`);
-  } catch (e) {
-    console.error(e);
-    toast("⚠️ Failed to fetch ProxyScrape list. Using fallback proxies.");
-    proxyList = ["api.allorigins.win/raw?url="]; // fallback
-  }
+function normalizeUrl(val) {
+  val = val.trim();
+  if (!val) return null;
+  if (!/^https?:\/\//i.test(val)) val = "https://" + val;
+  return val;
 }
 
 function getProxiedUrl(targetUrl) {
-  if (!proxyEnabled) return targetUrl;
-
-  let url = targetUrl.trim();
-  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
-
-  if (proxyList.length === 0) {
-    return `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-  }
-
-  // Rotate through ProxyScrape proxies
-  const proxy = proxyList[Math.floor(Math.random() * proxyList.length)];
-  return `http://${proxy}/?url=${encodeURIComponent(url)}`;   // Common format many proxies accept
+  const relay = PROXY_RELAYS[currentRelayIndex % PROXY_RELAYS.length];
+  return relay(targetUrl);
 }
 
 function openViewer() {
   viewerOverlay.classList.add("open");
-  viewerNotice.innerHTML = `
-    <strong>ProxyScrape Mode</strong><br>
-    Uses fresh free proxies from ProxyScrape.<br>
-    Toggle ON if you see Apache/default page.
-  `;
-  loadProxySetting();
+  viewerNotice.innerHTML =
+    `🛡️ <strong>Proxy active</strong> — browsing via Cloudflare Worker. ` +
+    `Most sites load fine. If a page fails, ` +
+    `<a href="#" id="switchRelayLink" style="color:var(--cyan);">try another relay</a>.`;
+
+  // Wire up the inline "try another relay" link each time the viewer opens
+  requestAnimationFrame(() => {
+    const link = document.getElementById("switchRelayLink");
+    if (link) link.addEventListener("click", e => {
+      e.preventDefault();
+      currentRelayIndex++;
+      const u = normalizeUrl(viewerUrl.value);
+      if (u) { viewerFrame.src = getProxiedUrl(u); toast("Switched relay — reloading…"); }
+    });
+  });
 }
 
-async function loadUrl() {
-  let val = viewerUrl.value.trim();
-  if (!val) return;
-
-  const finalUrl = getProxiedUrl(val);
-  viewerFrame.src = finalUrl;
-
-  toast(proxyEnabled ? "Loading via ProxyScrape proxy..." : "Loading directly...");
+function loadUrl() {
+  const targetUrl = normalizeUrl(viewerUrl.value);
+  if (!targetUrl) return;
+  const proxied = getProxiedUrl(targetUrl);
+  viewerFrame.src = proxied;
+  toast("Loading via proxy…");
 }
 
-// Event listeners
 document.querySelectorAll('[data-route="browser"]').forEach(btn => {
   btn.addEventListener("click", openViewer);
 });
 
 document.getElementById("viewerGo").addEventListener("click", loadUrl);
 viewerUrl.addEventListener("keydown", e => { if (e.key === "Enter") loadUrl(); });
-
-proxyToggle.addEventListener("click", toggleProxy);
 
 document.getElementById("viewerBack").addEventListener("click", () => {
   try { viewerFrame.contentWindow.history.back(); } catch (_) {}
