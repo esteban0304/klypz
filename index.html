@@ -2926,22 +2926,36 @@ ENGINES.breakout = function(stage){
 
   /* ===================== LEADERBOARD ===================== */
   async function updateLeaderboardEntry(){
-    const board = await storeGet("leaderboard_v1", true, {});
-    board[profile.username] = { xp: profile.xp, level: profile.level, updated: Date.now() };
-    await storeSet("leaderboard_v1", board, true);
+    if(!supabaseClient) return;
+    const { error } = await supabaseClient.from("leaderboard").upsert({
+      username: profile.username,
+      xp: profile.xp,
+      level: profile.level,
+      updated_at: new Date().toISOString(),
+    });
+    if(error) console.error("leaderboard upsert failed:", error);
   }
   async function renderLeaderboard(){
-    const board = await storeGet("leaderboard_v1", true, {});
-    const rows = Object.entries(board)
-      .map(([name, v])=>({ name, ...v }))
-      .sort((a,b)=>b.xp-a.xp)
-      .slice(0,20);
     const list = document.getElementById("leaderboardList");
-    list.innerHTML = rows.length ? "" : `<li style="color:var(--muted)">No players yet — be the first!</li>`;
-    rows.forEach((r,i)=>{
+    if(!supabaseClient){
+      list.innerHTML = `<li style="color:var(--muted)">Leaderboard backend not configured.</li>`;
+      return;
+    }
+    const { data, error } = await supabaseClient
+      .from("leaderboard")
+      .select("*")
+      .order("xp", { ascending:false })
+      .limit(20);
+    if(error){
+      console.error("renderLeaderboard failed:", error);
+      list.innerHTML = `<li style="color:var(--muted)">Couldn't load leaderboard: ${error.message}</li>`;
+      return;
+    }
+    list.innerHTML = data.length ? "" : `<li style="color:var(--muted)">No players yet — be the first!</li>`;
+    data.forEach((r,i)=>{
       const li = document.createElement("li");
-      if(r.name === profile.username) li.classList.add("me");
-      li.innerHTML = `<span class="rank">#${i+1}</span><span class="lbName">${r.name}</span><span class="lbXp">Lv ${r.level} · ${r.xp} XP</span>`;
+      if(r.username === profile.username) li.classList.add("me");
+      li.innerHTML = `<span class="rank">#${i+1}</span><span class="lbName">${r.username}</span><span class="lbXp">Lv ${r.level} · ${r.xp} XP</span>`;
       list.appendChild(li);
     });
   }
