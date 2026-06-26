@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Klyp — Games, Chat & Shorts</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://www.youtube.com">
 <link rel="preconnect" href="https://i.ytimg.com">
@@ -1115,11 +1116,16 @@ function showErrorBanner(text){
 }
 
 const GAMES = [
-  { id:"snake",    title:"Neon Snake",      cat:"arcade",   emoji:"🐍", badge:"HOT",  engine:"snake" },
-  { id:"2048",     title:"2048 Drift",      cat:"puzzle",   emoji:"🔢", badge:"NEW",  engine:"twozerofoureight" },
-  { id:"memory",   title:"Glow Memory",     cat:"puzzle",   emoji:"🧠", badge:null,   engine:"memory" },
-  { id:"reaction", title:"Reflex Tap",      cat:"action",   emoji:"⚡", badge:"HOT",  engine:"reaction" },
-  { id:"breakout", title:"Block Breaker",   cat:"arcade",   emoji:"🧱", badge:null,   engine:"breakout" },
+  { id:"snake",    title:"Neon Snake",      cat:"arcade",   emoji:"🐍", badge:"HOT",  engine:"snake",
+    img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMjAwIj4KPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMwNDA3MGYiLz4KPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjMwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMwYzEzMjYiLz4KPGcgZmlsbD0iIzJmN2JmZiI+CjxyZWN0IHg9IjQwIiB5PSIxMDAiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIvPgo8cmVjdCB4PSI1OCIgeT0iMTAwIiB3aWR0aD0iMTgiIGhlaWdodD0iMTgiLz4KPHJlY3QgeD0iNzYiIHk9IjEwMCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4Ii8+CjxyZWN0IHg9Ijk0IiB5PSI4MiIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4Ii8+CjxyZWN0IHg9Ijk0IiB5PSI2NCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjE4Ii8+CjxyZWN0IHg9IjExMiIgeT0iNjQiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIvPgo8L2c+CjxyZWN0IHg9IjExMiIgeT0iNjQiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgZmlsbD0iIzAwZTBmZiIvPgo8cmVjdCB4PSIyMDAiIHk9IjEyMCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjZmYzZDc3Ii8+Cjwvc3ZnPg==" },
+  { id:"2048",     title:"2048 Drift",      cat:"puzzle",   emoji:"🔢", badge:"NEW",  engine:"twozerofoureight",
+    img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMjAwIj4KPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMwYzEzMjYiLz4KPGcgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSJib2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4KPHJlY3QgeD0iNDAiIHk9IjMwIiB3aWR0aD0iNzAiIGhlaWdodD0iNjUiIHJ4PSI2IiBmaWxsPSIjMTExOTNhIi8+Cjx0ZXh0IHg9Ijc1IiB5PSI3MCIgZm9udC1zaXplPSIyMiIgZmlsbD0iIzdjODlhZCI+MjwvdGV4dD4KPHJlY3QgeD0iMTE4IiB5PSIzMCIgd2lkdGg9IjcwIiBoZWlnaHQ9IjY1IiByeD0iNiIgZmlsbD0iIzJmN2JmZiIvPgo8dGV4dCB4PSIxNTMiIHk9IjcwIiBmb250LXNpemU9IjIyIiBmaWxsPSIjMDQwNzBmIj44PC90ZXh0Pgo8cmVjdCB4PSIxOTYiIHk9IjMwIiB3aWR0aD0iNzAiIGhlaWdodD0iNjUiIHJ4PSI2IiBmaWxsPSIjMDBlMGZmIi8+Cjx0ZXh0IHg9IjIzMSIgeT0iNzAiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiMwNDA3MGYiPjE2PC90ZXh0Pgo8cmVjdCB4PSI0MCIgeT0iMTAzIiB3aWR0aD0iNzAiIGhlaWdodD0iNjUiIHJ4PSI2IiBmaWxsPSIjZmYzZDc3Ii8+Cjx0ZXh0IHg9Ijc1IiB5PSIxNDMiIGZvbnQtc2l6ZT0iMTgiIGZpbGw9IiNmZmYiPjY0PC90ZXh0Pgo8cmVjdCB4PSIxMTgiIHk9IjEwMyIgd2lkdGg9IjcwIiBoZWlnaHQ9IjY1IiByeD0iNiIgZmlsbD0iIzE2MjA0YSIvPgo8dGV4dCB4PSIxNTMiIHk9IjE0MyIgZm9udC1zaXplPSIyMiIgZmlsbD0iIzdjODlhZCI+NDwvdGV4dD4KPHJlY3QgeD0iMTk2IiB5PSIxMDMiIHdpZHRoPSI3MCIgaGVpZ2h0PSI2NSIgcng9IjYiIGZpbGw9IiNmZmQ5M2QiLz4KPHRleHQgeD0iMjMxIiB5PSIxNDMiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMwNDA3MGYiPjEyODwvdGV4dD4KPC9nPgo8L3N2Zz4=" },
+  { id:"memory",   title:"Glow Memory",     cat:"puzzle",   emoji:"🧠", badge:null,   engine:"memory",
+    img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMjAwIj4KPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMwYzEzMjYiLz4KPGc+CjxyZWN0IHg9IjMwIiB5PSIzNSIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiByeD0iOCIgZmlsbD0iIzExMTkzYSIgc3Ryb2tlPSIjMWMyNzUwIi8+CjxyZWN0IHg9IjEwMCIgeT0iMzUiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcng9IjgiIGZpbGw9IiMxMTE5M2EiIHN0cm9rZT0iIzFjMjc1MCIvPgo8cmVjdCB4PSIxNzAiIHk9IjM1IiB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHJ4PSI4IiBmaWxsPSIjMTExOTNhIiBzdHJva2U9IiMxYzI3NTAiLz4KPHJlY3QgeD0iMzAiIHk9IjEwNSIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiByeD0iOCIgZmlsbD0iIzJmN2JmZiIgc3Ryb2tlPSIjMDBlMGZmIi8+CjxyZWN0IHg9IjEwMCIgeT0iMTA1IiB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHJ4PSI4IiBmaWxsPSIjMmY3YmZmIiBzdHJva2U9IiMwMGUwZmYiLz4KPHJlY3QgeD0iMTcwIiB5PSIxMDUiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcng9IjgiIGZpbGw9IiMxMTE5M2EiIHN0cm9rZT0iIzFjMjc1MCIvPgo8L2c+Cjx0ZXh0IHg9IjEzMCIgeT0iMTQ4IiBmb250LXNpemU9IjMwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn5qAPC90ZXh0Pgo8dGV4dCB4PSI2MCIgeT0iMTQ4IiBmb250LXNpemU9IjMwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn5qAPC90ZXh0Pgo8dGV4dCB4PSIyMDAiIHk9Ijc1IiBmb250LXNpemU9IjI2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjN2M4OWFkIj4/PC90ZXh0Pgo8L3N2Zz4=" },
+  { id:"reaction", title:"Reflex Tap",      cat:"action",   emoji:"⚡", badge:"HOT",  engine:"reaction",
+    img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMjAwIj4KPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMwYzEzMjYiLz4KPGNpcmNsZSBjeD0iMTUwIiBjeT0iMTAwIiByPSI2NSIgZmlsbD0iIzAwZTBmZiIvPgo8dGV4dCB4PSIxNTAiIHk9IjExMCIgZm9udC1zaXplPSI0OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzA0MDcwZiI+4pqhPC90ZXh0Pgo8L3N2Zz4=" },
+  { id:"breakout", title:"Block Breaker",   cat:"arcade",   emoji:"🧱", badge:null,   engine:"breakout",
+    img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMjAwIj4KPHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMwNDA3MGYiLz4KPGcgZmlsbD0iIzJmN2JmZiI+CjxyZWN0IHg9IjIwIiB5PSIyMCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjE0Ii8+PHJlY3QgeD0iNjAiIHk9IjIwIiB3aWR0aD0iMzYiIGhlaWdodD0iMTQiLz4KPHJlY3QgeD0iMTAwIiB5PSIyMCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjE0Ii8+PHJlY3QgeD0iMTQwIiB5PSIyMCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjE0Ii8+CjxyZWN0IHg9IjE4MCIgeT0iMjAiIHdpZHRoPSIzNiIgaGVpZ2h0PSIxNCIvPjxyZWN0IHg9IjIyMCIgeT0iMjAiIHdpZHRoPSIzNiIgaGVpZ2h0PSIxNCIvPgo8cmVjdCB4PSIyNjAiIHk9IjIwIiB3aWR0aD0iMjAiIGhlaWdodD0iMTQiLz4KPHJlY3QgeD0iMjAiIHk9IjM4IiB3aWR0aD0iMzYiIGhlaWdodD0iMTQiLz48cmVjdCB4PSI2MCIgeT0iMzgiIHdpZHRoPSIzNiIgaGVpZ2h0PSIxNCIvPgo8cmVjdCB4PSIxMDAiIHk9IjM4IiB3aWR0aD0iMzYiIGhlaWdodD0iMTQiLz48cmVjdCB4PSIxNDAiIHk9IjM4IiB3aWR0aD0iMzYiIGhlaWdodD0iMTQiLz4KPHJlY3QgeD0iMTgwIiB5PSIzOCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjE0Ii8+PHJlY3QgeD0iMjIwIiB5PSIzOCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjE0Ii8+CjwvZz4KPGNpcmNsZSBjeD0iMTUwIiBjeT0iMTIwIiByPSI2IiBmaWxsPSIjZmYzZDc3Ii8+CjxyZWN0IHg9IjEyMCIgeT0iMTcwIiB3aWR0aD0iNjAiIGhlaWdodD0iMTAiIGZpbGw9IiMwMGUwZmYiLz4KPC9zdmc+" },
 
   // --- Everything below is pulled from OnlineGames.io's own public
   // "embeddable games" feed (onlinegames.io/media/plugins/genGames/embed.json).
@@ -1291,6 +1297,14 @@ const GAMES = [
     embedUrl:"https://www.onlinegames.io/games/2023/unity3/idle-dev-startup/index.html",
     img:"https://www.onlinegames.io/media/posts/566/responsive/Idle-Dev-Startup-Game-xs.jpg",
     embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/idle-dev-startup/" },
+
+  // NOTE: from OnlineGames.io's general catalog, not the curated open-embed
+  // feed verified earlier — may hit the same domain-lock block seen on
+  // other non-curated titles. Added as requested; flagging this honestly
+  // rather than guaranteeing it works.
+  { id:"fireboy-and-watergirl", title:"Fireboy and Watergirl", cat:"puzzle", emoji:"🔥", badge:"NEW",
+    embedUrl:"https://html5.gamedistribution.com/a55c9cc9c21e4fc683c8c6857f3d0c75/?gd_sdk_referrer_url=https://www.onlinegames.io/fireboy-and-watergirl",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://www.onlinegames.io/fireboy-and-watergirl/" },
 
   { id:"golf-bit", title:"Golf Bit", cat:"arcade", emoji:"⛳", badge:null,
     embedUrl:"https://cloud.onlinegames.io/games/2026/construct/328/golf-bit/game.html",
@@ -1745,18 +1759,23 @@ const GAMES = [
 
   { id:"idev-zombie-tower-defense-z-sector", title:"Zombie Tower Defense Z-Sector", cat:"strategy", emoji:"🧟", badge:null,
     embedUrl:"https://iDev.Games/embed/zombie-tower-defense-z-sector",
+    img:"https://idev.games/cachedImages/276/90864.jpg",
     embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/zombie-tower-defense-z-sector" },
   { id:"idev-mushymishy", title:"MushyMishy", cat:"puzzle", emoji:"🍡", badge:null,
     embedUrl:"https://iDev.Games/embed/mushymishy",
+    img:"https://idev.games/cachedImages/298/64553.jpg",
     embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/mushymishy" },
   { id:"idev-electric-space-cage", title:"Electric Space Cage", cat:"arcade", emoji:"⚡", badge:null,
     embedUrl:"https://iDev.Games/embed/electric-space-cage",
+    img:"https://idev.games/cachedImages/306/62182.jpg",
     embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/electric-space-cage" },
   { id:"idev-jungle-gems", title:"Jungle Gems", cat:"puzzle", emoji:"💎", badge:null,
     embedUrl:"https://iDev.Games/embed/jungle-gems",
+    img:"https://idev.games/cachedImages/308/91284.jpg",
     embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/jungle-gems" },
   { id:"idev-rayifox", title:"Rayifox", cat:"arcade", emoji:"🦊", badge:"NEW",
     embedUrl:"https://iDev.Games/embed/rayifox",
+    img:"https://idev.games/cachedImages/319/97724.jpg",
     embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/rayifox" },
   { id:"idev-apple-a-day", title:"Apple a Day", cat:"arcade", emoji:"🍎", badge:null,
     embedUrl:"https://iDev.Games/embed/apple-a-day",
@@ -2962,33 +2981,73 @@ ENGINES.breakout = function(stage){
   });
 
   /* ===================== MESSAGING (public chat + contacts + private DMs) ===================== */
+  /* ===================== SUPABASE (real shared backend for chat) =====================
+     Fixes what window.storage's "shared" mode never actually could outside
+     this chat's preview — messages now go through a real database, so they
+     genuinely reach other people's browsers. */
+  const SUPABASE_URL = "https://jbefrqnjsdhqsywgfsyh.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiZWZycW5qc2RocXN5d2dmc3loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NTUxOTUsImV4cCI6MjA5ODAzMTE5NX0.TjyqRB6yWwStFMDXHUQUUD0h09B72jonvVOiUZ3g9lE";
+  const supabaseClient = (window.supabase && SUPABASE_URL)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
   let activeThread = "public"; // "public" or a contact's username
+  let realtimeChannel = null;
 
   function dmKey(userA, userB){
-    return "dm_v1:" + [userA, userB].sort().join("__");
+    return [userA, userB].sort().join("__");
   }
-  function threadStorageKey(){
-    return activeThread === "public" ? "chat_v1" : dmKey(profile.username, activeThread);
+  function threadKey(){
+    return activeThread === "public" ? "public" : dmKey(profile.username, activeThread);
   }
 
+  // Polling kept as a fallback alongside realtime — if the realtime socket
+  // ever drops, this still catches up every few seconds rather than going
+  // silent until a manual refresh.
   function startMessagingPoll(){
     stopMessagingPoll();
     messagingPollTimer = setInterval(refreshMessages, 4000);
+    subscribeToThread(threadKey());
   }
   function stopMessagingPoll(){
     if(messagingPollTimer){ clearInterval(messagingPollTimer); messagingPollTimer = null; }
+    if(realtimeChannel){ supabaseClient.removeChannel(realtimeChannel); realtimeChannel = null; }
   }
+  function subscribeToThread(thread){
+    if(!supabaseClient) return;
+    if(realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+    realtimeChannel = supabaseClient
+      .channel("messages:" + thread)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `thread=eq.${thread}` },
+        () => { refreshMessages(); })
+      .subscribe();
+  }
+
   async function refreshMessages(){
-    const msgs = await storeGet(threadStorageKey(), true, []);
     const thread = document.getElementById("messagingThread");
+    if(!supabaseClient){
+      thread.innerHTML = `<p style="color:var(--muted);text-align:center;">Chat backend not configured.</p>`;
+      return;
+    }
+    const { data, error } = await supabaseClient
+      .from("messages")
+      .select("*")
+      .eq("thread", threadKey())
+      .order("created_at", { ascending: true })
+      .limit(200);
+    if(error){
+      console.error("refreshMessages failed:", error);
+      toast("⚠️ Couldn't load messages: " + error.message);
+      return;
+    }
     const wasAtBottom = thread.scrollTop + thread.clientHeight >= thread.scrollHeight - 30;
-    thread.innerHTML = msgs.length ? "" : `<p style="color:var(--muted);text-align:center;">No messages yet — say hi!</p>`;
-    msgs.forEach(m=>{
+    thread.innerHTML = data.length ? "" : `<p style="color:var(--muted);text-align:center;">No messages yet — say hi!</p>`;
+    data.forEach(m=>{
       const div = document.createElement("div");
       const mine = profile && m.username === profile.username;
       div.className = "msg " + (mine ? "mine" : "theirs");
-      const time = new Date(m.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-      div.innerHTML = `<div class="msg__meta">${mine ? "You" : m.username} · ${time}</div>${escapeHtml(m.text)}`;
+      const time = new Date(m.created_at).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+      div.innerHTML = `<div class="msg__meta">${mine ? "You" : m.username} · ${time}</div>${escapeHtml(m.body)}`;
       thread.appendChild(div);
     });
     if(wasAtBottom) thread.scrollTop = thread.scrollHeight;
@@ -3275,11 +3334,17 @@ ENGINES.breakout = function(stage){
     const input = document.getElementById("messagingInput");
     const text = input.value.trim();
     if(!text) return;
-    const key = threadStorageKey();
-    const msgs = await storeGet(key, true, []);
-    msgs.push({ username: profile.username, text, ts: Date.now() });
-    while(msgs.length > 100) msgs.shift();
-    await storeSet(key, msgs, true);
+    if(!supabaseClient){ toast("⚠️ Chat backend not configured."); return; }
+    const { error } = await supabaseClient.from("messages").insert({
+      thread: threadKey(),
+      username: profile.username,
+      body: text,
+    });
+    if(error){
+      console.error("send failed:", error);
+      toast("⚠️ Message failed to send: " + error.message);
+      return;
+    }
     input.value = "";
     refreshMessages();
   });
@@ -3320,6 +3385,7 @@ ENGINES.breakout = function(stage){
       nameOrPublic === "public" ? "Visible to everyone currently using this site." : "Private conversation — only visible to you and " + nameOrPublic + ".";
     await renderContactList();
     await refreshMessages();
+    subscribeToThread(threadKey()); // switch the realtime subscription to the new thread
     // Mobile: slide to thread view
     document.getElementById("messagingContacts").classList.remove("mobileShow");
     document.querySelector(".messaging__main").classList.add("mobileShow");
