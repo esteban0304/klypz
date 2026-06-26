@@ -1779,9 +1779,9 @@ const GAMES = [
     embedUrl:"https://iDev.Games/embed/rayifox",
     img:"https://idev.games/cachedImages/319/97724.jpg",
     embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/rayifox" },
-  { id:"idev-apple-a-day", title:"Apple a Day", cat:"arcade", emoji:"🍎", badge:null,
-    embedUrl:"https://iDev.Games/embed/apple-a-day",
-    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/apple-a-day" },
+  { id:"idev-the-apple", title:"The Apple", cat:"arcade", emoji:"🍎", badge:null,
+    embedUrl:"https://iDev.Games/embed/the-apple",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/the-apple" },
   { id:"idev-angry-car", title:"Angry Car", cat:"action", emoji:"🚗", badge:null,
     embedUrl:"https://iDev.Games/embed/angry-car",
     embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/angry-car" },
@@ -3101,7 +3101,17 @@ ENGINES.breakout = function(stage){
   function renderVideosGrid(){
     const grid = document.getElementById("videosGrid");
     grid.innerHTML = "";
-    VIDEOS_LONG.forEach(v=> appendVideoCard(v));
+    // Shuffle for display only — the underlying list was built up in
+    // topical batches (all the music ones added together, etc.), so
+    // showing it in that literal order made same-type videos cluster
+    // visually. This keeps the data as-is and just randomizes the order
+    // they're rendered in.
+    const shuffled = VIDEOS_LONG.slice();
+    for(let i = shuffled.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    shuffled.forEach(v=> appendVideoCard(v));
     renderLoadMoreVideosButton();
   }
 
