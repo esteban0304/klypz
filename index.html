@@ -129,6 +129,17 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   display:none; perspective:1200px;
 }
 .transitionOverlay.active{display:block;}
+.inCallBar{
+  position:fixed; bottom:20px; right:20px; z-index:6000;
+  background:#11193a; border:1px solid var(--line); border-radius:999px;
+  padding:10px 16px; display:flex; align-items:center; gap:12px;
+  box-shadow:0 4px 16px rgba(0,0,0,.4); font-size:14px;
+}
+.inCallBar button{
+  width:36px; height:36px; border-radius:50%; background:var(--panel-2);
+  border:1px solid var(--line); font-size:16px;
+}
+#hangupCallBtn{background:var(--pink); border-color:var(--pink);}
 .studyEscapeBtn{
   position:fixed; bottom:20px; left:20px; z-index:6000;
   width:48px; height:48px; border-radius:50%;
@@ -818,8 +829,14 @@ button:focus-visible, input:focus-visible, li:focus-visible{
 }
 .leaderboardList li.me{background:rgba(47,123,255,.12); border-radius:8px;}
 .leaderboardList .rank{width:26px; color:var(--muted); font-weight:700;}
+.onlineDot{
+  width:9px; height:9px; border-radius:50%; flex-shrink:0;
+  background:var(--muted); margin-right:2px;
+}
+.onlineDot.online{background:#27c93f; box-shadow:0 0 6px rgba(39,201,63,.7);}
 .leaderboardList .lbName{flex:1; font-weight:600;}
 .leaderboardList .lbXp{color:var(--cyan); font-size:12px;}
+.lbPlaying{font-size:11px; color:var(--muted); font-weight:400;}
 
 /* ===================== LIGHT THEME ===================== */
 html[data-theme="light"]{
@@ -1120,6 +1137,7 @@ html[data-theme="light"] .hero{
     <aside class="messaging__contacts" id="messagingContacts">
       <div class="messaging__contactsHead">
         <h3>Chats</h3>
+        <button id="newGroupBtn" title="New group chat">👥+</button>
         <button id="addContactBtn" title="Add contact">➕</button>
       </div>
       <ul class="contactList" id="contactList"></ul>
@@ -1129,6 +1147,7 @@ html[data-theme="light"] .hero{
       <div class="messaging__header">
         <h2 id="messagingThreadName">💬 Klyp Public Chat</h2>
         <p id="messagingThreadSub">Visible to everyone currently using this site.</p>
+        <button id="voiceCallBtn" class="btn btn--primary" style="display:none; margin-top:8px;" title="Start a voice call">🎤 Voice Call</button>
       </div>
       <div class="messaging__thread" id="messagingThread"></div>
       <form class="messaging__inputRow" id="messagingForm">
@@ -1141,7 +1160,7 @@ html[data-theme="light"] .hero{
   <!-- ===== SHORTS SECTION ===== -->
   <div class="shortsSection" id="shortsSection" style="display:none;">
     <div class="shorts__feed" id="shortsFeed"></div>
-    <button class="studyEscapeBtn" id="studyEscapeBtnShorts" title="Back to Study Mode">📚</button>
+    <button class="studyEscapeBtn" id="studyEscapeBtnShorts" title="Back to Study Mode" onclick="switchBackToStudy()">📚</button>
   </div>
 
   <!-- ===== LONG VIDEOS SECTION (regular YouTube-style grid) ===== -->
@@ -1185,7 +1204,7 @@ html[data-theme="light"] .hero{
     <span id="ratingAvgText" class="playerOverlay__ratingAvg"></span>
   </div>
   <div class="playerOverlay__stage" id="playerStage"></div>
-  <button class="studyEscapeBtn" id="studyEscapeBtnGame" title="Back to Study Mode">📚</button>
+  <button class="studyEscapeBtn" id="studyEscapeBtnGame" title="Back to Study Mode" onclick="switchBackToStudy()">📚</button>
 </div>
 
 <!-- ===== WEB VIEWER (limited iframe viewer, see README) ===== -->
@@ -1232,6 +1251,24 @@ html[data-theme="light"] .hero{
 </div>
 
 <!-- ===== WELCOME MODAL (shown once, first visit) ===== -->
+<!-- ===== VOICE CALL UI ===== -->
+<audio id="voiceRemoteAudio" autoplay></audio>
+<div class="modalOverlay" id="incomingCallOverlay">
+  <div class="modalCard" style="text-align:center;">
+    <h3 class="modalCard__title">📞 Incoming Call</h3>
+    <p class="modalCard__note" id="incomingCallFrom">Someone is calling you...</p>
+    <div style="display:flex; gap:12px; justify-content:center; margin-top:16px;">
+      <button class="btn btn--primary" id="acceptCallBtn">Accept</button>
+      <button class="btn" id="declineCallBtn">Decline</button>
+    </div>
+  </div>
+</div>
+<div class="inCallBar" id="inCallBar" style="display:none;">
+  <span id="inCallWith">🎤 In call</span>
+  <button id="muteCallBtn" title="Mute">🔊</button>
+  <button id="hangupCallBtn" title="Hang up">📵</button>
+</div>
+
 <div class="modalOverlay" id="welcomeOverlay">
   <div class="modalCard" style="text-align:left; max-width:480px;">
     <h3 class="modalCard__title">🚀 Welcome to Klyp!</h3>
@@ -1266,7 +1303,7 @@ html[data-theme="light"] .hero{
     <button class="modalCard__close" id="videoPlayerClose">✕</button>
     <h3 class="modalCard__title" id="videoPlayerTitle">Video</h3>
     <div class="videoPlayerBox" id="videoPlayerBox"></div>
-    <button class="studyEscapeBtn" id="studyEscapeBtnVideo" title="Back to Study Mode">📚</button>
+    <button class="studyEscapeBtn" id="studyEscapeBtnVideo" title="Back to Study Mode" onclick="switchBackToStudy()">📚</button>
   </div>
 </div>
 
@@ -1282,7 +1319,7 @@ html[data-theme="light"] .hero{
       <button class="computerFrame__close" id="appPlayerClose">✕</button>
     </div>
     <div class="appPlayerBox" id="appPlayerBox"></div>
-    <button class="studyEscapeBtn" id="studyEscapeBtnApp" title="Back to Study Mode">📚</button>
+    <button class="studyEscapeBtn" id="studyEscapeBtnApp" title="Back to Study Mode" onclick="switchBackToStudy()">📚</button>
   </div>
 </div>
 
@@ -2085,6 +2122,1207 @@ const GAMES = [
     embedUrl:"https://iDev.Games/embed/qbrix--brain-twister",
     embedWidth:800, embedHeight:600, sourceUrl:"https://idev.games/game/qbrix--brain-twister" },
 
+  { id:"pg-piece-of-cake-merge-bake", title:"Piece of Cake: Merge & Bake", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/piece-of-cake-merge--bake?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-97426/preview/c8e464db694da5317f846937ac762099916f6388780b8eaace52f4e1e5f6e0c5?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/piece-of-cake-merge--bake" },
+  { id:"pg-tb-world", title:"TB World", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/tb-world?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-90498/preview/3c519e17c78ebe42fb21de5a57fc5d49fcb448bc816d64a1493d9de7932ffd5b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/tb-world" },
+  { id:"pg-hidden-object-clues-and-mysteries", title:"Hidden Object: Clues and Mysteries", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/hidden-object-clues-and-mysteries?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99671/preview/81e7c801da198f1ff5ad658b2edc9c5345d5ba4ff7bcce7e43949af0cbf84290?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hidden-object-clues-and-mysteries" },
+  { id:"pg-hidden-object-street-of-secrets", title:"Hidden Object: Street Of Secrets", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/hidden-object-street-of-secrets?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120105/preview/49bc272f9d2d5f89ad59220badd29d42768fa717526419e307f6ac7765104850?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hidden-object-street-of-secrets" },
+  { id:"pg-idol-livestream-doll-dress-up", title:"Idol Livestream: Doll Dress Up", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/idol-livestream-doll-dress-up?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116800/preview/7121aa4f3d08258b38b74cd2f6589d3436ee3336e39f41d200ecb28105e8aefb?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/idol-livestream-doll-dress-up" },
+  { id:"pg-hazmob-fps-online-shooter", title:"Hazmob FPS: Online Shooter", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/hazmob-fps-online-shooter?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-110265/preview/eb159c764ada3018f527dbb754c55a972d70b087ceb2a5884feeeb7cf49b4701?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hazmob-fps-online-shooter" },
+  { id:"pg-kick-lucky-blocks-online", title:"Kick Lucky Blocks Online", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/kick-lucky-blocks-online?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122865/preview/130d6567ee939d4faac3519060457c103db18318c6f0cf65d1e4c9a767d6ec39?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/kick-lucky-blocks-online" },
+  { id:"pg-pregnant-mother-simulator", title:"Pregnant Mother Simulator", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/pregnant-mother-simulator?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116004/preview/b900d5942629d01f1671fa1852d74aa1f20c44253ad99e8805ec3eb827cc5361?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/pregnant-mother-simulator" },
+  { id:"pg-cat-and-granny", title:"Cat and Granny", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/cat-and-granny?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118588/preview/2164f22bacaab990b15d25cd74183c128f2026f049fa38e5762eae68ce9cc9b6?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/cat-and-granny" },
+  { id:"pg-good-sort-master", title:"Good Sort Master: Triple Match", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/good-sort-master?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-46/preview/5a9572290892cfac1e71f82aae6f7fe97f01997039a530296c736793b8bf9970?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/good-sort-master" },
+  { id:"pg-gym-simulator-online-escape", title:"Gym Simulator Online, Escape", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/gym-simulator-online-escape?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-113673/preview/1fed244af53ca39e3516a2fe6e2c264c96afbe76f01e84a5126cf61f0049a476?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/gym-simulator-online-escape" },
+  { id:"pg-build-an-aquapark", title:"Build an Aquapark", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/build-an-aquapark?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118251/preview/c38e33aaa09e1dcd8196d0c2a452270736945c5feaf51df5c9b472dc87d96fec?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/build-an-aquapark" },
+  { id:"pg-hidden-objects-island-secrets", title:"Hidden Objects: Island Secrets", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/hidden-objects-island-secrets?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116495/preview/6407004c339afe88aee48a25a56b62ea91f3c7e8999962ece136cdf5a3bc4295?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hidden-objects-island-secrets" },
+  { id:"pg-my-town-home-family-playhouse", title:"My Town Home: Family Playhouse", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/my-town-home-family-playhouse?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-86391/preview/f50f4883b52b58ceb033ac523e3b9ca0022840405da1b3ed0edc94571b9f266d?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/my-town-home-family-playhouse" },
+  { id:"pg-playground-man-ragdoll-show", title:" Playground Man! Ragdoll Show!", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/playground-man-ragdoll-show?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-98048/preview/7a0acaa20168f113ec3217fc99ce559f558f81beffaa81fbffc8c8b285ec7440?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/playground-man-ragdoll-show" },
+  { id:"pg-1-speed-escape-prison", title:"+1 Speed: Escape Prison", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/1-speed-escape-prison?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122192/preview/c1c71b9240f5d444129cc785b715a0102557d65271727c432f7fef8dfa4a8e92?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/1-speed-escape-prison" },
+  { id:"pg-mahjong-classic", title:"Mahjong Classic", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/mahjong-classic?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121631/preview/37d6479d4890cc2d95ff713d7ac4b55cd28e4b01164d3e99be9bd48dc81f3d4b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/mahjong-classic" },
+  { id:"pg-nuts-puzzle-sort-by-color", title:"Nuts Puzzle: Sort By Color", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/nuts-puzzle-sort-by-color?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118123/preview/7eb9f87c6523c718ecace473c7e464b21c6180905c4bb1cc9ca4b501f18002ea?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/nuts-puzzle-sort-by-color" },
+  { id:"pg-paper-doll-diary-dress-up-diy", title:"Paper Doll Diary: Dress Up DIY", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/paper-doll-diary-dress-up-diy?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116926/preview/201bd572892b4435a6bf09c6ce19ccc4ee093875933540fe15cbbbd21355a7a1?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/paper-doll-diary-dress-up-diy" },
+  { id:"pg-hedgies", title:"Hedgies", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/hedgies?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-106349/preview/ba18bdbec240c647dbf7da17f1522b975d6836eef704f64f3afe7e628d1b685e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hedgies" },
+  { id:"pg-rivals-fps-online-shooter", title:"RIVALS FPS: Online Shooter", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/rivals-fps-online-shooter?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119203/preview/56a0123d358d3bbf93d715115f1db303565970761eefbae01405042c9c09eb5c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/rivals-fps-online-shooter" },
+  { id:"pg-numicolor", title:"Numicolor", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/numicolor?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/44728659034c4793ba2f8de78f5466e2?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/numicolor" },
+  { id:"pg-robby-1-to-jump-power-per-second", title:"Robby +1 To Jump Power Per Second", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/robby-1-to-jump-power-per-second?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122624/preview/1993c76775c81717f97548ee2dd0bc1599607fb105d7e9c3efc7d825bd23ae3f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/robby-1-to-jump-power-per-second" },
+  { id:"pg-soccer-random", title:"Soccer Random", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/soccer-random?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122769/preview/069ab4530bb0b42c39ae292f9dccba97c9e06313b4184111561b6b26666ec975?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/soccer-random" },
+  { id:"pg-playmusic", title:"PLAYMUSIC", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/playmusic?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122780/preview/de71b7f610e880649ecd50cdb2e52873a2ac8b86d0cfd1d58da44f3ef7b3822e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/playmusic" },
+  { id:"pg-fruit-merge-playgama", title:"Fruit Merge: Juicy Drop Game", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/fruit-merge-playgama?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-59/preview/084fbd464d9e4d6e7a8c17eb4981110353d604595566c4b454626ec275674140?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/fruit-merge-playgama" },
+  { id:"pg-deadly-descent", title:"Deadly Descent", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/deadly-descent?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-44/preview/6480424b47e9ec7ea615377df4ff936ab517aa6fd4c6e102b3d54f6b40bf31dc?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/deadly-descent" },
+  { id:"pg-hidden-object-my-hotel", title:"Hidden Object: My Hotel", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/hidden-object-my-hotel?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-109352/preview/4874003cb4fdc995c32283dd73248c76ec9e2fad0152ef980caf399d4642468e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hidden-object-my-hotel" },
+  { id:"pg-wild-love", title:"Wild Love", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/wild-love?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115951/preview/179c56fc22ffef66fc39bb954016e90196c924966f63335aa1b4b9fb9b0585e9?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/wild-love" },
+  { id:"pg-king-rugni-tower-defense", title:"King Rugni Tower Defense", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/king-rugni-tower-defense?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-123006/preview/61bacf201eeb3ea3a857cf1b8d892b2653bb059fd960f9ded6547d523a2a3bbf?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/king-rugni-tower-defense" },
+  { id:"pg-basketball-stars", title:"Basketball Stars", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/basketball-stars?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-114034/preview/70037f90412bfa820ca283e7dbedd253e171cadc3b7a8c0fcc7049216604a2c4?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/basketball-stars" },
+  { id:"pg-sprunki-sandbox-ragdoll-playground-mode-d3fe-1", title:"Sprunki Sandbox: Ragdoll Playground Mode", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/sprunki-sandbox-ragdoll-playground-mode-d3fe-1?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99442/preview/35b36e998e857260603c9424b965058308bb121851ff5b92d6ceee4717438469?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sprunki-sandbox-ragdoll-playground-mode-d3fe-1" },
+  { id:"pg-sprunki-2c27-1", title:"Sprunki", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/sprunki-2c27-1?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-86451/preview/4c2e99ab0cf8bb5171786ff4d528971509bea4ad4c76a351edd4f763362519f6?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sprunki-2c27-1" },
+  { id:"pg-asmr-girl-livestream-mukbang", title:"ASMR Girl: Livestream Mukbang", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/asmr-girl-livestream-mukbang?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116704/preview/50c8f0918cb03a6a283cc4a736c0eb82a74520f072c218be9d49e109c01edb25?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/asmr-girl-livestream-mukbang" },
+  { id:"pg-geometry-arrow-2", title:"Geometry Arrow 2", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/geometry-arrow-2?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99645/preview/90df3206f7f0c706e6431b9ae58fc331d0ed13a11e547ce0271b720ff82e6b21?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/geometry-arrow-2" },
+  { id:"pg-sprunki-world-online-rp-play-with-friends", title:"Sprunki World Online RP - Play with Friends!", cat:"multiplayer", emoji:"🌐", badge:null,
+    embedUrl:"https://playgama.com/export/game/sprunki-world-online-rp--play-with-friends?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/be0091a14b704a51a7afb1e4d98d337f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sprunki-world-online-rp--play-with-friends" },
+  { id:"pg-hidden-objects-island", title:"Hidden Objects: Island", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/hidden-objects-island?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120649/preview/18d507ccdbc630b28dd843a72797eb96b9d091800420cceaf44e6572a50605c0?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hidden-objects-island" },
+  { id:"pg-mahjong-lines", title:"Mahjong Lines", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/mahjong-lines?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118432/preview/c9ebf0ece8786e1d4002eeb38dfa68b40da9505845ac4bcab6c48c2e17d9a6f5?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/mahjong-lines" },
+  { id:"pg-obby-1-jump-per-click", title:"Obby: +1 Jump per Click", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/obby-1-jump-per-click?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-114018/preview/01dc8b1d7e530a927408b11c28790154350704e0cca8ed67aa1d3e86438f102f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/obby-1-jump-per-click" },
+  { id:"pg-master-chess", title:"Master Chess", cat:"multiplayer", emoji:"🌐", badge:null,
+    embedUrl:"https://playgama.com/export/game/master-chess?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-86262/preview/1c62f03085d1455159c3a82b9d1968093e3ca439a46e1901b6153604d6cbbd86?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/master-chess" },
+  { id:"pg-chess-online-playing", title:"Chess Online Playing", cat:"multiplayer", emoji:"🌐", badge:null,
+    embedUrl:"https://playgama.com/export/game/chess-online-playing?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118817/preview/d225f3f54f0d97681b51c93841d96372709ef71fc5f02f0b32372a00a48a0d87?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/chess-online-playing" },
+  { id:"pg-snake-2048-64be-1", title:"Snake 2048", cat:"multiplayer", emoji:"🌐", badge:null,
+    embedUrl:"https://playgama.com/export/game/snake-2048-64be-1?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-86383/preview/1f48c0ee45d05381f07882da14f04e7948fd2b7052389872f44baf0874867f24?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/snake-2048-64be-1" },
+  { id:"pg-robby-the-speed-maze", title:"Robby: The Speed Maze", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/robby-the-speed-maze?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-123015/preview/d0781446a1ada870e41bcdd7d82ff3b1aef9f6006bac5024f54b1a7ce1d090c7?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/robby-the-speed-maze" },
+  { id:"pg-epic-sword-battle-fight-in-the-ragdoll-arena", title:"Epic Sword Battle! Fight in the Ragdoll Arena!  ", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/epic-sword-battle-fight-in-the-ragdoll-arena?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115055/preview/16362a34b3b72d8ced9f683ebad52e1d140b3fd9598f78588f87092afabd9e24?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/epic-sword-battle-fight-in-the-ragdoll-arena" },
+  { id:"pg-diy-phone-case-maker", title:"DIY Phone Case Maker", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/diy-phone-case-maker?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117063/preview/bdad92a216d1fa0afa6e02586cbeba6d38d59732c74cee363e9cf8e98712b099?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/diy-phone-case-maker" },
+  { id:"pg-1-speed-escape-school", title:"+1 SPEED: Escape School", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/1-speed-escape-school?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119952/preview/d2098f76e29c6b4297bb661e1bba16111970d49e54f24abd15d958b422ef46c7?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/1-speed-escape-school" },
+  { id:"pg-vega-mix-2-adventure", title:"Vega Mix 2: Adventure", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/vega-mix-2-adventure?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112864/preview/44e499bdd25c7877b55a270589beec951ff732602ae7350d2bd1db8ad20635ed?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/vega-mix-2-adventure" },
+  { id:"pg-fashion-princess-dress-up-for-girls-e00c-1", title:"Fashion Princess - Dress Up for Girls", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/fashion-princess--dress-up-for-girls-e00c-1?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-96760/preview/acd22bb0875a33d87b083536125f895e6869c005d02f92e126262501ec0a0245?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/fashion-princess--dress-up-for-girls-e00c-1" },
+  { id:"pg-tap-3d-wood-block-away", title:"Tap 3D Wood Block Away", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/tap-3d-wood-block-away?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-95758/preview/f0c90f5951de5a4517cbb66eb1d4c8ad76b8c4d9256ed0dfea3eb665b3b744a3?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/tap-3d-wood-block-away" },
+  { id:"pg-golf-orbit", title:"Golf Orbit", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/golf-orbit?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117406/preview/c027abaa687308ed6535513d268ad30347173e78da8cefe45f0c7cd7fb5a2b3f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/golf-orbit" },
+  { id:"pg-driver-club-highway-racing", title:"Driver Club: Highway Racing", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/driver-club-highway-racing?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/c90771fc08fb4dc3986262fcee9591ff?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/driver-club-highway-racing" },
+  { id:"pg-yarn-fever-unravel-puzzle", title:"Yarn Fever! Unravel Puzzle", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/yarn-fever-unravel-puzzle?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116925/preview/a922c31143be589d4ffcaef0d0127b4bf6a32c4daed568cd81893bafbab494f0?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/yarn-fever-unravel-puzzle" },
+  { id:"pg-word-finder", title:"Word Finder", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/word-finder?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118618/preview/acac6a6f26c1ef10a023c6bf69626a5256ba30dc978c2c8cf9c3817a5f3df9d2?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/word-finder" },
+  { id:"pg-mr-racer-car-racing", title:"MR RACER - Car Racing", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://mrracer.online/export?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-90490/preview/51d1c143daf41bf806f90807beec3a120d3e6cdbcf77bf80323617550868b0ec?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/mr-racer-car-racing" },
+  { id:"pg-find-the-frog-hidden-objects", title:"Find the Frog - Hidden Objects", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/find-the-frog--hidden-objects?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99734/preview/0a47981a16dd22ccfdb64d11561018e48011c956e10d9a2dac1ab9867082e50c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/find-the-frog--hidden-objects" },
+  { id:"pg-bubble-pop-legend", title:"Bubble Pop Legend", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/bubble-pop-legend?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117896/preview/11ffd47324fb22de997946a2c52342a7862f8aea99a0ebdeed7c91574d9bbae6?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/bubble-pop-legend" },
+  { id:"pg-sorter-ragdoll-playground-shooter", title:"Sorter: Ragdoll Playground Shooter", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/sorter-ragdoll-playground-shooter?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115001/preview/39e2f0e4815c3ac798c24de7d8cee6a099f1ce25b6a88962d451afd04f603921?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sorter-ragdoll-playground-shooter" },
+  { id:"pg-bmg-ragdoll-car-race", title:"BMG: Ragdoll Car Race", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/bmg-ragdoll-car-race?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122888/preview/6e838fa467f6324b016b2be2cd51a47f87504f46ec6fd24fd13737b810621cd1?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/bmg-ragdoll-car-race" },
+  { id:"pg-escape-tsunami-for-brainrots", title:"Escape Tsunami for Brainrots", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/escape-tsunami-for-brainrots?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116832/preview/f74c863524c6ba98bd02fbf6d69cd37bdf09e052678ce93b5452761144759127?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/escape-tsunami-for-brainrots" },
+  { id:"pg-obby-climb-and-slide", title:"Obby: Climb and Slide", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/obby-climb-and-slide?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-113926/preview/260dc91185428b63eea7d452921ba96c6bcccaa1419ad545963b3709c1fc4fe5?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/obby-climb-and-slide" },
+  { id:"pg-age-of-tanks-warriors-td-war", title:"Age of Tanks Warriors: TD War", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/age-of-tanks-warriors-td-war?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-106324/preview/b7704fb13b0d91ef29349ef5ebceb5b7d5d615fda349ebd510d6f9fa2329463b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/age-of-tanks-warriors-td-war" },
+  { id:"pg-stickman-kombat-2d", title:"Stickman Kombat 2D", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/stickman-kombat-2d?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115751/preview/7e27819ce03810d1ef5c0c2a815c698a4557a21f228ea467008faab5b0df541c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/stickman-kombat-2d" },
+  { id:"pg-millionaire-life", title:"Millionaire Life", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/millionaire-life?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-111970/preview/17cd15f8d4e236e0d0bf437d6416e15bb87c72427fdf8e4aa8576f7828db2c2f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/millionaire-life" },
+  { id:"pg-backgammon-multiplayer", title:"Backgammon", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/backgammon-multiplayer?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-98051/preview/65537bedadb0a9c6ec68355d71f124aa32bf49585316a0fe95c5b30a5482ae42?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/backgammon-multiplayer" },
+  { id:"pg-car-destruction-king", title:" Car Destruction King", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/car-destruction-king?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-110692/preview/e15a4363ad1713a256519fe895aabb5c2768a2230b54275d24a572a30535e2fa?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/car-destruction-king" },
+  { id:"pg-arrow-exit-puzzle", title:"Arrow Exit Puzzle", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/arrow-exit-puzzle?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/b7ef0ea165ee4661a15679a9d428947a?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/arrow-exit-puzzle" },
+  { id:"pg-gym-boss", title:"Gym Boss", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/gym-boss?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121780/preview/ffddd56f670382b0b76cea0c9aac6ec7997b84dc8d5914f182d8a3a46940020a?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/gym-boss" },
+  { id:"pg-bubble-shooter-tap-pop", title:"Bubble Shooter: Tap & Pop", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/bubble-shooter-tap--pop?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99633/preview/474609f95649f157953caf65435984f544b5f8f5a38b9d2c8e980918e4285a57?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/bubble-shooter-tap--pop" },
+  { id:"pg-poppy-playtime-5-merge-all-characters", title:"Poppy Playtime 5 Merge: All Characters", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/poppy-playtime-5-merge-all-characters?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121776/preview/1cdf99521a52607143b2b409d8a902830a49658612a67cae2b79a9cab749ce7c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/poppy-playtime-5-merge-all-characters" },
+  { id:"pg-ragdoll-racing-extreme-downhill", title:"Ragdoll Racing: Extreme Downhill!", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/ragdoll-racing-extreme-downhill?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119972/preview/49cb8ec88976152053baf8408f76c421884e4c1716fc6e09281dbb2e988ac817?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/ragdoll-racing-extreme-downhill" },
+  { id:"pg-break-a-lucky-egg-brainrots", title:"Break a Lucky Egg Brainrots", cat:"multiplayer", emoji:"🌐", badge:null,
+    embedUrl:"https://playgama.com/export/game/break-a-lucky-egg-brainrots?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121804/preview/a5786f21fa289c94f890928aef3acafb6c8edff3b9f37028222b23cbd50241ce?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/break-a-lucky-egg-brainrots" },
+  { id:"pg-dogs-vs-aliens", title:"Dogs vs Aliens", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/dogs-vs-aliens?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121737/preview/f86445329fe79af44cdfc24992cf06d08d7d89f6fb06d228755bd0ff1128c852?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/dogs-vs-aliens" },
+  { id:"pg-bubble-blast", title:"Bubble Blast", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/bubble-blast?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-72/preview/d69e6c296dd5feca6b0af15e281b9eed56d21ed21eec786588bf6ae0194cfcdc?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/bubble-blast" },
+  { id:"pg-color-pixels-coloring-by-numbers", title:"Color Pixels - Coloring by Numbers", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/color-pixels-coloring-by-numbers?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-94837/preview/05d1ed19b653e9d3b88489a7ba880ebbc49dfe4b19f19830b31a4543de91eddd?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/color-pixels-coloring-by-numbers" },
+  { id:"pg-block-blast-2048", title:"Block Blast 2048", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/block-blast-2048?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118589/preview/d216ffcd548acaecea078781196bde153316263f73e43f083c6c0d3c497c7fa7?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/block-blast-2048" },
+  { id:"pg-from-nerd-to-popular-school", title:"From Nerd to School Popular ", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/from-nerd-to-popular-school?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117826/preview/3d2b851f6f104d33dec4217b9a342c26f9ca5f5a599e8db034ab08bcf47276b7?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/from-nerd-to-popular-school" },
+  { id:"pg-wood-blocks-jam", title:"Wood Blocks Jam", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/wood-blocks-jam?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-109579/preview/b984ee97612f9cbec8bbd2e6dc37d6a28956c64278ba23230e6c1c48eeb9c9af?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/wood-blocks-jam" },
+  { id:"pg-mahjong-unlimited", title:"Mahjong Unlimited", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/mahjong-unlimited?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117101/preview/77f63ef3bac98b98a5013c47c9dd0261983d39c5babb18aee7d1c5fe1ac4853b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/mahjong-unlimited" },
+  { id:"pg-the-aesthetic-world-of-obby", title:"The Aesthetic World of Obby", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/the-aesthetic-world-of-obby?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119873/preview/9b13be30bd5813e2fd4cde9fdb77a95b5bf8fc66dfec548256459e32cd472904?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/the-aesthetic-world-of-obby" },
+  { id:"pg-motorcycle-racer-road-mayhem", title:"Motorcycle Racer: Road Mayhem", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/motorcycle-racer-road-mayhem?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115284/preview/0f44ceac6e374c8751b1f687c2c5b00e9a08a06973b1865f896798d465320a54?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/motorcycle-racer-road-mayhem" },
+  { id:"pg-home-design-decorate-house", title:"Home Design: Decorate House", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/home-design-decorate-house?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-110358/preview/d4c7c3ce934e5e25038efea41b9add37840ddb62f4b7b1ec41fc385e640c8881?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/home-design-decorate-house" },
+  { id:"pg-barry-prison-parkour-escape", title:"Barry Prison: Parkour Escape!", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/barry-prison-parkour-escape?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-97550/preview/90c38b925de49da742f68fd9788af20f8ec36f0a1e5accca64280c71312684a9?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/barry-prison-parkour-escape" },
+  { id:"pg-kick-a-lucky-block-tsunami-waves", title:"Kick a Lucky Block: Tsunami Waves", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/kick-a-lucky-block-tsunami-waves?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121929/preview/400754426e79e4860730e092206ff48e6aa37b7059d0b73538e356b12ae612c0?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/kick-a-lucky-block-tsunami-waves" },
+  { id:"pg-basket-random", title:"Basket Random", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/basket-random?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122770/preview/a85732b0c56a9c591e47166092434b5ae2bb26bcea72034aa2fa84e5f4d73da9?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/basket-random" },
+  { id:"pg-mahjong-puzzle-tile-match", title:"Mahjong Puzzle: Tile Match", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/mahjong-puzzle-tile-match?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122429/preview/afab5f1e84933e280e5508fb0d002a36a9d0afe6a65d980c2dd5d6c8cd14f5fb?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/mahjong-puzzle-tile-match" },
+  { id:"pg-drive-quest", title:"Drive Quest", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/drive-quest?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121647/preview/50598d117fbddbccede6ee479b9e0d341fd4b33dadecffe6b875793b2821f221?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/drive-quest" },
+  { id:"pg-hidden-objects-home-sweet-home", title:"Hidden Objects: Home Sweet Home", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/hidden-objects-home-sweet-home?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-109142/preview/204b8072bbb88d6aecdd647b5ca933077b4ccdc0a3f60e65c8c93bd4df1be4cd?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hidden-objects-home-sweet-home" },
+  { id:"pg-screw-match", title:"Screw Match", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/screw-match?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-111955/preview/caedeb3b4cc117a680fbe72378ff4d4bb492bdc9da27347d0bdeb517f29fe053?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/screw-match" },
+  { id:"pg-chess-online-multiplayer", title:"Chess Online Multiplayer", cat:"multiplayer", emoji:"🌐", badge:null,
+    embedUrl:"https://playgama.com/export/game/chess-online-multiplayer?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-111579/preview/6263c8805f7ef84b423038fe58b2a93a322d8995db2eed345a06153931bb161e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/chess-online-multiplayer" },
+  { id:"pg-aod-art-of-defense", title:"AOD - Art Of Defense", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/aod--art-of-defense?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99617/preview/a4911d36c20566b9ef7a8540d9ddcf1240075a42605c5a75e047fb21b0d052e9?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/aod--art-of-defense" },
+  { id:"pg-arrows-out", title:"Arrows Out!", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/arrows-out?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119381/preview/316543eda79c1b6afd989b349b4d1e5da1f43e660fe8b8519eba94a3f073ac56?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/arrows-out" },
+  { id:"pg-ragdoll-soccer", title:"Ragdoll Soccer", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/ragdoll-soccer?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-86412/preview/bd19ea7af895a2e63c3c139ad172752a7abc1fdcf5edbbe64bf0f60441eea613?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/ragdoll-soccer" },
+  { id:"pg-mystery-squishy-dumpling-blind-box", title:"Mystery Squishy Dumpling Blind Box", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/mystery-squishy-dumpling-blind-box?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/b6318651c8a942c69ec44528f685e39e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/mystery-squishy-dumpling-blind-box" },
+  { id:"pg-animal-evolution-simulator", title:"Animal Evolution Simulator", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/animal-evolution-simulator?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117373/preview/791649366fa509c4554cbc5577153aec4f4b3b4dddcc595c7faed2b7b51e6869?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/animal-evolution-simulator" },
+  { id:"pg-solar-smash", title:"Solar Smash", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/solar-smash?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121242/preview/4fcf81a728df73bb890a9d282a9533a212d027770e71ea11bfca512a3cbb7626?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/solar-smash" },
+  { id:"pg-gangster-island-crime-city", title:"Gangsta Island: Crime City", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/gangster-island-crime-city?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-92176/preview/5bc7cd3e6eaecc767d113c7402e22d5bcd13980ade129400effffe23d6bbd282?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/gangster-island-crime-city" },
+  { id:"pg-police-chase-simulator", title:" Police Chase Simulator", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/police-chase-simulator?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-110861/preview/dcd343f697ec157d39cf143d9530ea9d350cd05682dc9473ca7a7bcccbfac66f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/police-chase-simulator" },
+  { id:"pg-favorite-puzzles", title:"Favorite Puzzles", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/favorite-puzzles?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117768/preview/d99b3d2e7e5d2159e933e90d9fc1fb1568f35af1580403f69aed69f123819b84?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/favorite-puzzles" },
+  { id:"pg-weapon-upgrade", title:"Weapon Upgrade", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/weapon-upgrade?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99437/preview/fbb80b5d32a5c379b907d7aad6df9b88f98a6992f9cdf9b09ada2b87ef5f8147?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/weapon-upgrade" },
+  { id:"pg-man-runner-2048", title:"Man Runner 2048", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/man-runner-2048?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116603/preview/ed4411cb9b838cfa7003587906a663e20e0ba06fe115b8d1090355cdaed3a470?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/man-runner-2048" },
+  { id:"pg-special-ops", title:"Special Ops: GO", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/special-ops?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119111/preview/96b9d4da3725785fe65aa63618ae23dcbe5b5419044b7184cb6d0ad044eae59f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/special-ops" },
+  { id:"pg-hexa-master-3d-sort-puzzle", title:"Hexa Master 3D: Sort Puzzle", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/hexa-master-3d-sort-puzzle?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121523/preview/2dc1f3835e717cbfeff60d8abea15c3ecdfebf7c6491bd011e45594f74fe28bb?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hexa-master-3d-sort-puzzle" },
+  { id:"pg-age-of-heroes", title:"Age of Heroes", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/age-of-heroes?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120687/preview/31dd7f6cd460c0c1a75cb11ee9f89ad77ac1ac4231842102623f42b219010c33?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/age-of-heroes" },
+  { id:"pg-solitaire-crime-stories", title:"Solitaire Crime Stories", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/solitaire-crime-stories?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-86446/preview/9143a878ca1ae8c3f01d0f9471352e66d574ec22f8e189f12474b28378da60f1?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/solitaire-crime-stories" },
+  { id:"pg-obby-minigames", title:"Obby: Mini-Games", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/obby-minigames?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115754/preview/c3a98d38a0362b2877a0d610429f291ad03656eac6cf5dd7c88f7e03ae27dff4?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/obby-minigames" },
+  { id:"pg-break-stick-completely", title:"Break Stick Completely", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/break-stick-completely?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-98050/preview/2653f330672eafbf813c18f62ea27b20902782b705d331e7c2317fdb055fd8a3?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/break-stick-completely" },
+  { id:"pg-burger-restaurant-simulator-3d", title:"Burger Restaurant Simulator 3D", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/burger-restaurant-simulator-3d?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115615/preview/0046eb4bb5558bca6b0540d9a9f8fff968085ba45d592e972931327970ecf3b4?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/burger-restaurant-simulator-3d" },
+  { id:"pg-imposter-3d-online-horror", title:"Imposter 3D online horror", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/imposter-3d-online-horror?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115594/preview/757a3aeb6c57924f14043edcaeb8ec4d0ce237cac79e2214d16da67de1396c53?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/imposter-3d-online-horror" },
+  { id:"pg-moto-x3m", title:"Moto X3M", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/moto-x3m?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-106346/preview/97b8fd78266269f8e2f07da4c84fc50b940bb9070fc3f62c3312003718fa038e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/moto-x3m" },
+  { id:"pg-escape-waves-for-lucky-blocks", title:"Escape Waves for Lucky Blocks", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/escape-waves-for-lucky-blocks?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120301/preview/0737788900e03a280441cf8d1bfd686052c8c6e561c315c3aa1e774c3a43c0bf?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/escape-waves-for-lucky-blocks" },
+  { id:"pg-idle-vlogger-simulator", title:"Idle Vlogger Simulator", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/idle-vlogger-simulator?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/c8c6894cbe5c4b8e9eda8fe1c8ef1c7d?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/idle-vlogger-simulator" },
+  { id:"pg-anime-couple-avatar-maker", title:"Anime Couple: Avatar Maker", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/anime-couple-avatar-maker?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117345/preview/dd94cf3f09cae0331fd06177f7cbd2717d98f1f882049db6450b73ad79e5f3a7?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/anime-couple-avatar-maker" },
+  { id:"pg-find-out-hidden-object", title:"Find Out Hidden Object", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/find-out-hidden-object?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-110785/preview/6b5552b6aab3208953b10af08772b9643b6ef6b6a11d50c767317249832d127a?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/find-out-hidden-object" },
+  { id:"pg-brawl-simulator-3d", title:"Brawl Simulator 3D", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/brawl-simulator-3d?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116677/preview/0f02f879e4b548d6a8e3a5894034d6d0c9a126184b232415e541b3a7e280ef4a?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/brawl-simulator-3d" },
+  { id:"pg-fun-ragdoll-challenge-mini-games-collection", title:"Fun Ragdoll Challenge! Mini Games Collection!", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/fun-ragdoll-challenge-mini-games-collection?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119970/preview/498c92eca34d20fd39611ecf922e0edb31af6e79343af44b964cd13913df2084?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/fun-ragdoll-challenge-mini-games-collection" },
+  { id:"pg-obby-1-speed-car-escape", title:"Obby: +1 Speed Car Escape", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/obby-1-speed-car-escape?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119927/preview/15924e790ef2c79219d0ab95919fb102c154779c7e1225c1c9fb3485baf2264a?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/obby-1-speed-car-escape" },
+  { id:"pg-snake-of-bullets-collect-and-shoot", title:"Snake of Bullets: Collect and Shoot!", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/snake-of-bullets-collect-and-shoot?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119702/preview/f04992142c998d674052033c5333f1d729ce0ce32ad02adb0b09d902b675626e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/snake-of-bullets-collect-and-shoot" },
+  { id:"pg-animal-hair-salon", title:"Animal Hair Salon", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/animal-hair-salon?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-63973/preview/63a0c6f5a5385775e8110839f180d76cb40fd7b2e1ea0b467c90c9c5c585b96a?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/animal-hair-salon" },
+  { id:"pg-rise-of-the-dead", title:"Rise of the Dead", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/rise-of-the-dead?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-98057/preview/dfd86be204e74a9455d906863ce04f05b6388e5d524b90b73db0931be3d018c0?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/rise-of-the-dead" },
+  { id:"pg-get-tall-and-fall", title:"Get Tall And Fall", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/get-tall-and-fall?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116745/preview/d73d61823447ffe5eba681ca952d843074c8d9c63bf80bf527d549e25a25c82a?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/get-tall-and-fall" },
+  { id:"pg-zombie-space-episode-ii", title:"Zombie Space Episode II", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/zombie-space-episode-ii?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-63967/preview/b6b76eded86172aa7307c757442c23badb093791134e27750ebfc9a8f099d5e1?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/zombie-space-episode-ii" },
+  { id:"pg-ball-sort-puzzle", title:"Ball Sort Puzzle", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/ball-sort-puzzle?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115950/preview/60a7423ae4908829a5229902b5c076c55548605c0de8bff39f52a12095e46a98?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/ball-sort-puzzle" },
+  { id:"pg-escape-school-duel", title:"Escape School Duel", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/escape-school-duel?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118865/preview/81994cd1ae3930b95525b60d7778bec7aa84e33793139b71a54a209e85432461?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/escape-school-duel" },
+  { id:"pg-realistic-car-crash-king", title:"Realistic Car Crash King", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/realistic-car-crash-king?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122114/preview/65d424937b6a652639b62c71347444a9a3726a8676c8104a4cf94b6458e0f6e8?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/realistic-car-crash-king" },
+  { id:"pg-last-play-ragdoll-sandbox", title:"Last Play: Ragdoll Sandbox", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/last-play-ragdoll-sandbox?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116534/preview/76c831c54682f6fd1a32d04488ed830e464e3ba5ff04e7b24652f7fa91adb9f2?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/last-play-ragdoll-sandbox" },
+  { id:"pg-super-candy-jewels", title:"Super Candy Jewels", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/super-candy-jewels?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-110667/preview/a60994430dbe72954cc03d0034d2edaa20055f019639a3b934c256ab1afcb2ff?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/super-candy-jewels" },
+  { id:"pg-word-associations-solitaire", title:"Word Associations Solitaire", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/word-associations-solitaire?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116496/preview/1077dc6d83a75d5756442390d90651fbeb32b67175edc45252ef2a218221198c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/word-associations-solitaire" },
+  { id:"pg-trend-family-merge-arena", title:"Trend Family: Merge Arena", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/trend-family-merge-arena?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119110/preview/16f63c1b7c2dd4f84389c5f9934285a6400cd33588eab5c79ae3f473b481b9fa?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/trend-family-merge-arena" },
+  { id:"pg-cat-life-simulator-devil-cat", title:"Cat Life Simulator: Devil Cat", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/cat-life-simulator-devil-cat?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116703/preview/da2d6d4b34834136aa332f3fc8056d491bbbfc4b53bf485efc31daa9f9f5907d?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/cat-life-simulator-devil-cat" },
+  { id:"pg-bus-parking-out", title:"Bus Parking Out", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/bus-parking-out?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-114940/preview/4d6cf4f521e5caca69b6880cfb43c49642bbd18b8ee661f53276a37fc5d72769?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/bus-parking-out" },
+  { id:"pg-obby-click-and-grow", title:"Obby: Click and Grow", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/obby-click-and-grow?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-113938/preview/4c6226835093df3e09ee7b0c2178c01d082395a14d26076bc156dcf8d4bead21?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/obby-click-and-grow" },
+  { id:"pg-block-blast-master", title:"Block Blast Master", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/block-blast-master?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99566/preview/e61bd90843c25fd64662f1a73094c1cfc509f0442c022cf05dcea49f400ca153?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/block-blast-master" },
+  { id:"pg-mine-mining-islands-skyblock-village", title:"Mine Mining Islands: Skyblock Village!", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/mine-mining-islands-skyblock-village?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120893/preview/af4e2320da19d02e76e5534e74b4c61d2b88ba36e0981e7ca12dc46cbefc4c4b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/mine-mining-islands-skyblock-village" },
+  { id:"pg-the-tall-man", title:"The Tall Man", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/the-tall-man?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/1657f88fdcad4107a8490ed83eec3a84?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/the-tall-man" },
+  { id:"pg-ellie-summer-spa-beauty-salon", title:"Ellie Summer Spa Beauty Salon", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/ellie-summer-spa-beauty-salon?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122913/preview/8005d75ec7cd4406081bf622dce3c6e536a608c69724e538e6c587c260cb4d34?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/ellie-summer-spa-beauty-salon" },
+  { id:"pg-soccer-legends-2026", title:"Soccer Legends 2026", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/soccer-legends-2026?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120621/preview/05d5a6b93d936a5ae0c0a80bc0acfee262fe31276b3828c24689471858e8e330?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/soccer-legends-2026" },
+  { id:"pg-catch-a-fish-obby", title:"Catch a Fish Obby", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/catch-a-fish-obby?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121766/preview/77006535378759c9ffee4178dace29384c51cd57c5b9fa14e5a5dfcf3a3a35dc?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/catch-a-fish-obby" },
+  { id:"pg-3d-acrylic-nail-nail-art-game", title:"3D Acrylic Nail: Nail Art Game", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/3d-acrylic-nail-nail-art-game?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117344/preview/f984e95c2e2b6399d20cd4eef99840200eda64ddd086f309f9fa7fed64933253?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/3d-acrylic-nail-nail-art-game" },
+  { id:"pg-word-search-hidden-words", title:"Word Search Hidden Words", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/word-search-hidden-words?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-111290/preview/135e8d7c99c778c1222ef255a31af50378567ef256e67e6412d887379ce549e5?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/word-search-hidden-words" },
+  { id:"pg-kiki-world-kawaii-doll-decor", title:"Kiki World: Kawaii Doll Decor", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/kiki-world-kawaii-doll-decor?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117106/preview/bd622beaef2fe9b38c0c5bc91ad3d7a5f15d00ca871c906a24fbd810c58ba1be?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/kiki-world-kawaii-doll-decor" },
+  { id:"pg-english-checkers-online-multiplayer", title:"English Checkers Online Multiplayer", cat:"multiplayer", emoji:"🌐", badge:null,
+    embedUrl:"https://playgama.com/export/game/english-checkers-online-multiplayer?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-111547/preview/452ac77311bbdea3e318bcbba2a5d0a9c3da95f81c4976b9b9dfc11cc47aaede?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/english-checkers-online-multiplayer" },
+  { id:"pg-cooking-empire", title:"Cooking Empire", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/cooking-empire?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-113108/preview/2b9658100333f69d848019adc9d2a7dedaa3f651747e85bad21d1af2c7136666?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/cooking-empire" },
+  { id:"pg-survive-the-disasters-obby", title:"Survive the Disasters: Obby", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/survive-the-disasters-obby?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-114255/preview/74efb2081bddc51c90daf509e3acf908728698de7e6ea8b5ff6f5096ff05240b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/survive-the-disasters-obby" },
+  { id:"pg-screw-sort-3d", title:"Screw Sort 3D", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/screw-sort-3d?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/76bb89632fe8408bb8efa5f3fb5c917d?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/screw-sort-3d" },
+  { id:"pg-back-to-school-uniforms-edition", title:"Back To School: Uniforms Edition", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/back-to-school-uniforms-edition?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-109420/preview/4ca692255ed5ccd2f60b10ddb20f997eba494f4a0ce29226626caa6b12a6ee2c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/back-to-school-uniforms-edition" },
+  { id:"pg-italian-brainrot-hunting-3d", title:"Italian Brainrot Hunting 3D", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/Italian-brainrot-hunting-3D?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-106379/preview/6fe38f9a1f228a2ced6953938c92aba984a5f010572e113cbf7025cadbf41e72?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/Italian-brainrot-hunting-3D" },
+  { id:"pg-lucky-brainrot-blocks-online", title:"Lucky Brainrot Blocks Online", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/lucky-brainrot-blocks-online?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122142/preview/5dab4a16a7afc2299af163c5e9f6b0c7666225afb0563afdf713c3f4fb5f2237?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/lucky-brainrot-blocks-online" },
+  { id:"pg-idle-game-dev-simulator", title:"Idle Game Dev Simulator", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/idle-game-dev-simulator?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112943/preview/0c885ace76065ad156d120c0aacc951a45d6f9d620666db138420ba56c9c074f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/idle-game-dev-simulator" },
+  { id:"pg-soccer-dash", title:"Soccer Dash", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/soccer-dash?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-109179/preview/c49b5ee9a66560decc50cfe34fc7ab55c5bd951e15a8623487d22f01e098df25?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/soccer-dash" },
+  { id:"pg-cooking-city", title:"Cooking City", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/cooking-city?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121225/preview/5e10e32836f340f88209d10ef437a871fa25a3d621d011e76ec4ae24f3b18f20?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/cooking-city" },
+  { id:"pg-aliens-hunter", title:"Aliens Hunter", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/aliens-hunter?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-113765/preview/71340c501d0e64094110ba9bcc44b359713aa186d340a9821c4580d0e471c644?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/aliens-hunter" },
+  { id:"pg-emerland-solitaire", title:"Emerland Solitaire", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/emerland-solitaire?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-64022/preview/7d9ccb46ef9f53c1e7344168a67c6e698190fa401049b9f982f06043a4c75632?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/emerland-solitaire" },
+  { id:"pg-rooftop-run", title:"Rooftop Run", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/rooftop-run?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99664/preview/929854351192590e824307dada1c8fe9f901fb8cc77f36338d41190c9fab4017?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/rooftop-run" },
+  { id:"pg-road-chase-shooter-realistic-guns", title:"Road Chase: Shooter Realistic Guns", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/road-chase-shooter-realistic-guns?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117430/preview/3808ca3be021d75737a9625d810d0b6f10a89731a2e34c0c4a61617d51f988b9?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/road-chase-shooter-realistic-guns" },
+  { id:"pg-click-click-clicker-playgama", title:"Click Click Clicker", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/click-click-clicker-playgama?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-1/preview/295db2338ac8f0d7e1540219dc447f65f4e7033bf712cc7efec778c524b97b81?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/click-click-clicker-playgama" },
+  { id:"pg-domino-battle", title:"Domino Battle", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/domino-battle?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112274/preview/5a48dcadd783fe00a695f1d9e29b143474528f55313457117279805b5a5161ad?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/domino-battle" },
+  { id:"pg-geometry-vibes", title:"Geometry Vibes ", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/geometry-vibes?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-110830/preview/170acd93879aa4954ec4ca4ac51a69e9a75c108a9ef67245ab5357f2674ff665?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/geometry-vibes" },
+  { id:"pg-speed-per-click-obby", title:"Speed per Click: Obby", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/speed-per-click-obby?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112301/preview/9f65531a3ce2c1a8f8cef9c10fcacbb6e84f98f11f6b9c0872f7dd8b5907ae14?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/speed-per-click-obby" },
+  { id:"pg-your-obby-escape", title:"Your Obby Escape", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/your-obby-escape?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116345/preview/d29a22c29138c958e4bffb2dd487188c6da46d5ab544b733f22b9afa448608a7?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/your-obby-escape" },
+  { id:"pg-word-cross", title:"Word Cross", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/word-cross?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117810/preview/813f1d81490184f5199dc2f8fc75c666d159d354561fa5c0a1da9190c9de12f8?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/word-cross" },
+  { id:"pg-kpop-demon-hunter-fashion", title:"K-Pop Demon Hunter Fashion", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/kpop-demon-hunter-fashion?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112944/preview/439d25dd5e5956f3d8531f7ebd532752edad9ae04b92849f932dc365d18c6175?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/kpop-demon-hunter-fashion" },
+  { id:"pg-obby-minigames-vs-1000", title:"Obby: Mini-Games VS 1000", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/obby-minigames-vs-1000?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-113449/preview/1bb9573d7dc77e5bfab3cc8ed17a2bcaa149aa056b0fefb7a8b45cb1253846d8?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/obby-minigames-vs-1000" },
+  { id:"pg-sprunki-adventure-3", title:"Sprunki Adventure 3", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/sprunki-adventure-3?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-123138/preview/e217a1e73e35bf7d9ab55c21d27334df0e5e37d4ccd7142c6c3cb3a018326d2b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sprunki-adventure-3" },
+  { id:"pg-obby-online-with-friends-draw-and-jump", title:"Obby online with friends: Draw and Jump!", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/obby-online-with-friends-draw-and-jump?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119396/preview/29b708b3d6df3711868caa8c65b518c35dcc0fdda9a5cd6066acb6a2e6aaa669?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/obby-online-with-friends-draw-and-jump" },
+  { id:"pg-skyblock-3d-survival", title:"Skyblock 3D: Survival", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/skyblock-3d-survival?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99438/preview/b8ab56502bcfa4fdff3411e75b3994d1546bf9181a32485385f2ee8112d332f2?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/skyblock-3d-survival" },
+  { id:"pg-your-obby-size", title:"Your Obby Size", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/your-obby-size?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99711/preview/aba00cb86506c392cb91a608f24bf4772333a2c22819926f65f0e99cd6d941ad?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/your-obby-size" },
+  { id:"pg-blackriver-mystery-hidden-objects", title:"Blackriver Mystery. Hidden Objects", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/blackriver-mystery-hidden-objects?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115955/preview/03e8431bf9e57468d0842c75273e0abc447f8963bb1d4590819e2716f62e2bbf?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/blackriver-mystery-hidden-objects" },
+  { id:"pg-draw-or-delete-lovestory", title:"Draw or Delete LoveStory", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/draw-or-delete-lovestory?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-86427/preview/92d8008d2f8fb524805691ac9ed37e64cc0385f5aac221d3f10e1291ee96349e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/draw-or-delete-lovestory" },
+  { id:"pg-wonder-goal-fun-football-kick", title:"Wonder Goal: Fun Football Kick", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/wonder-goal-fun-football-kick?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/2013ae091e3643b1b7ae80475900bd3f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/wonder-goal-fun-football-kick" },
+  { id:"pg-neon-maze", title:"Neon Maze", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/neon-maze?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121800/preview/d65da246a564f87ec348f303a65f6a793ff39284c56376aeb1b6dac4c11f1582?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/neon-maze" },
+  { id:"pg-idle-airport-tycoon", title:"Idle Airport Tycoon", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/idle-airport-tycoon?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-114895/preview/fea88d436b215080b207fc3b9239da1f77baa662e232c1f745bf453b6ffef880?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/idle-airport-tycoon" },
+  { id:"pg-rolling-balls-sea-race", title:"Rolling Balls Sea Race", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/rolling-balls-sea-race?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121272/preview/28d5e904208f90232bce75c739de658d3de2d590e9235a32e4f0f2508c89b913?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/rolling-balls-sea-race" },
+  { id:"pg-your-obby-parkour", title:" Your Obby Parkour", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/your-obby-parkour?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112602/preview/e90d7da6f0d6da889ee90fd027e0d6e48cac2793c2ccf44988e88ee996b4c7f2?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/your-obby-parkour" },
+  { id:"pg-catch-a-brainrot-from-bosses", title:"Catch a Brainrot From Bosses", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/catch-a-brainrot-from-bosses?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119614/preview/38391753916d723f956aa9c80df77f39f064d3fffb0a7ca5efb8ac6e36c61e33?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/catch-a-brainrot-from-bosses" },
+  { id:"pg-obby-defend-your-base-from-67", title:"Obby: Defend your base from 67", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/obby-defend-your-base-from-67?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122430/preview/4fa5654b65ba6792df3e0fb3dce2e010151766abe51effc8657317aba5d4d86e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/obby-defend-your-base-from-67" },
+  { id:"pg-word-solitaire", title:"Word Solitaire", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/word-solitaire?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112654/preview/f57c062a768e6d98c2d94be7400841836a0c7620c3e4b21192b7bdfdcb9f503e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/word-solitaire" },
+  { id:"pg-merge-world", title:"Merge World", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/merge-world?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119274/preview/f0f439dd10f8283a846e63b4663a1f277c81e8acb063eee365ee066ed441be76?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/merge-world" },
+  { id:"pg-skate-1-speed", title:"SKATE: +1 Speed", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/skate-1-speed?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/e133dbcd59e74658bf35657d311a82a9?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/skate-1-speed" },
+  { id:"pg-blocks-shooter-3d-run-shoot-merge-weapons", title:"Blocks Shooter 3D! Run, Shoot, Merge Weapons!", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/blocks-shooter-3d-run-shoot-merge-weapons?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115056/preview/3e487f535d76ea2e1c8e8e5f4e0944c03f9047ab06e15a830caca8b1dc559b79?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/blocks-shooter-3d-run-shoot-merge-weapons" },
+  { id:"pg-geometry-dash-infinity", title:"Geometry Dash: Infinity", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/geometry-dash-infinity?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116962/preview/88ce3a59ca304af78d54470d603e76778e2d89aad96582f2c9323758eb9bd1e0?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/geometry-dash-infinity" },
+  { id:"pg-my-pet-care-salon-obby-dressup-3d", title:"My Pet Care Salon: Obby Dress-Up 3D", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/my-pet-care-salon-obby-dressup-3d?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121525/preview/47dba161775cb121c062f7f7797eddc9ca9e0883b2bcae75f7b7d463cb2e1135?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/my-pet-care-salon-obby-dressup-3d" },
+  { id:"pg-jewel-magic", title:"Jewel Magic", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/jewel-magic?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112605/preview/fad3cb3e515edac3dc2ad8f90907fd32956797405883c0b5a5fab997b3b21054?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/jewel-magic" },
+  { id:"pg-bubble-pop-fairyland", title:"Bubble Pop Fairyland", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/bubble-pop-fairyland?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116494/preview/5a0196fca1307a673ec9d7207e5d94d5a30e98860f144cfcd7e00b026591c7ba?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/bubble-pop-fairyland" },
+  { id:"pg-mine-fight-cut-mob-army", title:"Mine Fight! Cut Mob Army!", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/mine-fight-cut-mob-army?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120246/preview/e3ee4ba7a616de10295bdee0ce220cf7611c09c154c63b3e144591f8a6997bca?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/mine-fight-cut-mob-army" },
+  { id:"pg-my-castle-merge-story", title:"My Castle. Merge & Story", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/my-castle-merge--story?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/68af1852fa4b4abab8db61044497f9ee?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/my-castle-merge--story" },
+  { id:"pg-find-match-3d", title:"Find Match 3D", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/find-match-3d?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-97451/preview/8cfb49726e0be0b420f3405a09cbd18787d5fc7bfed721b36608a4a91a149908?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/find-match-3d" },
+  { id:"pg-steal-and-catch-obby-minigames", title:"Steal and Catch Obby: Mini-Games", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/steal-and-catch-obby-minigames?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120675/preview/8d5e6ea840e854f0f0d6dd9e3a76ef69207542698e03873577d8a09064274670?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/steal-and-catch-obby-minigames" },
+  { id:"pg-sprunki-action-playground-ragdoll-sandbox", title:"Sprunki Action Playground: Ragdoll Sandbox", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/sprunki-action-playground-ragdoll-sandbox?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118560/preview/9bd5fa3d51d9fe72dd6e106ba64c89b49614380864cd1705009de800581a50d4?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sprunki-action-playground-ragdoll-sandbox" },
+  { id:"pg-draw-the-snake", title:"Draw The Snake", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/draw-the-snake?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/83bbd3c051644942ae33a71ca497389b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/draw-the-snake" },
+  { id:"pg-bank-robbery-puzzle", title:"Bank Robbery Puzzle", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/bank-robbery-puzzle?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/40d2a8a626ea42b8ab375332a3e17474?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/bank-robbery-puzzle" },
+  { id:"pg-recycle-game", title:"Recycle Game", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/recycle-game?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/08bb0e15f76d4f89af12625dc5efe1b4?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/recycle-game" },
+  { id:"pg-magic-water-sort", title:"Magic Water Sort", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/magic-water-sort?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/8c01536b82d44542bd647fa3244c9000?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/magic-water-sort" },
+  { id:"pg-cube-crushers", title:"Cube Crushers", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/cube-crushers?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/3e6a5efe54c440819c63dc8ad87a3a74?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/cube-crushers" },
+  { id:"pg-hoppy-stacky", title:"Hoppy Stacky", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/hoppy-stacky?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/cd83486cb4ea409e9682e704341bca38?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hoppy-stacky" },
+  { id:"pg-loose-change-cashier-simulator", title:"Loose Change: Cashier Simulator", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/loose-change-cashier-simulator?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/bbb2baa3adf745ae8c5c5f5f553eff34?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/loose-change-cashier-simulator" },
+  { id:"pg-chu-choo-cake", title:"Chu Choo Cake", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/chu-choo-cake?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/d890516901ea445bad6fd001417873df?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/chu-choo-cake" },
+  { id:"pg-solitaire-stars", title:"Solitaire Stars", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/solitaire-stars?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/efd251ab60494a49b334fa60cdea7876?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/solitaire-stars" },
+  { id:"pg-dicey-chickens", title:"Dicey Chickens", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/dicey-chickens?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/6f067745be274e328d2685f445872876?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/dicey-chickens" },
+  { id:"pg-sort-it-out-category-sort", title:"Sort It Out: Category Sort", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/sort-it-out-category-sort?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/aacf7f21c0ab4f8582b0fd7276e217ab?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sort-it-out-category-sort" },
+  { id:"pg-sling-chicken", title:"Sling Chicken", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/sling-chicken?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/5203448d2b524e52b4dda30222478c87?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sling-chicken" },
+  { id:"pg-box-tap-sort", title:"Box Tap Sort", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/box-tap-sort?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/a46b0b28b1dd4f47bffbfdc6e775df27?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/box-tap-sort" },
+  { id:"pg-hexholm", title:"Hexholm", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/hexholm?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/ce3771f9666b4ba78a5a101cde503d59?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hexholm" },
+  { id:"pg-flag-coloring-puzzle", title:"Flag Coloring Puzzle", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/flag-coloring-puzzle?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/f467b5a8bcd449829829262046709e14?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/flag-coloring-puzzle" },
+  { id:"pg-doggydoku", title:"DoggyDoku", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/doggydoku?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/17c66781ec90461d90c0f2af7d622ab1?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/doggydoku" },
+  { id:"pg-dragon-block-blast", title:"Dragon Block Blast", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/dragon-block-blast?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/92335cff80e9459588a9ca42c1d7c78f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/dragon-block-blast" },
+  { id:"pg-snake-wiggle-master", title:"Snake Wiggle Master!", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/snake-wiggle-master?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/cdf2f8e1703144fc97569d264f2b09ff?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/snake-wiggle-master" },
+  { id:"pg-card-solitaire-word-game", title:"Card Solitaire: Word Game", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/card-solitaire-word-game?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/4776c168db8d46c98456cafedf8e36fd?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/card-solitaire-word-game" },
+  { id:"pg-mushroom-hunting-forest-search", title:"Mushroom Hunting: Forest Search", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/mushroom-hunting-forest-search?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/e24d2c54f2e84c8e89dbc1cb780f835c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/mushroom-hunting-forest-search" },
+  { id:"pg-sheepdoku", title:"Sheepdoku", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/sheepdoku?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/840513e4b0a448c49e5e45f820f35c48?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sheepdoku" },
+  { id:"pg-archer-madness-crystal-defense", title:"Archer Madness: Crystal Defense", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/archer-madness-crystal-defense?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/f476f7e22c72406880ebdb0f8934e32c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/archer-madness-crystal-defense" },
+  { id:"pg-fashion-week-2025", title:"Fashion Week 2025", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/fashion-week-2025?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-110478/preview/160e7af00aaca916360fb999fe2ac744d2e90be1443e3094c0f1e4267744496c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/fashion-week-2025" },
+  { id:"pg-schoolboy-runaway-room-escape", title:"Schoolboy Runaway: room escape", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/schoolboy-runaway-room-escape?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-109148/preview/16e155499efed388c97dcf0b8b25668230a4012170c861e30f9f3c04d322faab?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/schoolboy-runaway-room-escape" },
+  { id:"pg-car-crash-sandbox", title:"Car Crash Sandbox", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/car-crash-sandbox?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122402/preview/313cb569622da2261a89bbcdd2939a5ffd2035169a73904fa86d3caba417d24f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/car-crash-sandbox" },
+  { id:"pg-sniper-attack2", title:"Sniper Attack2", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/sniper-attack2?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-116923/preview/f27684aedca9abd880dbb71d4af1b73d4ca0a97cd3579e16606e6b55ad925796?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sniper-attack2" },
+  { id:"pg-money-cutter-idle", title:"Money cutter idle", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/money-cutter-idle?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120889/preview/a32d5b65a14efa4d5b23b2d7483685672046bea2a3c16cdfa9f22274abd2954b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/money-cutter-idle" },
+  { id:"pg-merge-2048", title:"Merge 2048", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/merge-2048?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-108791/preview/475e9281184ffa8826d99e3a658a9f06b360662730b5dcc75c1d86ded2a7de67?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/merge-2048" },
+  { id:"pg-noob-fuse", title:"Noob Fuse", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/noob-fuse?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120009/preview/4d3f6d5329dcc845ebf2cc3a275dae67d46dce632c2ce11c25796ec433fed6a1?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/noob-fuse" },
+  { id:"pg-baby-brainrots-multiplayer-with-friends", title:"Baby Brainrots - Multiplayer with Friends!", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/baby-brainrots-multiplayer-with-friends?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/4348b250740f47c1a871464eca9a5462?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/baby-brainrots-multiplayer-with-friends" },
+  { id:"pg-arrow-cube-3d", title:"Arrow Cube 3D", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/arrow-cube-3d?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122869/preview/b8c7a4de097d4d439fc0c59b223ca2cbe037a902ddfee5cce985633d63a11aed?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/arrow-cube-3d" },
+  { id:"pg-hero-defense-king", title:"Hero Defense King", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/hero-defense-king?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118083/preview/99fc3bc953ff7bf840af14a06d73b3eb831497871eff22c4c290c1530eba2c78?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hero-defense-king" },
+  { id:"pg-idle-supermarket-tycoon", title:"Idle Supermarket Tycoon", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/idle-supermarket-tycoon?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-90503/preview/51e06c0f97ced52d580ebf1158fd85123b1968fcb4b7e4093738e04d81870db2?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/idle-supermarket-tycoon" },
+  { id:"pg-obby-toilet-line", title:"Obby Toilet Line", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/obby-toilet-line?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121786/preview/f32b1aaf0a8bba2160c71d4173105984916ff15875e8db6367fb7ee7a66b020a?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/obby-toilet-line" },
+  { id:"pg-find-the-pets", title:"Find The Pets", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/find-the-pets?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120475/preview/56094f749c55e1ed306b9d7a6815809cfabacfae963ca12df4db95ce55672dba?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/find-the-pets" },
+  { id:"pg-sort-and-style-back-to-school", title:"Sort And Style: Back To School", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/sort-and-style-back-to-school?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-111508/preview/3197c06ac17e49d3c16a05761506e81a12b2a72213b1396dd7627cc04895c696?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sort-and-style-back-to-school" },
+  { id:"pg-crash-test-simulator-3d", title:"Crash Test Simulator 3d", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/crash-test-simulator-3d?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122323/preview/3adda18982d14df396496efd1b42d72a19fd6e20cb3b6e898630b5e8f86abcd9?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/crash-test-simulator-3d" },
+  { id:"pg-soda-sandbox", title:"Soda Sandbox", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/soda-sandbox?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-123055/preview/022ffdf2dad2c432d35370780f1d058584c9daf1c7669729e4d1f4ea9bf755a2?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/soda-sandbox" },
+  { id:"pg-jump-to-the-rhythm-of-songs-musical-ball", title:"Jump to the Rhythm of Songs! Musical Ball!", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/jump-to-the-rhythm-of-songs-musical-ball?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120472/preview/3663e19ae039d7e7e202ad366fbbf2e007e10ee69998f79da8159fa0b98735fe?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/jump-to-the-rhythm-of-songs-musical-ball" },
+  { id:"pg-beam-drive-car-crash-test-simulator", title:"Beam Drive Car Crash Test Simulator", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/beam-drive-car-crash-test-simulator?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-86496/preview/57449a8aeb08b058814fb911b0c15014c583f10801e7fa2f4c986e6743c4913c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/beam-drive-car-crash-test-simulator" },
+  { id:"pg-crime-and-vice-city-police", title:" Crime and Vice City Police", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/crime-and-vice-city-police?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117412/preview/13104ad7cf453047d93683e1c2c42081acdaca1b9ee062c0d55b7f700a66454e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/crime-and-vice-city-police" },
+  { id:"pg-save-the-pets-draw-to-save", title:"Save The Pets: Draw to Save", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/save-the-pets-draw-to-save?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121307/preview/cf3cf21f8bf05541ae980d99ad574883ebf96bc13711073ded58e74e607e1e7b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/save-the-pets-draw-to-save" },
+  { id:"pg-chicken-merge", title:"Chicken Merge", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/chicken-merge?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115326/preview/a90c6f74dfc4f892bb49ad963fc00e88c17933d6cfdd7df057beeff29284835a?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/chicken-merge" },
+  { id:"pg-poison-candy-obby-1-or-2player", title:"Poison Candy: Obby 1 Or 2-Player", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/poison-candy-obby-1-or-2player?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-114093/preview/6d47ca04894c55320dceb3566b977987ce14175362a150a68ca2c689971b0309?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/poison-candy-obby-1-or-2player" },
+  { id:"pg-tile-valley", title:"Tile Valley", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/tile-valley?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117445/preview/850b6adadb57424c10b984f538cc1558170254c33a3b0e1ef9e95c5e841f1fe2?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/tile-valley" },
+  { id:"pg-epic-empire-tower-defense", title:"Epic Empire: Tower Defense", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/epic-empire-tower-defense?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121001/preview/096aab2f556cbda6be705e42525cc92035862bd575a195dd3023825bae540ba8?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/epic-empire-tower-defense" },
+  { id:"pg-squad-assembler-merge", title:"Squad Assembler: Merge", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/squad-assembler-merge?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120620/preview/a865987a13e0a95a8e7493fd21dce109c8e2cf0d4e90c8f8e71b3e8280e59ff6?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/squad-assembler-merge" },
+  { id:"pg-dead-land-survival", title:"Dead Land: Survival", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/dead-land-survival?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121143/preview/95c84d988f43bd09e3d585918ee2d793931a426777473c0b819c4707cd146103?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/dead-land-survival" },
+  { id:"pg-zombie-horde-build-survive", title:"Zombie Horde: Build & Survive", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/zombie-horde-build--survive?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99482/preview/7db31adc5e71b8d822e321ead5cefdb39f0e440810859bf26eabc3112139a92c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/zombie-horde-build--survive" },
+  { id:"pg-chicken-merge-2", title:"Chicken Merge 2", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/chicken-merge-2?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/882cce3ef5554f558124f72d948e241b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/chicken-merge-2" },
+  { id:"pg-pool-shoot-tournament-ac06-1", title:"Pool Shoot Tournament", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/pool-shoot-tournament-ac06-1?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-98570/preview/a4bf2d6e43934ba19514811a9d8b53aef939924a1d612c8d8b7e7d94990ab4e2?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/pool-shoot-tournament-ac06-1" },
+  { id:"pg-iconic-halloween-costumes", title:"Iconic Halloween Costumes", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/iconic-halloween-costumes?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112926/preview/05375e06ea3fb69c55f9797d31f4fdf5ee9e2fd25b5b90639ab283f1d7a7dd53?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/iconic-halloween-costumes" },
+  { id:"pg-build-obby-world", title:"Build Obby World", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/build-obby-world?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118470/preview/76703da348ff7dfdd534f5c3e368983be0c0bf2b82124e9f49aa6b6dcfcdac62?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/build-obby-world" },
+  { id:"pg-bridge-builder", title:"Bridge Builder", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/bridge-builder?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-111940/preview/9d6a4effd60209c7d2e776fee00a9eaf9f5949ade6018fcb25f1c4e6428d357c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/bridge-builder" },
+  { id:"pg-solitaire-emperor-secrets-of-fate", title:" Solitaire Emperor - Secrets of Fate", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/solitaire-emperor-secrets-of-fate?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-86460/preview/76dc3aa5ef0faafbfe4f0d18c3ba2b9c0434d37a212b9db5183bfe6d719dbc40?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/solitaire-emperor-secrets-of-fate" },
+  { id:"pg-hair-salon", title:"Hair Salon", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/hair-salon?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121595/preview/d86233dc785569bd9803fe2d98312bebe97df1e3119b1c9f2df5b3929d3bb3c0?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/hair-salon" },
+  { id:"pg-attack-hole", title:"Attack Hole", cat:"multiplayer", emoji:"🌐", badge:null,
+    embedUrl:"https://playgama.com/export/game/attack-hole?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119763/preview/d9ec802501ae19c4be87d90513951f0e12343a0d2c56e295e5ad3f902bffb3e0?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/attack-hole" },
+  { id:"pg-diamant-match-3-sky-story", title:"Diamant: Match 3 Sky Story", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/diamant-match-3-sky-story?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-109799/preview/0568e3b78d29b283c6eaca36ed7459703ec20785fd273f90bef37e3f36017b1f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/diamant-match-3-sky-story" },
+  { id:"pg-mystery-of-the-old-house-hidden-objects", title:"Mystery of the Old House: Hidden Objects", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/mystery-of-the-old-house-hidden-objects?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-108567/preview/ee240ca239bf6d6df32424e730b4faa32ff45eb17804e9c44f9b9a23ec4171a5?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/mystery-of-the-old-house-hidden-objects" },
+  { id:"pg-stickman-clicker", title:"Stickman Clicker", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/stickman-clicker?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-106342/preview/8a36805e3bd061552c47826f9f0010c1dbdf34b36bf59611f834b6370ed821e4?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/stickman-clicker" },
+  { id:"pg-thief-puzzle", title:"Thief Puzzle", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/thief-puzzle?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117298/preview/df4e2c146a9bcea98a95e3cecee57feb67d5015b2b7554f3e06fd3aa36c472b3?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/thief-puzzle" },
+  { id:"pg-car-wash-diy", title:"Car Wash DIY", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/car-wash-diy?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-113636/preview/f964409f8d1873e320550e859401d5a9054ce8bd92b3882c34f5386d172bf674?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/car-wash-diy" },
+  { id:"pg-moms-diary", title:"Moms Diary", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/moms-diary?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120496/preview/c10a484a5e407aab2396d1b94d1d0d3260ed5e02f57b3f9ab6c3e8b92e522459?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/moms-diary" },
+  { id:"pg-tidy-up-satisfeel-asmr", title:"Tidy Up - Satisfeel ASMR", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/tidy-up--satisfeel-asmr?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122443/preview/67061b928a9d2b7bf39990fc66cb51b9a6b028ca4818b6958c4370e8f245f4a2?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/tidy-up--satisfeel-asmr" },
+  { id:"pg-drifting-car-master", title:"Drifting Car Master", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/drifting-car-master?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-106389/preview/b7359a563efbbe3ac1e4fedc456bf966b8f57331d358611bbaeba040ee072126?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/drifting-car-master" },
+  { id:"pg-idle-cinema-tycoon", title:"Idle Cinema Tycoon", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/idle-cinema-tycoon?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99346/preview/c24621199122a8e649cfbb33960326a8d5c6922138c9dd268c276130bd9e0536?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/idle-cinema-tycoon" },
+  { id:"pg-last-knight-kings-throne", title:"Last Knight:kings throne", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/last-knight-kings-throne?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/ac448ca9051e4c10baae6e0b00df0a44?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/last-knight-kings-throne" },
+  { id:"pg-swing-obby-for-brainrots", title:"Swing Obby for Brainrots", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/swing-obby-for-brainrots?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/895d8d6ccf3746fe9f72684b522dfff7?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/swing-obby-for-brainrots" },
+  { id:"pg-survive-lava-for-brainrots", title:" Survive Lava for Brainrots!", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/survive-lava-for-brainrots?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118490/preview/281e1b6ae7db75780b6d55a49b55a66f2db91446d6c2c340a41218d30ae5737a?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/survive-lava-for-brainrots" },
+  { id:"pg-99-nights-in-the-forest-horror-multiplayer", title:"99 Nights in the Forest. Horror Multiplayer", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/99-nights-in-the-forest-horror-multiplayer?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117343/preview/f7ea021aea0921affd48c6f90f38b0791a88344494dcd0185e9589aa0542122c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/99-nights-in-the-forest-horror-multiplayer" },
+  { id:"pg-my-fast-brainrot", title:"My Fast Brainrot", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/my-fast-brainrot?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118308/preview/c9c7576314d802336a83407470683b766358aedc2818b9690b34d06a187e51a1?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/my-fast-brainrot" },
+  { id:"pg-geometry-arrow", title:"Geometry Arrow", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/geometry-arrow?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-63945/preview/c92d739be3eb49fb5057b732776abebb9026900c35fae7e6bdb5877128929edd?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/geometry-arrow" },
+  { id:"pg-build-your-zombie-horde", title:"Build Your Zombie Horde", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/build-your-zombie-horde?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112559/preview/e53e76a6e7d3af3c453d1458a3a995c117a50d3fb6453df76439a80f4227eacd?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/build-your-zombie-horde" },
+  { id:"pg-paper-princess-doll-dress-up", title:"Paper Princess - Doll Dress Up", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/paper-princess--doll-dress-up?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-117414/preview/ee2704af21fcf2797d0d998ce646a5e101fefa75a278efd2dd975b744507b14d?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/paper-princess--doll-dress-up" },
+  { id:"pg-robby-double-jump-for-brainrots", title:"Robby: Double jump for brainrots", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/robby-double-jump-for-brainrots?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/22a71e1724754bc389f7d8a99f8248e5?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/robby-double-jump-for-brainrots" },
+  { id:"pg-figure-skating-on-ice", title:"Figure skating: On ice!", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/figure-skating-on-ice?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120050/preview/1588b7beab73febd414add0b7b486320528e0bd511f44ef78126b817f825e67e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/figure-skating-on-ice" },
+  { id:"pg-king-dungeon", title:"King Dungeon", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/king-dungeon?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120350/preview/3373c2ce8c2c2273f11f4f99ade7d5e4664e9cf988e5f7b5de6e5ef3c2119161?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/king-dungeon" },
+  { id:"pg-school-of-basketball", title:"School Of Basketball", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/school-of-basketball?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-109069/preview/36b129100e5f75204b56e46718f20d77c1324f7c2de33c0015f1ff9ece0ffd44?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/school-of-basketball" },
+  { id:"pg-ladder-to-brainhot-climb-obby", title:"Ladder to Brainhot: Climb Obby", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/ladder-to-brainhot-climb-obby?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120962/preview/0cfcc9ebb6375b689b12f69a0dcbe551e8729d1c959bafa4e7c0a58dcdf5e7c8?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/ladder-to-brainhot-climb-obby" },
+  { id:"pg-screw-pin-puzzle-levels", title:"Screw & Pin: Puzzle Levels", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/screw--pin-puzzle-levels?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120656/preview/61f2e24bcb828ff6574a0e8c0fbb8858fcf3047863a2f2c26c51e2ae5b1dfa5f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/screw--pin-puzzle-levels" },
+  { id:"pg-cozy-jigsaw-puzzles", title:"Cozy Jigsaw Puzzles", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/cozy-jigsaw-puzzles?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121239/preview/fd2eae7cea1866e31e5f866e616c50e785820a8814d1b80986189b4a9446904c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/cozy-jigsaw-puzzles" },
+  { id:"pg-sprunki-craft-sandbox-3d", title:"Sprunki Craft - Sandbox 3D", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/sprunki-craft--sandbox-3d?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112452/preview/c79f0016cb029e31981a12fbf32eb0cb95b7dda3d350a708cf9208cc0c432127?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sprunki-craft--sandbox-3d" },
+  { id:"pg-escape-from-wave-for-brainrots", title:"Escape from Wave for Brainrots", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/escape-from-wave-for-brainrots?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120647/preview/72a1cc412544b286b8b96e02d69b1b620e372d9fc2c869b0c9ec15c75358af75?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/escape-from-wave-for-brainrots" },
+  { id:"pg-cozy-coloring", title:"Cozy Coloring", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/cozy-coloring?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122319/preview/6b60f32142e1fa7c794cf9b73a2fbeb9839b38e73c41815eb8a3ed7963444362?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/cozy-coloring" },
+  { id:"pg-pop-them", title:"Pop Them!", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/pop-them?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-118234/preview/7677efd955fa01164f658f258890fb53c5911ce20ef30d3767efbda19a103a0e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/pop-them" },
+  { id:"pg-4-colors", title:"4 Colors", cat:"multiplayer", emoji:"🌐", badge:null,
+    embedUrl:"https://playgama.com/export/game/4-colors?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-92819/preview/7d15d3daf8568073170d529b47281092dea921e66321171e6216190afe94e1f5?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/4-colors" },
+  { id:"pg-word-string", title:"Word String", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/word-string?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-111993/preview/e7b00827fa5e5dc6b6f0662baaec2a9289df686a7061c003eaf8aa380794ea0e?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/word-string" },
+  { id:"pg-christmas-girls-dress-up", title:"Christmas Girls Dress Up", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/christmas-girls-dress-up?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115663/preview/d536a83db38107d3cd481e9dd6b3fc680ce3bea0a68d98177ed37a9fe4d9370f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/christmas-girls-dress-up" },
+  { id:"pg-obby-mine-crasher", title:"Obby: Mine Crasher", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/obby-mine-crasher?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122868/preview/3db326e99dbb38fc002918bb5b77d3dd321779040a16838a028d52c207471ee7?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/obby-mine-crasher" },
+  { id:"pg-steal-car-duel", title:"Steal Car Duel", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/steal-car-duel?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120888/preview/52518ae107135cb3cf8f7938851b80b07b2737e693e0813748645bd5afdd8e3f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/steal-car-duel" },
+  { id:"pg-cook-soups-3-in-a-bowl", title:"Cook Soups: 3 in a Bowl", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/cook-soups-3-in-a-bowl?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/preview/ff27c2c59dd942be8802d1c0386587b5?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/cook-soups-3-in-a-bowl" },
+  { id:"pg-annas-story-dress-up-diy", title:"Anna's Story: Dress Up DIY", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/annas-story-dress-up-diy?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119219/preview/7232ff6a849f7f0dafb3e3cbfa483c3228a54522c6fcd426a09b21b05cfb9997?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/annas-story-dress-up-diy" },
+  { id:"pg-cut-grass-for-brainrots", title:"Cut Grass for Brainrots", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/cut-grass-for-brainrots?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121930/preview/746e94518c8e2c895e4f5924516f51a1f5dc33b662e4a0a801b49fa4c3c3df09?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/cut-grass-for-brainrots" },
+  { id:"pg-ragdoll-crashtest-throw-and-break", title:"Ragdoll Crash-Test: Throw and Break!", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/ragdoll-crashtest-throw-and-break?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-86415/preview/979ee716aeb975c2a82f1a38fdfeb9d9afc91dc55c97db3ea4a467abc052b60c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/ragdoll-crashtest-throw-and-break" },
+  { id:"pg-the-queens-jewels", title:"The Queen's Jewels", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/the-queens-jewels?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-113242/preview/73b6f5bd8f8dbfba1e3dd11af5efe757ffd9519be0a4de7cd086a2d09b36a1f7?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/the-queens-jewels" },
+  { id:"pg-kingdom-defender-tower-defense", title:"Kingdom Defender - Tower Defense", cat:"strategy", emoji:"♟", badge:null,
+    embedUrl:"https://playgama.com/export/game/kingdom-defender-tower-defense?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99706/preview/9404319a74eff04a96032a437f84af92b077e0de05d82ed41fbfd22d369c3a5f?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/kingdom-defender-tower-defense" },
+  { id:"pg-gun-bounce-idle", title:"Gun Bounce Idle", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/gun-bounce-idle?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119712/preview/ff493305d18a3e7e0d91029242c53e841ea4c0b5dd1ba55aa922885e30ecc8ca?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/gun-bounce-idle" },
+  { id:"pg-paper-doll-diary-chibi-dolls", title:"Paper Doll Diary - Chibi Dolls", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/paper-doll-diary--chibi-dolls?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121594/preview/c700745e368482138e0b832954c1f2c8b9e215f6871207f439c06258c0237ef3?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/paper-doll-diary--chibi-dolls" },
+  { id:"pg-popping-candies", title:"Popping Candies", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/popping-candies?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-20/preview/e078f6f308614240a373a286bb4a4e243c09195a4c34a5d6207c1867c0ef49d9?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/popping-candies" },
+  { id:"pg-royal-jewels-match", title:"Royal Jewels Match", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/royal-jewels-match?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120188/preview/0cc2b8ac415991076e975c9104b30d107b181aa032c8a5f850db7bd91594c89b?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/royal-jewels-match" },
+  { id:"pg-sudoku", title:"Sudoku", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/sudoku?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-99596/preview/bbd9e65bd08f7a161d36571749c01e5e49c3a51be5bcf79a3313ea6ff38e1148?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/sudoku" },
+  { id:"pg-break-a-tower-obby", title:"Break a Tower: Obby", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/break-a-tower-obby?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-119536/preview/0a15d48a9a29b203dcd96e7d7270b83c3b0643ae0f5f968bdbbb9a49746e83be?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/break-a-tower-obby" },
+  { id:"pg-tall-io", title:"Tall io", cat:"multiplayer", emoji:"🌐", badge:null,
+    embedUrl:"https://playgama.com/export/game/tall-io?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-113720/preview/5b5229840759137982e4f5751ebb050a579f7eafbba3cce51707cbe467da16af?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/tall-io" },
+  { id:"pg-dunkin-beanz", title:"Dunkin Beanz", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/dunkin-beanz?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-111095/preview/7f24d7e44d5ce8a76c1e274edbeaa9d9084bf84b6f02d9df5f1898574d2c12a2?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/dunkin-beanz" },
+  { id:"pg-ninja-vs-ragdolls-sharp-knife-throw", title:"Ninja vs Ragdolls: Sharp Knife Throw!", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/ninja-vs-ragdolls-sharp-knife-throw?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-120473/preview/8e1e4740f95439ab22b40361e5a414c8810c7dce9998ddf427ca803ccd473e4c?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/ninja-vs-ragdolls-sharp-knife-throw" },
+  { id:"pg-dinosaur-shifting-run", title:"Dinosaur Shifting Run", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/dinosaur-shifting-run?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121453/preview/944dcc8cca7f1ce45ce096ee311d4859c49f6296c3233d83124dec35a0732733?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/dinosaur-shifting-run" },
+  { id:"pg-coloring-by-numbers-pixel-room", title:"Coloring by Numbers. Pixel Room", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/coloring-by-numbers-pixel-room?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-115717/preview/0be562d69db1d4fce4e526e1e44ef4b5b32845e11316e572100c84efaa27cb68?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/coloring-by-numbers-pixel-room" },
+  { id:"pg-mansion-design-match-3", title:"Mansion Design - Match 3", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/mansion-design--match-3?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-108870/preview/304881f04fc14fcdda3247e964e433bb5fb9b4ce122741f97968644b66af8645?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/mansion-design--match-3" },
+  { id:"pg-escape-strange-girls-house-2", title:"Escape Strange Girl’s House 2", cat:"puzzle", emoji:"🧩", badge:null,
+    embedUrl:"https://playgama.com/export/game/escape-strange-girls-house-2?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-112782/preview/1db193e6353541a0a751936a59d2605fc6b915737dff90a3b8f4ef7d52c57c94?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/escape-strange-girls-house-2" },
+  { id:"pg-obby-sword-hero-adventure", title:"Obby: Sword Hero Adventure", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/obby-sword-hero-adventure?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-121924/preview/24f732099cf31c43731e195e2ca2dcf11cf23c1dbcb7577619cc89938dc25ae3?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/obby-sword-hero-adventure" },
+  { id:"pg-robby-mini-games", title:"Robby Mini Games", cat:"action", emoji:"🎯", badge:null,
+    embedUrl:"https://playgama.com/export/game/robby-mini-games?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-122965/preview/f0cfbee1f0a49707ca1720389f4ed410aa815ac1fc8cd2a7d52493f5589f5dbd?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/robby-mini-games" },
+  { id:"pg-dummy-world-cup-playgama", title:"Dummies Football 2026", cat:"arcade", emoji:"👾", badge:null,
+    embedUrl:"https://playgama.com/export/game/dummy-world-cup-playgama?clid=p_917996d5-d491-4492-bc17-52d5ff42d61e",
+    img:"https://static.playgama.com/p-img/pg/backfill/game-92781/preview/a7cee09b9a54a3cdcbedba824c69fdc08706c7b4213afba32380c5477ba41fb9?width=448",
+    embedWidth:800, embedHeight:600, sourceUrl:"https://playgama.com/game/dummy-world-cup-playgama" },
+
 
   { id:"idev-water-sort", title:"Water Sort", cat:"puzzle", emoji:"🧪", badge:"NEW",
     embedUrl:"https://iDev.Games/embed/water-sort",
@@ -2630,7 +3868,7 @@ ENGINES.breakout = function(stage){
       tryAutoRotateMobile();
       recordPlay(game);
       renderRatingBar(game.id);
-      const iframe = document.createElement("iframe");
+      registerPresence(game.title);
       iframe.src = game.embedUrl;
       iframe.style.width = (game.embedWidth || 800) + "px";
       iframe.style.height = (game.embedHeight || 600) + "px";
@@ -2665,6 +3903,7 @@ ENGINES.breakout = function(stage){
     tryAutoRotateMobile();
     recordPlay(game);
     renderRatingBar(game.id);
+    registerPresence(game.title);
     activeEngine = ENGINES[game.engine](playerStage);
   }
 
@@ -2698,6 +3937,7 @@ ENGINES.breakout = function(stage){
     playerOverlay.classList.remove("open");
     if(activeEngine && activeEngine.destroy) activeEngine.destroy();
     activeEngine = null;
+    registerPresence(null); // no longer playing anything
   }
   document.getElementById("closePlayer").addEventListener("click", closeGame);
   favToggleBtn.addEventListener("click", ()=>{
@@ -2780,6 +4020,10 @@ ENGINES.breakout = function(stage){
   function openViewer(){
     viewerOverlay.classList.add("open");
     viewerNotice.textContent = "Heads up: many sites block embedding (X-Frame-Options/CSP) and won't load here — that's the site's own security setting, not a bug.";
+    if(!viewerUrl.value.trim()){
+      viewerUrl.value = "https://example.com";
+      loadUrl();
+    }
   }
   function loadUrl(){
     let val = viewerUrl.value.trim();
@@ -2963,11 +4207,27 @@ ENGINES.breakout = function(stage){
       list.innerHTML = `<li style="color:var(--muted)">Couldn't load leaderboard: ${error.message}</li>`;
       return;
     }
+    // One batched query for everyone's last_seen + current_game, instead
+    // of one query per row — same data, far fewer round trips.
+    let onlineMap = {}, gameMap = {};
+    if(data.length){
+      const { data: presenceRows } = await supabaseClient
+        .from("users")
+        .select("username,last_seen,current_game")
+        .in("username", data.map(r=>r.username));
+      (presenceRows||[]).forEach(p=>{
+        const online = p.last_seen && (Date.now() - new Date(p.last_seen).getTime()) < ONLINE_THRESHOLD_MS;
+        onlineMap[p.username] = online;
+        if(online && p.current_game) gameMap[p.username] = p.current_game;
+      });
+    }
     list.innerHTML = data.length ? "" : `<li style="color:var(--muted)">No players yet — be the first!</li>`;
     data.forEach((r,i)=>{
       const li = document.createElement("li");
       if(r.username === profile.username) li.classList.add("me");
-      li.innerHTML = `<span class="rank">#${i+1}</span><span class="lbName">${r.username}</span><span class="lbXp">Lv ${r.level} · ${r.xp} XP</span>`;
+      const online = !!onlineMap[r.username];
+      const playing = gameMap[r.username];
+      li.innerHTML = `<span class="rank">#${i+1}</span><span class="onlineDot ${online?'online':''}" title="${online?'Online':'Offline'}"></span><span class="lbName">${r.username}${playing ? `<br><span class="lbPlaying">🎮 playing ${playing}</span>` : ""}</span><span class="lbXp">Lv ${r.level} · ${r.xp} XP</span>`;
       list.appendChild(li);
     });
   }
@@ -3216,14 +4476,37 @@ ENGINES.breakout = function(stage){
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     : null;
 
-  let activeThread = "public"; // "public" or a contact's username
+  let activeThread = "public"; // "public", a contact's username, or {type:"group", id, name}
   let realtimeChannel = null;
 
   function dmKey(userA, userB){
     return [userA, userB].sort().join("__");
   }
   function threadKey(){
-    return activeThread === "public" ? "public" : dmKey(profile.username, activeThread);
+    if(activeThread === "public") return "public";
+    if(activeThread && activeThread.type === "group") return "group_" + activeThread.id;
+    return dmKey(profile.username, activeThread);
+  }
+
+  async function getMyGroups(){
+    if(!supabaseClient || !profile) return [];
+    const { data: memberships } = await supabaseClient
+      .from("group_members").select("group_id").eq("username", profile.username);
+    if(!memberships || !memberships.length) return [];
+    const ids = memberships.map(m=>m.group_id);
+    const { data: groupRows } = await supabaseClient
+      .from("groups").select("*").in("id", ids);
+    return groupRows || [];
+  }
+
+  async function createGroup(name, usernames){
+    const id = "g_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+    const { error: gErr } = await supabaseClient.from("groups").insert({ id, name, created_by: profile.username });
+    if(gErr) throw gErr;
+    const members = [profile.username, ...usernames].map(u=>({ group_id:id, username:u }));
+    const { error: mErr } = await supabaseClient.from("group_members").insert(members);
+    if(mErr) throw mErr;
+    return id;
   }
 
   // Polling kept as a fallback alongside realtime — if the realtime socket
@@ -3625,39 +4908,72 @@ ENGINES.breakout = function(stage){
   });
 
   /* ----- User registry (lets people find each other to add as contacts) ----- */
-  async function registerPresence(){
-    if(!profile) return;
-    const users = await storeGet("users_v1", true, {});
-    users[profile.username] = { fullName: profile.fullName, lastSeen: Date.now() };
-    await storeSet("users_v1", users, true);
+  const ONLINE_THRESHOLD_MS = 60000; // last_seen within the last 60s counts as "online"
+  async function registerPresence(currentGame){
+    if(!profile || !supabaseClient) return;
+    const payload = {
+      username: profile.username,
+      full_name: profile.fullName,
+      last_seen: new Date().toISOString(),
+    };
+    if(currentGame !== undefined) payload.current_game = currentGame;
+    const { error } = await supabaseClient.from("users").upsert(payload);
+    if(error) console.error("registerPresence failed:", error);
+  }
+  // Heartbeat — keeps last_seen fresh for as long as the tab stays open,
+  // which is what makes "online now" actually mean something real instead
+  // of just "has an account at all".
+  setInterval(()=> registerPresence(), 25000);
+
+  async function isUserOnline(username){
+    if(!supabaseClient) return false;
+    const { data } = await supabaseClient.from("users").select("last_seen").eq("username", username).single();
+    if(!data || !data.last_seen) return false;
+    return (Date.now() - new Date(data.last_seen).getTime()) < ONLINE_THRESHOLD_MS;
   }
 
   /* ----- Contacts ----- */
   async function getContacts(){ return storeGet("contacts", false, []); }
   async function renderContactList(){
     const contacts = await getContacts();
+    const groups = await getMyGroups();
     const list = document.getElementById("contactList");
     list.innerHTML = "";
+    const isActive = (t)=> activeThread===t || (activeThread && t && activeThread.id===t.id);
+
     const publicLi = document.createElement("li");
     publicLi.className = "contactItem" + (activeThread==="public" ? " active" : "");
     publicLi.innerHTML = `<span class="dot"></span> Public Chat`;
     publicLi.addEventListener("click", ()=> switchThread("public"));
     list.appendChild(publicLi);
 
-    contacts.forEach(name=>{
+    for(const name of contacts){
       const li = document.createElement("li");
       li.className = "contactItem" + (activeThread===name ? " active" : "");
-      li.innerHTML = `<span class="dot" style="background:var(--pink)"></span> ${name}`;
+      const online = await isUserOnline(name);
+      li.innerHTML = `<span class="dot" style="background:${online ? '#27c93f' : 'var(--pink)'}" title="${online ? 'Online' : 'Offline'}"></span> ${name}`;
       li.addEventListener("click", ()=> switchThread(name));
+      list.appendChild(li);
+    }
+
+    groups.forEach(g=>{
+      const li = document.createElement("li");
+      li.className = "contactItem" + (isActive(g) ? " active" : "");
+      li.innerHTML = `<span class="dot" style="background:var(--cyan)"></span> 👥 ${g.name}`;
+      li.addEventListener("click", ()=> switchThread({ type:"group", id:g.id, name:g.name }));
       list.appendChild(li);
     });
   }
-  async function switchThread(nameOrPublic){
-    activeThread = nameOrPublic;
+  async function switchThread(target){
+    activeThread = target;
+    const isGroup = target && target.type === "group";
     document.getElementById("messagingThreadName").textContent =
-      nameOrPublic === "public" ? "💬 Klyp Public Chat" : "💬 " + nameOrPublic;
+      target === "public" ? "💬 Klyp Public Chat" : isGroup ? "👥 " + target.name : "💬 " + target;
     document.getElementById("messagingThreadSub").textContent =
-      nameOrPublic === "public" ? "Visible to everyone currently using this site." : "Private conversation — only visible to you and " + nameOrPublic + ".";
+      target === "public" ? "Visible to everyone currently using this site."
+      : isGroup ? "Group chat — visible to every member of " + target.name + "."
+      : "Private conversation — only visible to you and " + target + ". They'll see your messages whenever they're next online — chat doesn't require them to be online right now.";
+    document.getElementById("voiceCallBtn").style.display = (typeof target === "string" && target !== "public") ? "inline-block" : "none";
     await renderContactList();
     await refreshMessages();
     subscribeToThread(threadKey()); // switch the realtime subscription to the new thread
@@ -3665,15 +4981,45 @@ ENGINES.breakout = function(stage){
     document.getElementById("messagingContacts").classList.remove("mobileShow");
     document.querySelector(".messaging__main").classList.add("mobileShow");
   }
+  document.getElementById("newGroupBtn")?.addEventListener("click", async ()=>{
+    if(!(await ensureProfile())) return;
+    const name = prompt("Group name:");
+    if(!name || !name.trim()) return;
+    const usernamesRaw = prompt("Usernames to add, separated by commas (e.g. alex, jamie, sam):");
+    if(!usernamesRaw) return;
+    const usernames = usernamesRaw.split(",").map(u=>u.trim()).filter(u=>u && u !== profile.username);
+    if(!usernames.length){ toast("Add at least one other person to the group."); return; }
+    // Verify every username actually exists before creating the group
+    const { data: foundUsers } = await supabaseClient.from("users").select("username").in("username", usernames);
+    const foundSet = new Set((foundUsers||[]).map(u=>u.username));
+    const missing = usernames.filter(u=>!foundSet.has(u));
+    if(missing.length){
+      toast(`These usernames weren't found: ${missing.join(", ")} — double check spelling.`);
+      return;
+    }
+    try{
+      const groupId = await createGroup(name.trim(), usernames);
+      await renderContactList();
+      switchThread({ type:"group", id:groupId, name:name.trim() });
+      toast(`Created group "${name.trim()}" with ${usernames.length+1} members.`);
+    }catch(e){
+      toast("⚠️ Couldn't create group: " + e.message);
+    }
+  });
   document.getElementById("addContactBtn").addEventListener("click", async ()=>{
     if(!(await ensureProfile())) return;
     const name = prompt("Enter the exact username of the person you want to chat with:");
     if(!name || !name.trim()) return;
     const trimmed = name.trim().slice(0,20);
     if(trimmed === profile.username){ toast("That's your own username."); return; }
-    const users = await storeGet("users_v1", true, {});
-    if(!users[trimmed]){
-      toast(`No Klyp account found with username "${trimmed}".`);
+    if(!supabaseClient){ toast("⚠️ Chat backend not configured."); return; }
+    const { data: foundUser, error } = await supabaseClient.from("users").select("username").eq("username", trimmed).maybeSingle();
+    if(error){ toast("⚠️ Couldn't check that username: " + error.message); return; }
+    if(!foundUser){
+      // They might just have never opened the site yet, or never sent a
+      // message/loaded a page that calls registerPresence() — being clear
+      // about that instead of implying "they don't exist" outright.
+      toast(`No Klyp account found with username "${trimmed}" — double check the spelling, or ask them to open the site at least once first.`);
       return;
     }
     const contacts = await getContacts();
@@ -3683,7 +5029,7 @@ ENGINES.breakout = function(stage){
     }
     await renderContactList();
     switchThread(trimmed);
-    toast(`Added ${trimmed} to your contacts.`);
+    toast(`Added ${trimmed} to your contacts. You can message them right now, whether they're online or not.`);
   });
   document.getElementById("messagingBackBtn").addEventListener("click", ()=>{
     document.getElementById("messagingContacts").classList.add("mobileShow");
@@ -4287,6 +5633,7 @@ ENGINES.breakout = function(stage){
     document.getElementById("klypMode").style.display = "none";
     document.getElementById("studyMode").style.display = "";
   }
+  window.switchBackToStudy = switchBackToStudy; // inline onclick="" attributes run in global scope, not in this closure
   // The escape buttons exist because keystrokes typed while focus is inside
   // an embedded game/video iframe never reach this page's keydown listener
   // at all — that's a hard browser security boundary (a parent page can't
@@ -4470,9 +5817,163 @@ ENGINES.breakout = function(stage){
     }, 700);
   }
 
+  /* ===================== VOICE CALLING (real WebRTC, Supabase Realtime as signaling) =====================
+     No separate signaling server needed — Supabase's broadcast channels
+     carry the offer/answer/ICE-candidate exchange that WebRTC needs to
+     establish a direct peer-to-peer audio connection. Honest limitation:
+     this uses free public STUN servers only, which work for most typical
+     home/network setups but can't guarantee connectivity through every
+     restrictive network (some corporate/school networks block this kind
+     of peer-to-peer connection outright) — fully solving that needs a paid
+     TURN server, which isn't something provisioned here. */
+  const ICE_SERVERS = [{ urls:"stun:stun.l.google.com:19302" }, { urls:"stun:stun1.l.google.com:19302" }];
+  let voicePC = null, voiceLocalStream = null, voiceRemoteUser = null, voiceMuted = false;
+  let voiceMyChannel = null, voiceTargetChannel = null;
+
+  function voiceCleanup(){
+    if(voicePC){ try{ voicePC.close(); }catch(e){} voicePC = null; }
+    if(voiceLocalStream){ voiceLocalStream.getTracks().forEach(t=>t.stop()); voiceLocalStream = null; }
+    if(voiceTargetChannel){ try{ supabaseClient.removeChannel(voiceTargetChannel); }catch(e){} voiceTargetChannel = null; }
+    document.getElementById("inCallBar").style.display = "none";
+    voiceRemoteUser = null;
+  }
+  function endVoiceCall(notifyOther){
+    if(notifyOther && voiceRemoteUser && voiceTargetChannel){
+      try{ voiceTargetChannel.send({ type:"broadcast", event:"hangup", payload:{ from: profile.username } }); }catch(e){}
+    }
+    voiceCleanup();
+  }
+
+  async function startVoiceCall(targetUsername){
+    if(!supabaseClient){ toast("⚠️ Chat backend not configured."); return; }
+    if(voiceRemoteUser){ toast("Already in a call — hang up first."); return; }
+    try{
+      voiceLocalStream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    }catch(e){
+      toast("⚠️ Couldn't access your microphone — check your browser's mic permission for this site.");
+      return;
+    }
+    voiceRemoteUser = targetUsername;
+    voicePC = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    voiceLocalStream.getTracks().forEach(t=> voicePC.addTrack(t, voiceLocalStream));
+    voicePC.ontrack = (e)=>{ document.getElementById("voiceRemoteAudio").srcObject = e.streams[0]; };
+
+    voiceTargetChannel = supabaseClient.channel("calls:" + targetUsername);
+    voiceTargetChannel.subscribe();
+
+    voicePC.onicecandidate = (e)=>{
+      if(e.candidate){
+        voiceTargetChannel.send({ type:"broadcast", event:"ice-candidate", payload:{ from: profile.username, candidate: e.candidate } });
+      }
+    };
+
+    voiceMyChannel.on("broadcast", { event:"answer" }, async (msg)=>{
+      if(msg.payload.from !== targetUsername || !voicePC) return;
+      await voicePC.setRemoteDescription(new RTCSessionDescription(msg.payload.sdp));
+    });
+
+    const offer = await voicePC.createOffer();
+    await voicePC.setLocalDescription(offer);
+    voiceTargetChannel.send({ type:"broadcast", event:"offer-ack-channel-ready", payload:{} }); // ensure channel is live before the real send
+    setTimeout(()=>{
+      voiceTargetChannel.send({ type:"broadcast", event:"offer", payload:{ from: profile.username, sdp: offer } });
+    }, 300);
+
+    showInCallUI(targetUsername, "Calling…");
+  }
+
+  async function answerIncomingCall(fromUsername, sdp){
+    try{
+      voiceLocalStream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    }catch(e){
+      toast("⚠️ Couldn't access your microphone — check your browser's mic permission for this site.");
+      return;
+    }
+    voiceRemoteUser = fromUsername;
+    voicePC = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    voiceLocalStream.getTracks().forEach(t=> voicePC.addTrack(t, voiceLocalStream));
+    voicePC.ontrack = (e)=>{ document.getElementById("voiceRemoteAudio").srcObject = e.streams[0]; };
+
+    voiceTargetChannel = supabaseClient.channel("calls:" + fromUsername);
+    voiceTargetChannel.subscribe();
+
+    voicePC.onicecandidate = (e)=>{
+      if(e.candidate){
+        voiceTargetChannel.send({ type:"broadcast", event:"ice-candidate", payload:{ from: profile.username, candidate: e.candidate } });
+      }
+    };
+
+    await voicePC.setRemoteDescription(new RTCSessionDescription(sdp));
+    const answer = await voicePC.createAnswer();
+    await voicePC.setLocalDescription(answer);
+    voiceTargetChannel.send({ type:"broadcast", event:"answer", payload:{ from: profile.username, sdp: answer } });
+
+    showInCallUI(fromUsername, "In call with");
+  }
+
+  function showInCallUI(withUser, label){
+    document.getElementById("inCallBar").style.display = "flex";
+    document.getElementById("inCallWith").textContent = `🎤 ${label} ${withUser}`;
+  }
+
+  // Always-on listener for incoming calls — works regardless of which
+  // thread you're currently viewing, as long as your profile is loaded.
+  async function setupIncomingCallListener(){
+    if(!supabaseClient || !profile || voiceMyChannel) return;
+    voiceMyChannel = supabaseClient.channel("calls:" + profile.username);
+    voiceMyChannel
+      .on("broadcast", { event:"offer" }, (msg)=>{
+        const { from, sdp } = msg.payload;
+        if(voiceRemoteUser){ return; } // already in a call — ignore
+        document.getElementById("incomingCallFrom").textContent = `${from} is calling you...`;
+        document.getElementById("incomingCallOverlay").classList.add("open");
+        document.getElementById("acceptCallBtn").onclick = ()=>{
+          document.getElementById("incomingCallOverlay").classList.remove("open");
+          answerIncomingCall(from, sdp);
+        };
+        document.getElementById("declineCallBtn").onclick = ()=>{
+          document.getElementById("incomingCallOverlay").classList.remove("open");
+          const declineChannel = supabaseClient.channel("calls:" + from);
+          declineChannel.subscribe();
+          setTimeout(()=>{
+            declineChannel.send({ type:"broadcast", event:"reject", payload:{ from: profile.username } });
+            setTimeout(()=> supabaseClient.removeChannel(declineChannel), 1000);
+          }, 300);
+        };
+      })
+      .on("broadcast", { event:"ice-candidate" }, async (msg)=>{
+        if(!voicePC || msg.payload.from !== voiceRemoteUser) return;
+        try{ await voicePC.addIceCandidate(new RTCIceCandidate(msg.payload.candidate)); }catch(e){}
+      })
+      .on("broadcast", { event:"reject" }, ()=>{
+        toast(`${voiceRemoteUser} declined the call.`);
+        voiceCleanup();
+      })
+      .on("broadcast", { event:"hangup" }, ()=>{
+        toast("Call ended.");
+        voiceCleanup();
+      })
+      .subscribe();
+  }
+
+  document.getElementById("voiceCallBtn").addEventListener("click", ()=>{
+    if(typeof activeThread !== "string" || activeThread === "public"){
+      toast("Voice calls work in private 1:1 chats only.");
+      return;
+    }
+    startVoiceCall(activeThread);
+  });
+  document.getElementById("hangupCallBtn").addEventListener("click", ()=> endVoiceCall(true));
+  document.getElementById("muteCallBtn").addEventListener("click", (e)=>{
+    if(!voiceLocalStream) return;
+    voiceMuted = !voiceMuted;
+    voiceLocalStream.getAudioTracks().forEach(t=> t.enabled = !voiceMuted);
+    e.target.textContent = voiceMuted ? "🔇" : "🔊";
+  });
+
   /* ===================== INIT ===================== */
   loadTheme();
-  ensureProfile().then(ok=>{ if(ok){ renderMostPlayedToday(); registerPresence(); } });
+  ensureProfile().then(ok=>{ if(ok){ renderMostPlayedToday(); registerPresence(); setupIncomingCallListener(); } });
   if(!hasRealStorage()){
     setTimeout(()=> toast("⚠️ Shared storage not detected (chat/leaderboard work for this session only, won't sync with others). See README/chat for details."), 1200);
   }
