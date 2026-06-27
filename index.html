@@ -3832,10 +3832,44 @@ ENGINES.breakout = function(stage){
     state.cat="fav";
   });
 
+  let videoSearchDebounceTimer = null;
   searchInput.addEventListener("input", (e)=>{
-    state.query = e.target.value.trim().toLowerCase();
+    const query = e.target.value.trim();
+    if(currentSection === "videos"){
+      clearTimeout(videoSearchDebounceTimer);
+      videoSearchDebounceTimer = setTimeout(()=> searchYouTubeVideos(query), 500);
+      return;
+    }
+    state.query = query.toLowerCase();
     renderGrid();
   });
+
+  /* ----- Live YouTube video search (via the same Invidious helper used
+     elsewhere) — pulls real results straight from YouTube for whatever
+     you type, instead of only filtering the curated/loaded list. ----- */
+  async function searchYouTubeVideos(query){
+    const grid = document.getElementById("videosGrid");
+    if(!query){
+      renderVideosGrid(); // empty search — back to the normal curated + load-more view
+      return;
+    }
+    grid.innerHTML = `<p style="color:var(--muted); grid-column:1/-1; text-align:center; padding:30px;">Searching YouTube for "${escapeHtml(query)}"…</p>`;
+    const items = await invidiousSearch(query, 1);
+    if(!items){
+      grid.innerHTML = `<p style="color:var(--muted); grid-column:1/-1; text-align:center; padding:30px;">No response from YouTube right now — instances may be unreachable from your network. Try again in a moment.</p>`;
+      return;
+    }
+    const results = items.filter(it=> it.type === "video");
+    if(!results.length){
+      grid.innerHTML = `<p style="color:var(--muted); grid-column:1/-1; text-align:center; padding:30px;">No results for "${escapeHtml(query)}".</p>`;
+      return;
+    }
+    grid.innerHTML = "";
+    renderedVideoEntries = [];
+    results.forEach(it=>{
+      appendVideoCard({ id: it.videoId, title: it.title, tags: ["search", query] });
+    });
+  }
 
   /* ---------------- HERO ---------------- */
   const featured = GAMES.filter(g=>g.engine);
@@ -4408,7 +4442,9 @@ ENGINES.breakout = function(stage){
   let videosRendered = false;
   let appsRendered = false;
 
+  let currentSection = "home";
   function switchToSection(section){
+    currentSection = section;
     document.querySelectorAll(".sectionRail__btn").forEach(b=>{
       b.classList.toggle("active", b.dataset.section === section);
     });
@@ -4418,6 +4454,14 @@ ENGINES.breakout = function(stage){
     document.getElementById("shortsSection").style.display = section==="shorts" ? "" : "none";
     document.getElementById("videosSection").style.display = section==="videos" ? "" : "none";
     document.getElementById("appsSection").style.display = section==="apps" ? "" : "none";
+
+    // Search bar adapts to whichever page you're actually on.
+    const search = document.getElementById("searchInput");
+    if(search){
+      search.placeholder = section==="videos" ? "Search YouTube for a video..." : "Search games...";
+      search.value = "";
+      state.query = "";
+    }
 
     if(section==="messaging"){
       ensureProfile().then(ok=>{ if(ok){ renderContactList(); refreshMessages(); startMessagingPoll(); } });
@@ -5438,11 +5482,16 @@ ENGINES.breakout = function(stage){
           }catch(err){}
         },
         onError:(e)=>{
-          // Uploader disabled embedding for this one — skip ahead automatically.
+          // Error codes: 2=invalid video ID, 5=HTML5 player error,
+          // 100=video not found/private, 101/150=embedding disabled by
+          // uploader. Showing the real code instead of assuming it's
+          // always "embedding disabled" — if EVERY video fails with the
+          // same code, that's a real bug, not a per-video restriction.
+          console.error("YT player error, code:", e.data, "videoId:", video.id);
           const item = document.querySelector(`.shorts__item--video[data-idx="${index}"]`);
           if(item){
             const box = item.querySelector(".shorts__videoBox");
-            if(box) box.innerHTML = `<div class="shorts__brokenMsg">⚠ This video can't be embedded — skipping…</div>`;
+            if(box) box.innerHTML = `<div class="shorts__brokenMsg">⚠ Error code ${e.data} — skipping…</div>`;
             const next = item.nextElementSibling;
             if(next) setTimeout(()=> next.scrollIntoView({ behavior:"smooth", block:"start" }), 500);
           }
