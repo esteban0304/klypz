@@ -817,6 +817,20 @@ button:focus-visible, input:focus-visible, li:focus-visible{
 .avatarShopGrid{
   display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:4px; margin-bottom:14px;
 }
+.avatarShopGrid--page{
+  grid-template-columns:repeat(auto-fill, minmax(110px,1fr)); gap:16px; margin-bottom:0;
+}
+.avatarShopGrid--page .avatarCell{ padding:22px 10px; }
+.avatarShopGrid--page .avatarCell__emoji{ font-size:34px; }
+.adminPanelGrid{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:14px;
+}
+.adminPanelBtn{
+  background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  padding:24px 16px; font-size:14px; font-weight:600; text-align:center;
+  transition:transform .15s, border-color .15s;
+}
+.adminPanelBtn:hover{transform:translateY(-2px); border-color:var(--pink);}
 .avatarCell{
   display:flex; flex-direction:column; align-items:center; gap:3px;
   padding:10px 4px; border-radius:10px; background:var(--panel-2);
@@ -1086,6 +1100,16 @@ html[data-theme="light"] .hero{
         <p class="homeCard__title">Leaderboard</p>
         <p class="homeCard__desc">See where you rank</p>
       </div>
+      <div class="homeCard" data-go="avatarshop">
+        <div class="homeCard__icon">🛍</div>
+        <p class="homeCard__title">Avatar Shop</p>
+        <p class="homeCard__desc">Spend your XP on a new look</p>
+      </div>
+      <div class="homeCard" id="adminPanelCard" data-action="adminpanel" style="display:none;">
+        <div class="homeCard__icon">🛠</div>
+        <p class="homeCard__title">Admin Panel</p>
+        <p class="homeCard__desc">Moderation tools</p>
+      </div>
     </div>
   </div>
 
@@ -1193,6 +1217,28 @@ html[data-theme="light"] .hero{
       <p>Real official embeds from other platforms — not full logged-in apps, just genuine content from each one, the same way our YouTube videos work.</p>
     </div>
     <div class="appsGrid" id="appsGrid"></div>
+  </div>
+
+  <div class="appsSection" id="avatarShopSection" style="display:none;">
+    <div class="appsSection__head">
+      <h2>🛍 Avatar Shop</h2>
+      <p>Spend XP you've earned from playing games to unlock and equip a new avatar.</p>
+    </div>
+    <div class="avatarShopGrid avatarShopGrid--page" id="avatarShopGridPage"></div>
+  </div>
+
+  <div class="appsSection" id="adminPanelSection" style="display:none;">
+    <div class="appsSection__head">
+      <h2>🛠 Admin Panel</h2>
+      <p>Moderation tools — visible because your account currently has admin status.</p>
+    </div>
+    <div class="adminPanelGrid">
+      <button class="adminPanelBtn" id="adminPinBtn">📌 Pin Announcement</button>
+      <button class="adminPanelBtn" id="adminClearAnnouncementBtn">🗑 Clear Announcement</button>
+      <button class="adminPanelBtn" id="adminClearChatBtn">🧹 Clear Public Chat</button>
+      <button class="adminPanelBtn" id="adminUnmuteBtn">🔊 Unmute a User</button>
+      <button class="adminPanelBtn" id="adminUnbanBtn">✅ Unban a User</button>
+    </div>
   </div>
 
   </div>
@@ -4203,33 +4249,35 @@ ENGINES.breakout = function(stage){
   }
 
   async function renderAvatarShop(){
-    const grid = document.getElementById("avatarShopGrid");
-    if(!grid) return;
+    const grids = [document.getElementById("avatarShopGrid"), document.getElementById("avatarShopGridPage")].filter(Boolean);
+    if(!grids.length) return;
     const owned = await getOwnedAvatarIds();
-    grid.innerHTML = "";
+    grids.forEach(grid=> grid.innerHTML = "");
     AVAILABLE_AVATARS.forEach(a=>{
       const isOwned = owned.includes(a.id);
       const isEquipped = profile.equippedAvatar === a.emoji;
-      const cell = document.createElement("div");
-      cell.className = "avatarCell" + (isEquipped ? " equipped" : "");
-      cell.innerHTML = `<div class="avatarCell__emoji">${a.emoji}</div><div class="avatarCell__cost">${isOwned ? (isEquipped ? "Equipped" : "Equip") : a.cost + " XP"}</div>`;
-      cell.addEventListener("click", async ()=>{
-        if(isOwned){
-          await equipAvatar(a.emoji);
-        } else {
-          if(profile.xp < a.cost){ toast(`Not enough XP — need ${a.cost}, you have ${profile.xp}.`); return; }
-          if(!confirm(`Buy this avatar for ${a.cost} XP?`)) return;
-          const { error } = await supabaseClient.from("avatar_purchases").insert({ username: profile.username, avatar_id: a.id });
-          if(error){ toast("⚠️ Purchase failed: " + error.message); return; }
-          profile.xp -= a.cost;
-          saveProfile();
-          await updateLeaderboardEntry();
-          await equipAvatar(a.emoji);
-          toast(`Bought and equipped ${a.emoji}!`);
-        }
-        renderAvatarShop();
+      grids.forEach(grid=>{
+        const cell = document.createElement("div");
+        cell.className = "avatarCell" + (isEquipped ? " equipped" : "");
+        cell.innerHTML = `<div class="avatarCell__emoji">${a.emoji}</div><div class="avatarCell__cost">${isOwned ? (isEquipped ? "Equipped" : "Equip") : a.cost + " XP"}</div>`;
+        cell.addEventListener("click", async ()=>{
+          if(isOwned){
+            await equipAvatar(a.emoji);
+          } else {
+            if(profile.xp < a.cost){ toast(`Not enough XP — need ${a.cost}, you have ${profile.xp}.`); return; }
+            if(!confirm(`Buy this avatar for ${a.cost} XP?`)) return;
+            const { error } = await supabaseClient.from("avatar_purchases").insert({ username: profile.username, avatar_id: a.id });
+            if(error){ toast("⚠️ Purchase failed: " + error.message); return; }
+            profile.xp -= a.cost;
+            saveProfile();
+            await updateLeaderboardEntry();
+            await equipAvatar(a.emoji);
+            toast(`Bought and equipped ${a.emoji}!`);
+          }
+          renderAvatarShop();
+        });
+        grid.appendChild(cell);
       });
-      grid.appendChild(cell);
     });
   }
   async function equipAvatar(emoji){
@@ -4575,6 +4623,8 @@ ENGINES.breakout = function(stage){
     document.getElementById("shortsSection").style.display = section==="shorts" ? "" : "none";
     document.getElementById("videosSection").style.display = section==="videos" ? "" : "none";
     document.getElementById("appsSection").style.display = section==="apps" ? "" : "none";
+    document.getElementById("avatarShopSection").style.display = section==="avatarshop" ? "" : "none";
+    document.getElementById("adminPanelSection").style.display = section==="adminpanel" ? "" : "none";
 
     // Search bar adapts to whichever page you're actually on.
     const search = document.getElementById("searchInput");
@@ -4595,6 +4645,8 @@ ENGINES.breakout = function(stage){
     if(section==="shorts" && !shortsRendered){ renderShortsFeed(); shortsRendered = true; }
     if(section==="videos" && !videosRendered){ renderVideosGrid(); videosRendered = true; }
     if(section==="apps" && !appsRendered){ renderAppsGrid(); appsRendered = true; }
+    if(section==="avatarshop"){ ensureProfile().then(ok=>{ if(ok) renderAvatarShop(); }); }
+    if(section==="adminpanel"){ ensureProfile().then(ok=>{ if(ok && !isAdmin()){ toast("Admins only."); switchToSection("home"); } }); }
   }
 
   document.querySelectorAll(".sectionRail__btn").forEach(btn=>{
@@ -4614,8 +4666,32 @@ ENGINES.breakout = function(stage){
         document.getElementById("leaderboardBtn").click();
         return;
       }
+      if(card.dataset.action === "adminpanel"){
+        switchToSection("adminpanel");
+        return;
+      }
       switchToSection(card.dataset.go);
     });
+  });
+
+  // Show the Admin Panel home card only once we know the signed-in account
+  // actually has admin status — checked after profile loads.
+  ensureProfile().then(ok=>{
+    if(ok && isAdmin()){
+      document.getElementById("adminPanelCard").style.display = "";
+    }
+  });
+
+  document.getElementById("adminPinBtn")?.addEventListener("click", adminPinAnnouncement);
+  document.getElementById("adminClearAnnouncementBtn")?.addEventListener("click", adminClearAnnouncement);
+  document.getElementById("adminClearChatBtn")?.addEventListener("click", adminClearPublicChat);
+  document.getElementById("adminUnmuteBtn")?.addEventListener("click", ()=>{
+    const u = prompt("Username to unmute:");
+    if(u) adminUnmuteUser(u.trim());
+  });
+  document.getElementById("adminUnbanBtn")?.addEventListener("click", ()=>{
+    const u = prompt("Username to unban:");
+    if(u) adminUnbanUser(u.trim());
   });
 
   // Welcome popup — shown once per device, then remembered via storage.
