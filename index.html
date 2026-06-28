@@ -4712,14 +4712,6 @@ ENGINES.breakout = function(stage){
     ]);
     alert(`📊 Klyp Site Stats\n\nTotal registered accounts: ${userCount}\nTotal messages sent: ${msgCount}\nTotal groups created: ${groupCount}`);
   });
-  // Listen for admin broadcasts the whole time the site is open.
-  if(supabaseClient){
-    supabaseClient.channel("global-broadcast")
-      .on("broadcast", { event:"announcement" }, (msg)=>{
-        toast(`📢 ${msg.payload.from}: ${msg.payload.text}`);
-      })
-      .subscribe();
-  }
 
   // Welcome popup — shown once per device, then remembered via storage.
   (async ()=>{
@@ -4744,6 +4736,19 @@ ENGINES.breakout = function(stage){
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     : null;
   window.__klypSupabase = supabaseClient; // built-in game engines run in a separate scope and need this for high scores
+
+  // Listen for admin broadcasts the whole time the site is open — moved
+  // here specifically because it needs supabaseClient to actually exist
+  // first; placing it earlier in the script caused a "cannot access before
+  // initialization" crash that silently halted everything after it,
+  // including the K-L-Y-P keystroke listener further down.
+  if(supabaseClient){
+    supabaseClient.channel("global-broadcast")
+      .on("broadcast", { event:"announcement" }, (msg)=>{
+        toast(`📢 ${msg.payload.from}: ${msg.payload.text}`);
+      })
+      .subscribe();
+  }
 
   let activeThread = "public"; // "public", a contact's username, or {type:"group", id, name}
   let realtimeChannel = null;
