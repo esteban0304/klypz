@@ -838,8 +838,9 @@ button:focus-visible, input:focus-visible, li:focus-visible{
 }
 .avatarCell:hover{transform:translateY(-2px); border-color:var(--blue);}
 .avatarCell.equipped{border-color:var(--cyan); box-shadow:0 0 12px rgba(0,224,255,.3);}
-.avatarCell__emoji{font-size:24px;}
+.avatarCell__img{width:36px; height:36px; border-radius:50%; object-fit:cover;}
 .avatarCell__cost{font-size:10px; color:var(--muted);}
+.profileBtn__avatar{width:20px; height:20px; border-radius:50%; vertical-align:middle; margin-right:4px; object-fit:cover;}
 .badge{
   display:flex; flex-direction:column; align-items:center; gap:4px;
   padding:10px 4px; border-radius:10px; background:var(--panel-2);
@@ -1105,6 +1106,11 @@ html[data-theme="light"] .hero{
         <p class="homeCard__title">Avatar Shop</p>
         <p class="homeCard__desc">Spend your XP on a new look</p>
       </div>
+      <div class="homeCard" data-action="claimadmin">
+        <div class="homeCard__icon">🔑</div>
+        <p class="homeCard__title">Claim Admin</p>
+        <p class="homeCard__desc">Enter the passphrase</p>
+      </div>
       <div class="homeCard" id="adminPanelCard" data-action="adminpanel" style="display:none;">
         <div class="homeCard__icon">🛠</div>
         <p class="homeCard__title">Admin Panel</p>
@@ -1236,8 +1242,12 @@ html[data-theme="light"] .hero{
       <button class="adminPanelBtn" id="adminPinBtn">📌 Pin Announcement</button>
       <button class="adminPanelBtn" id="adminClearAnnouncementBtn">🗑 Clear Announcement</button>
       <button class="adminPanelBtn" id="adminClearChatBtn">🧹 Clear Public Chat</button>
+      <button class="adminPanelBtn" id="adminMuteBtn">🔇 Mute a User</button>
       <button class="adminPanelBtn" id="adminUnmuteBtn">🔊 Unmute a User</button>
+      <button class="adminPanelBtn" id="adminBanBtn">🚫 Ban a User</button>
       <button class="adminPanelBtn" id="adminUnbanBtn">✅ Unban a User</button>
+      <button class="adminPanelBtn" id="adminBroadcastBtn">📢 Broadcast to Everyone Online</button>
+      <button class="adminPanelBtn" id="adminStatsBtn">📊 Site Stats</button>
     </div>
   </div>
 
@@ -1391,39 +1401,9 @@ html[data-theme="light"] .hero{
 // Cards without a matching engine show a friendly "coming soon" state —
 // exactly like real game hubs do while back-filling their library.
 
-// Global error catcher — surfaces ANY uncaught error directly on the page
-// as a visible red banner, so problems can be diagnosed without opening
-// browser dev tools at all. This catches things even outside what's been
-// explicitly try/caught elsewhere in the code below.
-window.addEventListener("error", function(e){
-  showErrorBanner("JS Error: " + e.message + " (line " + e.lineno + ")");
-});
-window.addEventListener("unhandledrejection", function(e){
-  showErrorBanner("Promise error: " + (e.reason && e.reason.message ? e.reason.message : e.reason));
-});
-function showErrorBanner(text){
-  let banner = document.getElementById("globalErrorBanner");
-  if(!banner){
-    banner = document.createElement("div");
-    banner.id = "globalErrorBanner";
-    banner.style.position = "fixed";
-    banner.style.bottom = "0";
-    banner.style.left = "0";
-    banner.style.right = "0";
-    banner.style.background = "#7a1230";
-    banner.style.color = "#fff";
-    banner.style.padding = "10px 16px";
-    banner.style.fontSize = "13px";
-    banner.style.fontFamily = "monospace";
-    banner.style.zIndex = "99999";
-    banner.style.maxHeight = "30vh";
-    banner.style.overflowY = "auto";
-    document.body.appendChild(banner);
-  }
-  const line = document.createElement("div");
-  line.textContent = text;
-  banner.appendChild(line);
-}
+// Note: a global error banner used to live here during earlier debugging.
+// Removed now that the games are confirmed working — it was only ever a
+// temporary diagnostic tool, not something meant to be user-facing.
 
 const GAMES = [
   { id:"snake",    title:"Neon Snake",      cat:"arcade",   emoji:"🐍", badge:"HOT",  engine:"snake",
@@ -4228,18 +4208,18 @@ ENGINES.breakout = function(stage){
   ];
 
   const AVAILABLE_AVATARS = [
-    { id:"default",   emoji:"👤", cost:0 },
-    { id:"gamer",      emoji:"🎮", cost:50 },
-    { id:"ninja",      emoji:"🥷", cost:100 },
-    { id:"robot",      emoji:"🤖", cost:100 },
-    { id:"alien",      emoji:"👽", cost:150 },
-    { id:"wizard",     emoji:"🧙", cost:150 },
-    { id:"dragon",     emoji:"🐉", cost:250 },
-    { id:"crown",      emoji:"👑", cost:400 },
-    { id:"fire",       emoji:"🔥", cost:400 },
-    { id:"unicorn",    emoji:"🦄", cost:600 },
-    { id:"diamond",    emoji:"💎", cost:800 },
-    { id:"trophy",     emoji:"🏆", cost:1000 },
+    { id:"default", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMzYTQzNjAiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyMjJhNDQiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxjaXJjbGUgY3g9IjUwIiBjeT0iMzgiIHI9IjE2IiBmaWxsPSIjY2ZkNmU2Ii8+PHBhdGggZD0iTTIwIDg4IFE1MCA2MCA4MCA4OCBaIiBmaWxsPSIjY2ZkNmU2Ii8+Cjwvc3ZnPg==", cost:0 },
+    { id:"gamer", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMxYzJiNWUiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyZjdiZmYiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxyZWN0IHg9IjIyIiB5PSI0MiIgd2lkdGg9IjU2IiBoZWlnaHQ9IjI4IiByeD0iMTQiIGZpbGw9IiMwYzEzMjYiLz48Y2lyY2xlIGN4PSIzNiIgY3k9IjU2IiByPSI1IiBmaWxsPSIjMmY3YmZmIi8+PGNpcmNsZSBjeD0iNjQiIGN5PSI1MCIgcj0iNCIgZmlsbD0iIzAwZTBmZiIvPjxjaXJjbGUgY3g9IjcyIiBjeT0iNTgiIHI9IjQiIGZpbGw9IiMwMGUwZmYiLz48cmVjdCB4PSIzMCIgeT0iNTIiIHdpZHRoPSIzIiBoZWlnaHQ9IjgiIGZpbGw9IiNmZmYiLz48cmVjdCB4PSIyNiIgeT0iNTUiIHdpZHRoPSI5IiBoZWlnaHQ9IjMiIGZpbGw9IiNmZmYiLz4KPC9zdmc+", cost:50 },
+    { id:"ninja", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMyNzJkM2QiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwZDBmMTUiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxwYXRoIGQ9Ik0yMiA1MCBRNTAgMTggNzggNTAgTDc4IDYyIFE1MCA4MCAyMiA2MiBaIiBmaWxsPSIjMTExNDFjIi8+PHJlY3QgeD0iMzMiIHk9IjQ0IiB3aWR0aD0iMTQiIGhlaWdodD0iNiIgcng9IjMiIGZpbGw9IiNmZmYiLz48cmVjdCB4PSI1MyIgeT0iNDQiIHdpZHRoPSIxNCIgaGVpZ2h0PSI2IiByeD0iMyIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4=", cost:100 },
+    { id:"robot", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMzYjQ1NjciLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxYzIzNDAiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxyZWN0IHg9IjI4IiB5PSIzOCIgd2lkdGg9IjQ0IiBoZWlnaHQ9IjM2IiByeD0iOCIgZmlsbD0iIzlhYTdjNCIvPjxyZWN0IHg9IjQ2IiB5PSIyMiIgd2lkdGg9IjgiIGhlaWdodD0iMTYiIGZpbGw9IiM5YWE3YzQiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjIwIiByPSI1IiBmaWxsPSIjMDBlMGZmIi8+PGNpcmNsZSBjeD0iNDAiIGN5PSI1NCIgcj0iNiIgZmlsbD0iIzAwZTBmZiIvPjxjaXJjbGUgY3g9IjYwIiBjeT0iNTQiIHI9IjYiIGZpbGw9IiMwMGUwZmYiLz48cmVjdCB4PSIzNiIgeT0iNjYiIHdpZHRoPSIyOCIgaGVpZ2h0PSI1IiByeD0iMiIgZmlsbD0iIzViNjc4OCIvPgo8L3N2Zz4=", cost:100 },
+    { id:"alien", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMxZDRkM2EiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwYzJhMjAiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxlbGxpcHNlIGN4PSI1MCIgY3k9IjQ4IiByeD0iMjYiIHJ5PSIzMiIgZmlsbD0iIzdmZmZiMCIvPjxlbGxpcHNlIGN4PSIzOCIgY3k9IjQ0IiByeD0iOSIgcnk9IjEzIiBmaWxsPSIjMGMxMzI2Ii8+PGVsbGlwc2UgY3g9IjYyIiBjeT0iNDQiIHJ4PSI5IiByeT0iMTMiIGZpbGw9IiMwYzEzMjYiLz48ZWxsaXBzZSBjeD0iMzgiIGN5PSI0MiIgcng9IjMiIHJ5PSI0IiBmaWxsPSIjZmZmIi8+PGVsbGlwc2UgY3g9IjYyIiBjeT0iNDIiIHJ4PSIzIiByeT0iNCIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4=", cost:150 },
+    { id:"wizard", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMzYTJhNWMiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxYzEyMzAiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTgiIHI9IjE4IiBmaWxsPSIjZDhiOThhIi8+PHBhdGggZD0iTTUwIDggTDcwIDU2IEwzMCA1NiBaIiBmaWxsPSIjNmEyZmJmIi8+PGNpcmNsZSBjeD0iNjAiIGN5PSIzMCIgcj0iMi40IiBmaWxsPSIjZmZkOTNkIi8+PGNpcmNsZSBjeD0iNDQiIGN5PSIyMCIgcj0iMiIgZmlsbD0iI2ZmZDkzZCIvPjxjaXJjbGUgY3g9IjUwIiBjeT0iNTYiIHI9IjMiIGZpbGw9IiNmZmQ5M2QiLz4KPC9zdmc+", cost:150 },
+    { id:"dragon", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMxYTVjMzQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwYzJhMTgiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxwYXRoIGQ9Ik01MCAyMiBMNTggMTIgTDU2IDI2IFoiIGZpbGw9IiMyZmJmNmEiLz48cGF0aCBkPSJNNTAgMjIgTDQyIDEyIEw0NCAyNiBaIiBmaWxsPSIjMmZiZjZhIi8+PGVsbGlwc2UgY3g9IjUwIiBjeT0iNTAiIHJ4PSIyNCIgcnk9IjI2IiBmaWxsPSIjMjNhODVhIi8+PGVsbGlwc2UgY3g9IjQwIiBjeT0iNDYiIHJ4PSI1IiByeT0iNiIgZmlsbD0iIzBjMTMyNiIvPjxlbGxpcHNlIGN4PSI2MCIgY3k9IjQ2IiByeD0iNSIgcnk9IjYiIGZpbGw9IiMwYzEzMjYiLz48cGF0aCBkPSJNMzggNjQgUTUwIDcyIDYyIDY0IEw1OCA3MCBRNTAgNzYgNDIgNzAgWiIgZmlsbD0iIzBjMTMyNiIvPgo8L3N2Zz4=", cost:250 },
+    { id:"crown", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM0YTNhMTAiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyYTIwMDgiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxwYXRoIGQ9Ik0yMiA2NCBMMzAgMzYgTDQyIDUyIEw1MCAzMCBMNTggNTIgTDcwIDM2IEw3OCA2NCBaIiBmaWxsPSIjZmZkOTNkIi8+PHJlY3QgeD0iMjIiIHk9IjY0IiB3aWR0aD0iNTYiIGhlaWdodD0iMTAiIGZpbGw9IiNmZmQ5M2QiLz48Y2lyY2xlIGN4PSIzMCIgY3k9IjM2IiByPSIzLjUiIGZpbGw9IiNmZjNkNzciLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjMwIiByPSIzLjUiIGZpbGw9IiMyZjdiZmYiLz48Y2lyY2xlIGN4PSI3MCIgY3k9IjM2IiByPSIzLjUiIGZpbGw9IiMyZmJmNmEiLz4KPC9zdmc+", cost:400 },
+    { id:"fire", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM3YTJhMGMiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMzYTEyMDYiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxwYXRoIGQ9Ik01MCAxNiBRNjYgMzggNTggNTQgUTcwIDUwIDY0IDcwIFE1MCA4NiAzNiA3MCBRMzAgNTAgNDIgNTQgUTM0IDM4IDUwIDE2IFoiIGZpbGw9IiNmZjhhMmYiLz48cGF0aCBkPSJNNTAgMzggUTU4IDUwIDU0IDYwIFE2MCA1OCA1NiA3MCBRNTAgNzggNDQgNzAgUTQwIDU4IDQ2IDYwIFE0MiA1MCA1MCAzOCBaIiBmaWxsPSIjZmZkOTNkIi8+Cjwvc3ZnPg==", cost:400 },
+    { id:"unicorn", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM1YzNhNTIiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyYTE4MzAiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxlbGxpcHNlIGN4PSI0OCIgY3k9IjU0IiByeD0iMjIiIHJ5PSIyNCIgZmlsbD0iI2ZmZTNmMyIvPjxwYXRoIGQ9Ik01OCAzMCBMNjYgOCBMNjAgMzIgWiIgZmlsbD0iI2ZmZDkzZCIvPjxwYXRoIGQ9Ik0zMCAzNiBRMjAgMzAgMTggMTggUTI4IDI0IDM0IDMyIFoiIGZpbGw9IiNmZjhhZDgiLz48cGF0aCBkPSJNMjggNDQgUTE2IDQyIDEyIDMyIFEyNCAzNCAzMiA0MCBaIiBmaWxsPSIjOGFkOGZmIi8+PGNpcmNsZSBjeD0iNDAiIGN5PSI1MCIgcj0iMyIgZmlsbD0iIzBjMTMyNiIvPgo8L3N2Zz4=", cost:600 },
+    { id:"diamond", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMxYzRhNWMiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwYzI1MzAiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxwYXRoIGQ9Ik0zMCAzOCBMNzAgMzggTDUwIDgwIFoiIGZpbGw9IiM3ZmUwZmYiLz48cGF0aCBkPSJNMzAgMzggTDQyIDIyIEw1OCAyMiBMNzAgMzggWiIgZmlsbD0iI2I4ZjBmZiIvPjxwYXRoIGQ9Ik01MCAzOCBMNDIgMjIgTTUwIDM4IEw1OCAyMiBNNTAgMzggTDUwIDgwIE0zMCAzOCBMNTAgMzggTTUwIDM4IEw3MCAzOCIgc3Ryb2tlPSIjM2FhOGM5IiBzdHJva2Utd2lkdGg9IjEuNSIgZmlsbD0ibm9uZSIvPgo8L3N2Zz4=", cost:800 },
+    { id:"trophy", img:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM1YzRhMTAiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyYTIyMDgiLz4KPC9saW5lYXJHcmFkaWVudD48L2RlZnM+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ4IiBmaWxsPSJ1cmwoI2cpIi8+CjxwYXRoIGQ9Ik0zOCAyNCBMNjIgMjQgTDYwIDUwIFE1MCA2MCA0MCA1MCBaIiBmaWxsPSIjZmZkOTNkIi8+PHBhdGggZD0iTTM4IDI4IFEyNCAyOCAyNiA0MiBRMjggNTAgMzggNDgiIHN0cm9rZT0iI2ZmZDkzZCIgc3Ryb2tlLXdpZHRoPSI0IiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTYyIDI4IFE3NiAyOCA3NCA0MiBRNzIgNTAgNjIgNDgiIHN0cm9rZT0iI2ZmZDkzZCIgc3Ryb2tlLXdpZHRoPSI0IiBmaWxsPSJub25lIi8+PHJlY3QgeD0iNDQiIHk9IjU4IiB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIGZpbGw9IiNmZmQ5M2QiLz48cmVjdCB4PSIzNCIgeT0iNzAiIHdpZHRoPSIzMiIgaGVpZ2h0PSI4IiByeD0iMiIgZmlsbD0iI2ZmZDkzZCIvPgo8L3N2Zz4=", cost:1000 },
   ];
 
   async function getOwnedAvatarIds(){
@@ -4255,14 +4235,14 @@ ENGINES.breakout = function(stage){
     grids.forEach(grid=> grid.innerHTML = "");
     AVAILABLE_AVATARS.forEach(a=>{
       const isOwned = owned.includes(a.id);
-      const isEquipped = profile.equippedAvatar === a.emoji;
+      const isEquipped = profile.equippedAvatar === a.img;
       grids.forEach(grid=>{
         const cell = document.createElement("div");
         cell.className = "avatarCell" + (isEquipped ? " equipped" : "");
-        cell.innerHTML = `<div class="avatarCell__emoji">${a.emoji}</div><div class="avatarCell__cost">${isOwned ? (isEquipped ? "Equipped" : "Equip") : a.cost + " XP"}</div>`;
+        cell.innerHTML = `<img class="avatarCell__img" src="${a.img}" alt="${a.id}"><div class="avatarCell__cost">${isOwned ? (isEquipped ? "Equipped" : "Equip") : a.cost + " XP"}</div>`;
         cell.addEventListener("click", async ()=>{
           if(isOwned){
-            await equipAvatar(a.emoji);
+            await equipAvatar(a.img);
           } else {
             if(profile.xp < a.cost){ toast(`Not enough XP — need ${a.cost}, you have ${profile.xp}.`); return; }
             if(!confirm(`Buy this avatar for ${a.cost} XP?`)) return;
@@ -4271,8 +4251,8 @@ ENGINES.breakout = function(stage){
             profile.xp -= a.cost;
             saveProfile();
             await updateLeaderboardEntry();
-            await equipAvatar(a.emoji);
-            toast(`Bought and equipped ${a.emoji}!`);
+            await equipAvatar(a.img);
+            toast(`Bought and equipped a new avatar!`);
           }
           renderAvatarShop();
         });
@@ -4280,20 +4260,24 @@ ENGINES.breakout = function(stage){
       });
     });
   }
-  async function equipAvatar(emoji){
-    profile.equippedAvatar = emoji;
+  async function equipAvatar(imgUri){
+    profile.equippedAvatar = imgUri;
     saveProfile();
-    document.getElementById("profileBtn").textContent = emoji + " " + profile.username;
+    setProfileBtnAvatar(imgUri);
     if(supabaseClient){
-      await supabaseClient.from("users").upsert({ username: profile.username, equipped_avatar: emoji, last_seen: new Date().toISOString() });
+      await supabaseClient.from("users").upsert({ username: profile.username, equipped_avatar: imgUri, last_seen: new Date().toISOString() });
     }
+  }
+  function setProfileBtnAvatar(imgUri){
+    const btn = document.getElementById("profileBtn");
+    btn.innerHTML = `<img src="${imgUri}" class="profileBtn__avatar" alt="avatar"> ${profile.username}`;
   }
 
   function defaultProfile(fullName, username){
     return {
       fullName, username,
       xp:0, level:1, totalPlays:0, streak:0,
-      lastPlayDate:null, badges:[], equippedAvatar:"👤"
+      lastPlayDate:null, badges:[], equippedAvatar: AVAILABLE_AVATARS[0].img
     };
   }
 
@@ -4307,9 +4291,9 @@ ENGINES.breakout = function(stage){
     const existing = await storeGet("profile", false, null);
     if(existing){
       profile = existing;
-      if(!profile.equippedAvatar) profile.equippedAvatar = "👤";
+      if(!profile.equippedAvatar) profile.equippedAvatar = AVAILABLE_AVATARS[0].img;
       window.__klypProfile = profile;
-      document.getElementById("profileBtn").textContent = (profile.equippedAvatar||"👤") + " " + profile.username;
+      setProfileBtnAvatar(profile.equippedAvatar);
       if(supabaseClient){
         const { data } = await supabaseClient.from("users").select("equipped_avatar,is_admin,is_muted,is_banned").eq("username", profile.username).maybeSingle();
         if(data){
@@ -4317,7 +4301,7 @@ ENGINES.breakout = function(stage){
           profile.isAdmin = !!data.is_admin;
           profile.isMuted = !!data.is_muted;
           profile.isBanned = !!data.is_banned;
-          document.getElementById("profileBtn").textContent = profile.equippedAvatar + " " + profile.username;
+          setProfileBtnAvatar(profile.equippedAvatar);
           if(profile.isBanned){
             document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#fff;background:#04070f;font-family:sans-serif;text-align:center;padding:24px;">🚫 This account has been banned from Klyp.</div>`;
             return false;
@@ -4670,6 +4654,10 @@ ENGINES.breakout = function(stage){
         switchToSection("adminpanel");
         return;
       }
+      if(card.dataset.action === "claimadmin"){
+        claimAdmin();
+        return;
+      }
       switchToSection(card.dataset.go);
     });
   });
@@ -4685,14 +4673,53 @@ ENGINES.breakout = function(stage){
   document.getElementById("adminPinBtn")?.addEventListener("click", adminPinAnnouncement);
   document.getElementById("adminClearAnnouncementBtn")?.addEventListener("click", adminClearAnnouncement);
   document.getElementById("adminClearChatBtn")?.addEventListener("click", adminClearPublicChat);
+  document.getElementById("adminMuteBtn")?.addEventListener("click", ()=>{
+    const u = prompt("Username to mute:");
+    if(u) adminMuteUser(u.trim());
+  });
   document.getElementById("adminUnmuteBtn")?.addEventListener("click", ()=>{
     const u = prompt("Username to unmute:");
     if(u) adminUnmuteUser(u.trim());
+  });
+  document.getElementById("adminBanBtn")?.addEventListener("click", ()=>{
+    const u = prompt("Username to ban:");
+    if(u) adminBanUser(u.trim());
   });
   document.getElementById("adminUnbanBtn")?.addEventListener("click", ()=>{
     const u = prompt("Username to unban:");
     if(u) adminUnbanUser(u.trim());
   });
+  document.getElementById("adminBroadcastBtn")?.addEventListener("click", async ()=>{
+    const msg = prompt("Message to broadcast instantly to everyone currently online:");
+    if(!msg || !supabaseClient) return;
+    // Broadcasts to a shared channel everyone listens to while the site is
+    // open — instant, but only reaches people online right now (unlike the
+    // pinned announcement, which persists for people who arrive later).
+    const channel = supabaseClient.channel("global-broadcast");
+    channel.subscribe();
+    setTimeout(()=>{
+      channel.send({ type:"broadcast", event:"announcement", payload:{ from: profile.username, text: msg } });
+      setTimeout(()=> supabaseClient.removeChannel(channel), 1000);
+    }, 300);
+    toast("📢 Broadcast sent.");
+  });
+  document.getElementById("adminStatsBtn")?.addEventListener("click", async ()=>{
+    if(!supabaseClient) return;
+    const [{ count: userCount }, { count: msgCount }, { count: groupCount }] = await Promise.all([
+      supabaseClient.from("users").select("*", { count:"exact", head:true }),
+      supabaseClient.from("messages").select("*", { count:"exact", head:true }),
+      supabaseClient.from("groups").select("*", { count:"exact", head:true }),
+    ]);
+    alert(`📊 Klyp Site Stats\n\nTotal registered accounts: ${userCount}\nTotal messages sent: ${msgCount}\nTotal groups created: ${groupCount}`);
+  });
+  // Listen for admin broadcasts the whole time the site is open.
+  if(supabaseClient){
+    supabaseClient.channel("global-broadcast")
+      .on("broadcast", { event:"announcement" }, (msg)=>{
+        toast(`📢 ${msg.payload.from}: ${msg.payload.text}`);
+      })
+      .subscribe();
+  }
 
   // Welcome popup — shown once per device, then remembered via storage.
   (async ()=>{
@@ -4813,7 +4840,7 @@ ENGINES.breakout = function(stage){
      any Supabase anon key). True security would need Supabase Auth or a
      server-side function holding the secret. This is a real improvement
      over the old check, not a complete fix. */
-  const ADMIN_PASSPHRASE_HASH = "294cec98e80795061646b30037fbe51ab224eca14bb52a29622ac3dae8c6fc62";
+  const ADMIN_PASSPHRASE_HASH = "0fdb86939dc19c8742e698d94520f32d9dd4ceb209a5098586f22e913c2843dd";
   async function sha256Hex(text){
     const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
     return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
@@ -5625,6 +5652,18 @@ ENGINES.breakout = function(stage){
 
   /* ----- Simple content-based recommender (curated list only — no live
      search dependency, so this always has something to show) ----- */
+  async function getBrokenVideoIds(){
+    return new Set(await storeGet("brokenVideoIds", false, []));
+  }
+  async function markVideoBroken(videoId){
+    const ids = await storeGet("brokenVideoIds", false, []);
+    if(!ids.includes(videoId)){
+      ids.push(videoId);
+      if(ids.length > 500) ids.shift(); // cap so this doesn't grow forever
+      await storeSet("brokenVideoIds", ids, false);
+    }
+  }
+
   async function getShortsPrefs(){
     // Defensive against stale saved data from an earlier version of this
     // code that didn't have all these fields yet — without this, reading
@@ -5651,9 +5690,11 @@ ENGINES.breakout = function(stage){
   async function pickNextBatch(n){
     const prefs = await getShortsPrefs();
     const pool = await getShortsCandidatePool();
-    let candidates = pool.filter(v=>!shortsRenderedIds.has(v.id) && !(prefs.disliked||[]).includes(v.id));
-    if(!candidates.length) candidates = pool.filter(v=>!(prefs.disliked||[]).includes(v.id));
-    if(!candidates.length) candidates = pool.slice(); // everything disliked somehow — show something anyway
+    const brokenIds = await getBrokenVideoIds();
+    let candidates = pool.filter(v=>!shortsRenderedIds.has(v.id) && !(prefs.disliked||[]).includes(v.id) && !brokenIds.has(v.id));
+    if(!candidates.length) candidates = pool.filter(v=>!(prefs.disliked||[]).includes(v.id) && !brokenIds.has(v.id));
+    if(!candidates.length) candidates = pool.filter(v=>!brokenIds.has(v.id));
+    if(!candidates.length) candidates = pool.slice(); // everything excluded somehow — show something anyway
 
     // Split into live vs curated and alternate between them, rather than
     // round-robin by content-type tag — that approach quietly favored
@@ -5843,17 +5884,20 @@ ENGINES.breakout = function(stage){
         },
         onError:(e)=>{
           // Error codes: 2=invalid video ID, 5=HTML5 player error,
-          // 100=video not found/private, 101/150=embedding disabled by
-          // uploader. Showing the real code instead of assuming it's
-          // always "embedding disabled" — if EVERY video fails with the
-          // same code, that's a real bug, not a per-video restriction.
+          // 100=video not found/private, 101/150/151=embedding disabled by
+          // the uploader — there's no legitimate way to force a video to
+          // play when its own uploader has disabled embedding; that's
+          // their deliberate choice, same as any other site's anti-embed
+          // setting. What this DOES fix: once a video is known broken,
+          // it's now remembered (persisted across sessions) and never
+          // shown again — so the same dead video doesn't keep wasting a
+          // skip every time it resurfaces from search.
           console.error("YT player error, code:", e.data, "videoId:", video.id);
+          markVideoBroken(video.id);
           const item = document.querySelector(`.shorts__item--video[data-idx="${index}"]`);
           if(item){
-            const box = item.querySelector(".shorts__videoBox");
-            if(box) box.innerHTML = `<div class="shorts__brokenMsg">⚠ Error code ${e.data} — skipping…</div>`;
             const next = item.nextElementSibling;
-            if(next) setTimeout(()=> next.scrollIntoView({ behavior:"smooth", block:"start" }), 500);
+            if(next) next.scrollIntoView({ behavior:"smooth", block:"start" });
           }
         }
       }
