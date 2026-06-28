@@ -814,6 +814,18 @@ button:focus-visible, input:focus-visible, li:focus-visible{
 .badgeGrid{
   display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:4px;
 }
+.avatarShopGrid{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:4px; margin-bottom:14px;
+}
+.avatarCell{
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:10px 4px; border-radius:10px; background:var(--panel-2);
+  border:1px solid var(--line); cursor:pointer; transition:transform .12s, border-color .12s;
+}
+.avatarCell:hover{transform:translateY(-2px); border-color:var(--blue);}
+.avatarCell.equipped{border-color:var(--cyan); box-shadow:0 0 12px rgba(0,224,255,.3);}
+.avatarCell__emoji{font-size:24px;}
+.avatarCell__cost{font-size:10px; color:var(--muted);}
 .badge{
   display:flex; flex-direction:column; align-items:center; gap:4px;
   padding:10px 4px; border-radius:10px; background:var(--panel-2);
@@ -1139,6 +1151,7 @@ html[data-theme="light"] .hero{
       <div class="messaging__contactsHead">
         <h3>Chats</h3>
         <button id="newGroupBtn" title="New group chat">👥+</button>
+        <button id="claimAdminBtn" title="Claim admin">🔑</button>
         <button id="addContactBtn" title="Add contact">➕</button>
       </div>
       <ul class="contactList" id="contactList"></ul>
@@ -1236,6 +1249,8 @@ html[data-theme="light"] .hero{
     <p class="streakLine" id="streakLine">🔥 0 day streak</p>
     <h4 class="modalCard__subhead">Badges</h4>
     <div class="badgeGrid" id="badgeGrid"></div>
+    <h4 class="modalCard__subhead">Avatar Shop</h4>
+    <div class="avatarShopGrid" id="avatarShopGrid"></div>
     <button class="btn btn--primary modalCard__wide" id="openLeaderboardFromProfile">🏆 View Leaderboard</button>
     <button class="modalCard__reset" id="resetProfile">Reset profile</button>
   </div>
@@ -3514,6 +3529,17 @@ const GAMES = [
 
 const ENGINES = {};
 
+async function reportHighScore(gameId, score){
+  if(!window.__klypSupabase || !window.__klypProfile || score <= 0) return;
+  const { data: existing } = await window.__klypSupabase.from("high_scores")
+    .select("score").eq("game_id", gameId).eq("username", window.__klypProfile.username).maybeSingle();
+  if(existing && existing.score >= score) return; // not a new personal best
+  await window.__klypSupabase.from("high_scores").upsert({
+    game_id: gameId, username: window.__klypProfile.username, score,
+  });
+  if(typeof toast === "function") toast(`🏆 New high score: ${score}!`);
+}
+
 /* ---------------- SNAKE ---------------- */
 ENGINES.snake = function(stage){
   const size = 18, cols = 20, rows = 20;
@@ -3541,7 +3567,7 @@ ENGINES.snake = function(stage){
     dir = nextDir;
     const head = {x:snake[0].x+dir.x, y:snake[0].y+dir.y};
     if(head.x<0||head.y<0||head.x>=cols||head.y>=rows||snake.some(s=>s.x===head.x&&s.y===head.y)){
-      alive = false; draw(); return;
+      alive = false; draw(); reportHighScore("snake", score); return;
     }
     snake.unshift(head);
     if(head.x===food.x && head.y===food.y){ score++; food = randFood(); }
@@ -3583,6 +3609,7 @@ ENGINES.twozerofoureight = function(stage){
   stage.appendChild(info);
 
   let board = Array.from({length:4},()=>Array(4).fill(0));
+  let score2048 = 0;
   const colors = {0:"#0c1326",2:"#11193a",4:"#16204a",8:"#1c2b5e",16:"#2f7bff",32:"#3f8bff",64:"#00b8d4",128:"#00e0ff",256:"#ff3d77",512:"#ff6b9d",1024:"#ffd93d",2048:"#ffffff"};
   function addRandom(){
     const empty=[]; board.forEach((row,r)=>row.forEach((v,c)=>{if(v===0)empty.push([r,c]);}));
@@ -3606,7 +3633,7 @@ ENGINES.twozerofoureight = function(stage){
   function slide(row){
     const arr = row.filter(v=>v!==0);
     for(let i=0;i<arr.length-1;i++){
-      if(arr[i]===arr[i+1]){ arr[i]*=2; arr.splice(i+1,1); }
+      if(arr[i]===arr[i+1]){ arr[i]*=2; score2048 += arr[i]; arr.splice(i+1,1); }
     }
     while(arr.length<4) arr.push(0);
     return arr;
@@ -3623,7 +3650,7 @@ ENGINES.twozerofoureight = function(stage){
       for(let c=0;c<4;c++){ const col=slide(board.map(r=>r[c]).reverse()).reverse(); for(let r=0;r<4;r++) board[r][c]=col[r]; }
     }
     moved = JSON.stringify(board)!==before;
-    if(moved) addRandom();
+    if(moved){ addRandom(); reportHighScore("2048", score2048); }
     render();
   }
   function key(e){
@@ -3639,7 +3666,7 @@ ENGINES.twozerofoureight = function(stage){
 ENGINES.memory = function(stage){
   const icons = ["🐙","🌵","🚀","🍩","🎲","🦊","🌈","🔮"];
   let deck = [...icons,...icons].sort(()=>Math.random()-0.5);
-  let flipped = [], matched = [];
+  let flipped = [], matched = [], attempts = 0;
 
   const wrap = document.createElement("div");
   wrap.style.display="grid"; wrap.style.gridTemplateColumns="repeat(4,72px)";
@@ -3664,8 +3691,12 @@ ENGINES.memory = function(stage){
     if(flipped.includes(i)||matched.includes(i)||flipped.length===2) return;
     flipped.push(i); render();
     if(flipped.length===2){
+      attempts++;
       const [a,b]=flipped;
-      if(deck[a]===deck[b]){ matched.push(a,b); flipped=[]; render(); }
+      if(deck[a]===deck[b]){
+        matched.push(a,b); flipped=[]; render();
+        if(matched.length === deck.length) reportHighScore("memory", Math.max(0, 1000 - attempts*20));
+      }
       else setTimeout(()=>{ flipped=[]; render(); },650);
     }
   }
@@ -3695,6 +3726,7 @@ ENGINES.reaction = function(stage){
       const ms = Math.round(performance.now()-startTime);
       state="idle"; box.style.background="#11193a"; box.style.color="#7c89ad";
       box.textContent = `${ms} ms — click to retry`;
+      reportHighScore("reaction", Math.max(0, 1000 - ms));
     }
   };
   return { destroy(){ clearTimeout(timeout); } };
@@ -3710,7 +3742,7 @@ ENGINES.breakout = function(stage){
   let paddle={x:170,w:60,h:10}, ball={x:200,y:200,vx:2.4,vy:-3.2,r:6};
   let bricks=[];
   for(let r=0;r<4;r++) for(let c=0;c<8;c++) bricks.push({x:c*48+4,y:r*20+20,w:44,h:14,alive:true});
-  let alive=true, win=false;
+  let alive=true, win=false, score=0;
 
   function move(e){
     const rect=canvas.getBoundingClientRect();
@@ -3727,10 +3759,11 @@ ENGINES.breakout = function(stage){
     if(ball.y>canvas.height){ alive=false; }
     bricks.forEach(b=>{
       if(b.alive && ball.x>b.x && ball.x<b.x+b.w && ball.y>b.y && ball.y<b.y+b.h){
-        b.alive=false; ball.vy*=-1;
+        b.alive=false; ball.vy*=-1; score++;
       }
     });
     if(bricks.every(b=>!b.alive)){ alive=false; win=true; }
+    if(!alive) reportHighScore("breakout", score);
     draw();
     raf = requestAnimationFrame(step);
   }
@@ -3841,9 +3874,18 @@ ENGINES.breakout = function(stage){
       videoSearchDebounceTimer = setTimeout(()=> searchYouTubeVideos(query), 500);
       return;
     }
+    if(currentSection === "messaging"){
+      filterContactList(query.toLowerCase());
+      return;
+    }
     state.query = query.toLowerCase();
     renderGrid();
   });
+  function filterContactList(query){
+    document.querySelectorAll("#contactList .contactItem").forEach(li=>{
+      li.style.display = !query || li.textContent.toLowerCase().includes(query) ? "" : "none";
+    });
+  }
 
   /* ----- Live YouTube video search (via the same Invidious helper used
      elsewhere) — pulls real results straight from YouTube for whatever
@@ -4139,11 +4181,71 @@ ENGINES.breakout = function(stage){
     { id:"legend",      label:"Legend",       icon:"👑", check:p=>p.level>=10 },
   ];
 
+  const AVAILABLE_AVATARS = [
+    { id:"default",   emoji:"👤", cost:0 },
+    { id:"gamer",      emoji:"🎮", cost:50 },
+    { id:"ninja",      emoji:"🥷", cost:100 },
+    { id:"robot",      emoji:"🤖", cost:100 },
+    { id:"alien",      emoji:"👽", cost:150 },
+    { id:"wizard",     emoji:"🧙", cost:150 },
+    { id:"dragon",     emoji:"🐉", cost:250 },
+    { id:"crown",      emoji:"👑", cost:400 },
+    { id:"fire",       emoji:"🔥", cost:400 },
+    { id:"unicorn",    emoji:"🦄", cost:600 },
+    { id:"diamond",    emoji:"💎", cost:800 },
+    { id:"trophy",     emoji:"🏆", cost:1000 },
+  ];
+
+  async function getOwnedAvatarIds(){
+    if(!supabaseClient || !profile) return ["default"];
+    const { data } = await supabaseClient.from("avatar_purchases").select("avatar_id").eq("username", profile.username);
+    return ["default", ...((data||[]).map(r=>r.avatar_id))];
+  }
+
+  async function renderAvatarShop(){
+    const grid = document.getElementById("avatarShopGrid");
+    if(!grid) return;
+    const owned = await getOwnedAvatarIds();
+    grid.innerHTML = "";
+    AVAILABLE_AVATARS.forEach(a=>{
+      const isOwned = owned.includes(a.id);
+      const isEquipped = profile.equippedAvatar === a.emoji;
+      const cell = document.createElement("div");
+      cell.className = "avatarCell" + (isEquipped ? " equipped" : "");
+      cell.innerHTML = `<div class="avatarCell__emoji">${a.emoji}</div><div class="avatarCell__cost">${isOwned ? (isEquipped ? "Equipped" : "Equip") : a.cost + " XP"}</div>`;
+      cell.addEventListener("click", async ()=>{
+        if(isOwned){
+          await equipAvatar(a.emoji);
+        } else {
+          if(profile.xp < a.cost){ toast(`Not enough XP — need ${a.cost}, you have ${profile.xp}.`); return; }
+          if(!confirm(`Buy this avatar for ${a.cost} XP?`)) return;
+          const { error } = await supabaseClient.from("avatar_purchases").insert({ username: profile.username, avatar_id: a.id });
+          if(error){ toast("⚠️ Purchase failed: " + error.message); return; }
+          profile.xp -= a.cost;
+          saveProfile();
+          await updateLeaderboardEntry();
+          await equipAvatar(a.emoji);
+          toast(`Bought and equipped ${a.emoji}!`);
+        }
+        renderAvatarShop();
+      });
+      grid.appendChild(cell);
+    });
+  }
+  async function equipAvatar(emoji){
+    profile.equippedAvatar = emoji;
+    saveProfile();
+    document.getElementById("profileBtn").textContent = emoji + " " + profile.username;
+    if(supabaseClient){
+      await supabaseClient.from("users").upsert({ username: profile.username, equipped_avatar: emoji, last_seen: new Date().toISOString() });
+    }
+  }
+
   function defaultProfile(fullName, username){
     return {
       fullName, username,
       xp:0, level:1, totalPlays:0, streak:0,
-      lastPlayDate:null, badges:[]
+      lastPlayDate:null, badges:[], equippedAvatar:"👤"
     };
   }
 
@@ -4157,7 +4259,23 @@ ENGINES.breakout = function(stage){
     const existing = await storeGet("profile", false, null);
     if(existing){
       profile = existing;
-      document.getElementById("profileBtn").textContent = "👤 " + profile.username;
+      if(!profile.equippedAvatar) profile.equippedAvatar = "👤";
+      window.__klypProfile = profile;
+      document.getElementById("profileBtn").textContent = (profile.equippedAvatar||"👤") + " " + profile.username;
+      if(supabaseClient){
+        const { data } = await supabaseClient.from("users").select("equipped_avatar,is_admin,is_muted,is_banned").eq("username", profile.username).maybeSingle();
+        if(data){
+          if(data.equipped_avatar) profile.equippedAvatar = data.equipped_avatar;
+          profile.isAdmin = !!data.is_admin;
+          profile.isMuted = !!data.is_muted;
+          profile.isBanned = !!data.is_banned;
+          document.getElementById("profileBtn").textContent = profile.equippedAvatar + " " + profile.username;
+          if(profile.isBanned){
+            document.body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#fff;background:#04070f;font-family:sans-serif;text-align:center;padding:24px;">🚫 This account has been banned from Klyp.</div>`;
+            return false;
+          }
+        }
+      }
       return true;
     }
     document.getElementById("signupOverlay").classList.add("open");
@@ -4353,6 +4471,7 @@ ENGINES.breakout = function(stage){
   document.getElementById("profileBtn").addEventListener("click", async ()=>{
     if(!(await ensureProfile())) return;
     renderProfilePanel();
+    renderAvatarShop();
     profileOverlay.classList.add("open");
   });
   document.getElementById("profileClose").addEventListener("click", ()=> profileOverlay.classList.remove("open"));
@@ -4460,7 +4579,7 @@ ENGINES.breakout = function(stage){
     // Search bar adapts to whichever page you're actually on.
     const search = document.getElementById("searchInput");
     if(search){
-      search.placeholder = section==="videos" ? "Search YouTube for a video..." : "Search games...";
+      search.placeholder = section==="videos" ? "Search YouTube for a video..." : section==="messaging" ? "Search your chats..." : "Search games...";
       search.value = "";
       state.query = "";
     }
@@ -4521,6 +4640,7 @@ ENGINES.breakout = function(stage){
   const supabaseClient = (window.supabase && SUPABASE_URL)
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     : null;
+  window.__klypSupabase = supabaseClient; // built-in game engines run in a separate scope and need this for high scores
 
   let activeThread = "public"; // "public", a contact's username, or {type:"group", id, name}
   let realtimeChannel = null;
@@ -4577,6 +4697,118 @@ ENGINES.breakout = function(stage){
       .subscribe();
   }
 
+  async function toggleReaction(messageId, emoji){
+    if(!supabaseClient || !profile) return;
+    const { data: existing } = await supabaseClient.from("message_reactions")
+      .select("*").eq("message_id", messageId).eq("username", profile.username).eq("emoji", emoji).maybeSingle();
+    if(existing){
+      await supabaseClient.from("message_reactions").delete()
+        .eq("message_id", messageId).eq("username", profile.username).eq("emoji", emoji);
+    } else {
+      await supabaseClient.from("message_reactions").insert({ message_id: messageId, username: profile.username, emoji });
+    }
+    refreshMessages();
+  }
+  const QUICK_REACTIONS = ["👍","❤️","😂","😮","😢","🔥"];
+  function showReactionPicker(anchorEl, messageId){
+    document.querySelectorAll(".reactionPicker").forEach(p=>p.remove());
+    const picker = document.createElement("div");
+    picker.className = "reactionPicker";
+    QUICK_REACTIONS.forEach(emoji=>{
+      const btn = document.createElement("button");
+      btn.textContent = emoji;
+      btn.addEventListener("click", (e)=>{ e.stopPropagation(); toggleReaction(messageId, emoji); picker.remove(); });
+      picker.appendChild(btn);
+    });
+    document.body.appendChild(picker);
+    const rect = anchorEl.getBoundingClientRect();
+    picker.style.position = "fixed";
+    picker.style.top = (rect.top - 44) + "px";
+    picker.style.left = rect.left + "px";
+    setTimeout(()=> document.addEventListener("click", function closePicker(){ picker.remove(); document.removeEventListener("click", closePicker); }), 0);
+  }
+
+  /* ----- Admin powers, gated by a real passphrase instead of a bare
+     username check. Honest limitation, stated plainly rather than buried:
+     this raises the bar from "anyone can type izerna" to "you need the
+     actual secret" — genuinely better, but it can't be fully airtight
+     without real backend auth, since the database is still reachable
+     directly via the public API key (which is meant to be public, same as
+     any Supabase anon key). True security would need Supabase Auth or a
+     server-side function holding the secret. This is a real improvement
+     over the old check, not a complete fix. */
+  const ADMIN_PASSPHRASE_HASH = "294cec98e80795061646b30037fbe51ab224eca14bb52a29622ac3dae8c6fc62";
+  async function sha256Hex(text){
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+  }
+  function isAdmin(){ return !!(profile && profile.isAdmin); }
+  async function claimAdmin(){
+    if(!(await ensureProfile())) return;
+    const passphrase = prompt("Enter the admin passphrase:");
+    if(!passphrase) return;
+    const hash = await sha256Hex(passphrase.trim());
+    if(hash !== ADMIN_PASSPHRASE_HASH){
+      toast("⚠️ Incorrect passphrase.");
+      return;
+    }
+    profile.isAdmin = true;
+    saveProfile();
+    if(supabaseClient){
+      await supabaseClient.from("users").upsert({ username: profile.username, is_admin: true, last_seen: new Date().toISOString() });
+    }
+    toast("🔑 Admin claimed. Reopen menus to see new options.");
+  }
+  async function adminPinAnnouncement(){
+    if(!isAdmin()) return;
+    const text = prompt("Pinned announcement text (shown at the top of Public Chat):");
+    if(!text) return;
+    await storeSet("pinnedAnnouncement", text, true);
+    toast("📌 Announcement pinned.");
+    refreshMessages();
+  }
+  async function adminClearAnnouncement(){
+    if(!isAdmin()) return;
+    await storeSet("pinnedAnnouncement", null, true);
+    toast("Announcement cleared.");
+    refreshMessages();
+  }
+  async function adminRemoveFromGroup(groupId, username){
+    if(!isAdmin()) return;
+    if(!confirm(`Remove ${username} from this group?`)) return;
+    await supabaseClient.from("group_members").delete().eq("group_id", groupId).eq("username", username);
+    toast(`Removed ${username} from the group.`);
+  }
+  async function adminMuteUser(username){
+    if(!isAdmin()) return;
+    if(!confirm(`Mute ${username}? They won't be able to send messages until unmuted.`)) return;
+    await supabaseClient.from("users").upsert({ username, is_muted: true });
+    toast(`${username} has been muted.`);
+  }
+  async function adminUnmuteUser(username){
+    if(!isAdmin()) return;
+    await supabaseClient.from("users").upsert({ username, is_muted: false });
+    toast(`${username} has been unmuted.`);
+  }
+  async function adminBanUser(username){
+    if(!isAdmin()) return;
+    if(!confirm(`Ban ${username}? They won't be able to use the site until unbanned.`)) return;
+    await supabaseClient.from("users").upsert({ username, is_banned: true });
+    toast(`${username} has been banned.`);
+  }
+  async function adminUnbanUser(username){
+    if(!isAdmin()) return;
+    await supabaseClient.from("users").upsert({ username, is_banned: false });
+    toast(`${username} has been unbanned.`);
+  }
+  async function adminClearPublicChat(){
+    if(!isAdmin()) return;
+    if(!confirm("Delete every message in Public Chat? This can't be undone.")) return;
+    await supabaseClient.from("messages").delete().eq("thread", "public");
+    toast("Public chat cleared.");
+    refreshMessages();
+  }
+
   async function refreshMessages(){
     const thread = document.getElementById("messagingThread");
     if(!supabaseClient){
@@ -4596,6 +4828,28 @@ ENGINES.breakout = function(stage){
     }
     const wasAtBottom = thread.scrollTop + thread.clientHeight >= thread.scrollHeight - 30;
     thread.innerHTML = data.length ? "" : `<p style="color:var(--muted);text-align:center;">No messages yet — say hi!</p>`;
+    if(threadKey() === "public"){
+      const announcement = await storeGet("pinnedAnnouncement", true, null);
+      if(announcement){
+        const pin = document.createElement("div");
+        pin.className = "msg__pinnedAnnouncement";
+        pin.innerHTML = `📌 ${escapeHtml(announcement)}`;
+        thread.appendChild(pin);
+      }
+    }
+
+    // One batched query for every message's reactions, instead of one per message.
+    let reactionsByMsg = {};
+    if(data.length){
+      const { data: reactionRows } = await supabaseClient
+        .from("message_reactions").select("*").in("message_id", data.map(m=>m.id));
+      (reactionRows||[]).forEach(r=>{
+        if(!reactionsByMsg[r.message_id]) reactionsByMsg[r.message_id] = {};
+        if(!reactionsByMsg[r.message_id][r.emoji]) reactionsByMsg[r.message_id][r.emoji] = [];
+        reactionsByMsg[r.message_id][r.emoji].push(r.username);
+      });
+    }
+
     data.forEach(m=>{
       const div = document.createElement("div");
       const mine = profile && m.username === profile.username;
@@ -4603,7 +4857,18 @@ ENGINES.breakout = function(stage){
       const canDelete = mine || isModerator;
       div.className = "msg " + (mine ? "mine" : "theirs");
       const time = new Date(m.created_at).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-      div.innerHTML = `<div class="msg__meta">${mine ? "You" : m.username} · ${time}${canDelete ? ' <button class="msg__deleteBtn" title="Delete">🗑</button>' : ""}</div>${escapeHtml(m.body)}`;
+      const myReactions = reactionsByMsg[m.id] || {};
+      const reactionsHtml = Object.entries(myReactions).map(([emoji, users])=>
+        `<span class="msg__reaction ${users.includes(profile.username)?'mine':''}" data-emoji="${emoji}" data-msgid="${m.id}">${emoji} ${users.length}</span>`
+      ).join("");
+      div.innerHTML = `<div class="msg__meta">${mine ? "You" : m.username} · ${time}${canDelete ? ' <button class="msg__deleteBtn" title="Delete">🗑</button>' : ""}</div>${escapeHtml(m.body)}<div class="msg__reactions">${reactionsHtml}<button class="msg__addReaction" data-msgid="${m.id}">+</button></div>`;
+      div.querySelectorAll(".msg__reaction").forEach(el=>{
+        el.addEventListener("click", ()=> toggleReaction(m.id, el.dataset.emoji));
+      });
+      div.querySelector(".msg__addReaction").addEventListener("click", (e)=>{
+        e.stopPropagation();
+        showReactionPicker(e.target, m.id);
+      });
       if(canDelete){
         div.querySelector(".msg__deleteBtn").addEventListener("click", async (e)=>{
           e.stopPropagation();
@@ -4935,6 +5200,7 @@ ENGINES.breakout = function(stage){
   document.getElementById("messagingForm").addEventListener("submit", async (e)=>{
     e.preventDefault();
     if(!(await ensureProfile())) return;
+    if(profile.isMuted){ toast("🔇 You've been muted and can't send messages right now."); return; }
     const input = document.getElementById("messagingInput");
     const text = input.value.trim();
     if(!text) return;
@@ -4997,8 +5263,23 @@ ENGINES.breakout = function(stage){
       const li = document.createElement("li");
       li.className = "contactItem" + (activeThread===name ? " active" : "");
       const online = await isUserOnline(name);
-      li.innerHTML = `<span class="dot" style="background:${online ? '#27c93f' : 'var(--pink)'}" title="${online ? 'Online' : 'Offline'}"></span> ${name}`;
-      li.addEventListener("click", ()=> switchThread(name));
+      let adminControls = "";
+      if(isAdmin()){
+        adminControls = ` <button class="contactItem__adminBtn" data-action="mute" data-user="${name}" title="Mute">🔇</button><button class="contactItem__adminBtn" data-action="ban" data-user="${name}" title="Ban">🚫</button>`;
+      }
+      li.innerHTML = `<span class="dot" style="background:${online ? '#27c93f' : 'var(--pink)'}" title="${online ? 'Online' : 'Offline'}"></span> ${name}${adminControls}`;
+      li.addEventListener("click", (e)=>{
+        if(e.target.classList.contains("contactItem__adminBtn")) return; // handled separately below
+        switchThread(name);
+      });
+      li.querySelectorAll(".contactItem__adminBtn").forEach(btn=>{
+        btn.addEventListener("click", (e)=>{
+          e.stopPropagation();
+          const user = btn.dataset.user;
+          if(btn.dataset.action === "mute") adminMuteUser(user);
+          else adminBanUser(user);
+        });
+      });
       list.appendChild(li);
     }
 
@@ -5027,6 +5308,7 @@ ENGINES.breakout = function(stage){
     document.getElementById("messagingContacts").classList.remove("mobileShow");
     document.querySelector(".messaging__main").classList.add("mobileShow");
   }
+  document.getElementById("claimAdminBtn").addEventListener("click", claimAdmin);
   document.getElementById("newGroupBtn")?.addEventListener("click", async ()=>{
     if(!(await ensureProfile())) return;
     const name = prompt("Group name:");
