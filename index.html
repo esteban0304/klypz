@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Klyp — Games, Chat & Shorts</title>
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3903,6 +3904,7 @@ ENGINES.breakout = function(stage){
       recordPlay(game);
       renderRatingBar(game.id);
       registerPresence(game.title);
+      const iframe = document.createElement("iframe");
       iframe.src = game.embedUrl;
       iframe.style.width = (game.embedWidth || 800) + "px";
       iframe.style.height = (game.embedHeight || 600) + "px";
