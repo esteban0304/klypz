@@ -6,6 +6,8 @@
 <title>Klyp — Games, Chat & Shorts</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://www.youtube.com">
 <link rel="preconnect" href="https://i.ytimg.com">
@@ -847,6 +849,16 @@ button:focus-visible, input:focus-visible, li:focus-visible{
   cursor:grab;
 }
 .avatarShopSectionBlock{ margin-bottom:24px; }
+.shopTab{
+  padding:8px 16px; border-radius:999px; font-size:13px; font-weight:600;
+  background:var(--panel-2); border:1px solid var(--line); color:var(--muted);
+  cursor:pointer; transition:all .15s;
+}
+.shopTab.active{background:var(--blue); color:#04070f; border-color:var(--blue);}
+.shopTab:hover:not(.active){border-color:var(--cyan);}
+.avatarCell.locked{opacity:0.55;}
+.avatarCell{ width:68px; }
+.avatarCell__cost{ font-size:10px; color:var(--muted); text-align:center; margin-top:2px; }
 .adminPanelGrid{
   display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:14px;
 }
@@ -856,40 +868,76 @@ button:focus-visible, input:focus-visible, li:focus-visible{
   transition:transform .15s, border-color .15s;
 }
 .adminPanelBtn:hover{transform:translateY(-2px); border-color:var(--pink);}
-.profilePageCard{
-  max-width:520px; text-align:center; max-height:90vh; overflow-y:auto;
+/* Full-page profile */
+.fullPageProfile{
+  display:flex !important; flex-direction:row; gap:0; padding:0 !important;
+  height:calc(100vh - 65px); overflow:hidden;
 }
-.profilePage__avatarWrap{
-  display:flex; justify-content:center; margin:10px 0 6px;
+.fullPageProfile__left{
+  width:280px; flex-shrink:0; padding:24px 20px; overflow-y:auto;
+  background:var(--panel); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; align-items:center; gap:10px;
 }
-.profilePage__avatarImg{
-  width:160px; height:260px; object-fit:contain;
-  filter:drop-shadow(0 12px 28px rgba(47,123,255,.4));
+.fullPageProfile__back{
+  align-self:flex-start; background:none; border:1px solid var(--line);
+  border-radius:8px; padding:6px 14px; font-size:13px; color:var(--muted);
+  cursor:pointer; margin-bottom:8px;
 }
-.profilePage__name{
-  font-family:'Rajdhani',sans-serif; font-weight:700; font-size:26px; margin:6px 0 2px;
+.fullPageProfile__avatar3d{
+  width:200px; height:325px; border-radius:16px; overflow:hidden;
+  background:#0d1117; flex-shrink:0;
 }
-.profilePage__sub{color:var(--cyan); font-size:14px; margin:0 0 16px;}
-.profilePage__poseRow{
-  display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;
+.fullPageProfile__name{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:22px;margin:4px 0 0;text-align:center;}
+.fullPageProfile__sub{color:var(--cyan);font-size:13px;margin:0;text-align:center;}
+.fullPageProfile__poseRow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.fullPageProfile__stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;}
+.fullPageProfile__right{
+  flex:1; overflow-y:auto; padding:24px;
 }
-.profilePage__poseBtn{
-  padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600;
-  background:var(--panel-2); border:1px solid var(--line); color:var(--muted);
+@media(max-width:700px){
+  .fullPageProfile{flex-direction:column;}
+  .fullPageProfile__left{width:100%;height:auto;border-right:none;border-bottom:1px solid var(--line);}
+  .fullPageProfile__avatar3d{width:160px;height:260px;}
 }
-.profilePage__poseBtn.active{background:var(--blue); color:#04070f; border-color:var(--blue);}
-.profilePage__statsGrid{
-  display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px;
+
+/* Shop pages */
+.shopPage{padding:0 !important;}
+.shopPage .appsSection__head{padding:20px 24px 12px;position:sticky;top:0;background:var(--bg);z-index:10;border-bottom:1px solid var(--line);}
+.shopPage__back{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:13px;color:var(--muted);cursor:pointer;margin-bottom:12px;display:block;}
+.shopPage__preview3d{
+  width:140px; height:228px; border-radius:14px; overflow:hidden;
+  background:#0d1117; float:right; margin:0 24px 16px 16px; flex-shrink:0;
 }
-.profilePage__statCell{
-  background:var(--panel-2); border:1px solid var(--line); border-radius:12px;
-  padding:14px 8px; display:flex; flex-direction:column; gap:4px;
+.shopPage__grid{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:14px; padding:16px 24px 32px; clear:both;
 }
-.profilePage__statNum{font-size:20px; font-weight:700;}
-.profilePage__statLabel{font-size:11px; color:var(--muted);}
-.profilePage__badges{
-  display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
+.shopItem{
+  background:var(--panel-2); border:2px solid var(--line); border-radius:14px;
+  padding:12px; cursor:pointer; transition:transform .15s, border-color .15s;
+  display:flex; flex-direction:column; gap:8px; position:relative;
 }
+.shopItem:hover{transform:translateY(-3px); border-color:var(--blue);}
+.shopItem.equipped{border-color:var(--cyan); box-shadow:0 0 14px rgba(0,224,255,.3);}
+.shopItem.locked{opacity:0.6;}
+.shopItem__img{width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;}
+.shopItem__name{font-size:12px;font-weight:700;line-height:1.2;}
+.shopItem__desc{font-size:10px;color:var(--muted);}
+.shopItem__price{font-size:11px;font-weight:700;color:var(--cyan);}
+.shopItem__price.free{color:var(--green,#2fbf6a);}
+.shopItem__price.cantafford{color:var(--muted);}
+.shopItem__equipped{position:absolute;top:8px;right:8px;background:var(--cyan);color:#04070f;border-radius:999px;font-size:10px;font-weight:800;padding:2px 7px;}
+
+/* Old modal profile — keep for leaderboard use */
+.profilePageCard{max-width:520px;text-align:center;max-height:90vh;overflow-y:auto;}
+.profilePage__poseBtn{padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);}
+.profilePage__poseBtn.active{background:var(--blue);color:#04070f;border-color:var(--blue);}
+.profilePage__statsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;}
+.profilePage__statCell{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:14px 8px;display:flex;flex-direction:column;gap:4px;}
+.profilePage__statNum{font-size:20px;font-weight:700;}
+.profilePage__statLabel{font-size:11px;color:var(--muted);}
+.profilePage__badges{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+
 .avatarCell{
   display:flex; flex-direction:column; align-items:center; gap:3px;
   padding:10px 4px; border-radius:10px; background:var(--panel-2);
@@ -1231,6 +1279,11 @@ html[data-theme="light"] .hero{
         <p class="homeCard__title">Leaderboard</p>
         <p class="homeCard__desc">See where you rank</p>
       </div>
+      <div class="homeCard" data-go="profile">
+        <div class="homeCard__icon">👤</div>
+        <p class="homeCard__title">My Profile</p>
+        <p class="homeCard__desc">Customize your 3D avatar</p>
+      </div>
       <div class="homeCard" data-go="avatarshop">
         <div class="homeCard__icon">🛍</div>
         <p class="homeCard__title">Avatar Shop</p>
@@ -1381,6 +1434,58 @@ html[data-theme="light"] .hero{
     </div>
   </div>
 
+  <!-- ===== FULL-PAGE PROFILE / AVATAR CUSTOMIZER ===== -->
+  <div class="appsSection fullPageProfile" id="profileSection" style="display:none;">
+    <div class="fullPageProfile__left">
+      <button class="fullPageProfile__back" id="profileSectionBack">← Back</button>
+      <div class="fullPageProfile__avatar3d" id="profileSection3d"></div>
+      <input type="file" id="avatarGlbInput" accept=".glb,.gltf" style="display:none;">
+      <h2 class="fullPageProfile__name" id="profileSectionName">Your Profile</h2>
+      <p class="fullPageProfile__sub" id="profileSectionSub">Level 1 · 0 XP</p>
+      <div class="fullPageProfile__poseRow" id="profileSectionPoseRow"></div>
+      <div class="fullPageProfile__stats" id="profileSectionStats"></div>
+      <div class="badgeGrid" id="profileSectionBadges"></div>
+    </div>
+    <div class="fullPageProfile__right">
+      <div class="appsSection__head" style="padding:0 0 16px;">
+        <h2>🛍 Customize</h2>
+        <p>Click any tab to switch categories. Drag the avatar to spin it.</p>
+      </div>
+      <div id="avatarShopGridPage" class="avatarShopGrid"></div>
+    </div>
+  </div>
+
+  <!-- ===== SHOP PAGES (one per clothing category) ===== -->
+  <div class="appsSection shopPage" id="shopTopsSection" style="display:none;">
+    <div class="appsSection__head">
+      <button class="shopPage__back" data-back="avatarshop">← Back to Customize</button>
+      <h2>👕 Tops Shop</h2>
+      <p>Find the perfect top. Click any item to preview and equip it.</p>
+    </div>
+    <div class="shopPage__preview3d" id="shopTops3d"></div>
+    <div class="shopPage__grid" id="shopTopsGrid"></div>
+  </div>
+
+  <div class="appsSection shopPage" id="shopBottomsSection" style="display:none;">
+    <div class="appsSection__head">
+      <button class="shopPage__back" data-back="avatarshop">← Back to Customize</button>
+      <h2>👖 Bottoms Shop</h2>
+      <p>Find the perfect bottoms.</p>
+    </div>
+    <div class="shopPage__preview3d" id="shopBottoms3d"></div>
+    <div class="shopPage__grid" id="shopBottomsGrid"></div>
+  </div>
+
+  <div class="appsSection shopPage" id="shopShoesSection" style="display:none;">
+    <div class="appsSection__head">
+      <button class="shopPage__back" data-back="avatarshop">← Back to Customize</button>
+      <h2>👟 Shoes Shop</h2>
+      <p>Step up your look.</p>
+    </div>
+    <div class="shopPage__preview3d" id="shopShoes3d"></div>
+    <div class="shopPage__grid" id="shopShoesGrid"></div>
+  </div>
+
   </div>
   <!-- end .appShell__content -->
 </div>
@@ -1447,7 +1552,7 @@ html[data-theme="light"] .hero{
   <div class="modalCard profilePageCard">
     <button class="modalCard__close" id="profilePageClose">✕</button>
     <div class="profilePage__avatarWrap">
-      <img id="profilePageAvatarImg" class="profilePage__avatarImg" alt="avatar">
+      <div id="profilePageAvatarDiv" style="width:200px;height:325px;margin:0 auto;border-radius:16px;overflow:hidden;cursor:grab;"></div>
     </div>
     <h2 class="profilePage__name" id="profilePageName">Username</h2>
     <p class="profilePage__sub" id="profilePageSub">Level 1 · 0 XP</p>
@@ -4352,64 +4457,52 @@ ENGINES.breakout = function(stage){
   ];
 
   /* ===================================================================
-     KLYP AVATAR V2 — fully modular part-based Canvas character.
-     Each body aspect (skin, eyes, hair style, hair color, outfit, pose)
-     is chosen independently. The character is drawn with layered Canvas
-     calls using radial gradients and bold outlines for a stylised,
-     game-like look. Idle animation and mouse-drag spinning are handled
-     separately via startAvatarIdleAnimation() and addAvatarSpinDrag().
+     KLYP 3D AVATAR SYSTEM — Three.js r128
+     Builds a stylised cartoon character from primitive geometry:
+     spheres, cylinders, and boxes with MeshToonMaterial for the
+     cell-shading look closest to the Splatoon aesthetic that pure
+     geometry can achieve without pre-made 3D model files.
+     Animations: idle breathing, head bob, head look-around, and a
+     walking-in-place cycle that starts automatically.
      =================================================================== */
 
   const SKIN_TONES = [
-    {id:'light',    color:'#fde8d0', sd:'#d4956a', sh:'#fff5ec'},
-    {id:'medium',   color:'#f5c5a3', sd:'#c47848', sh:'#ffe0c8'},
-    {id:'tan',      color:'#c8a882', sd:'#906040', sh:'#e8c898'},
-    {id:'brown',    color:'#a0704a', sd:'#6a4020', sh:'#c89070'},
-    {id:'dark',     color:'#6a4030', sd:'#3a2010', sh:'#8a6050'},
-    {id:'ebony',    color:'#3a2010', sd:'#200808', sh:'#5a3828'},
+    {id:'light',     color:'#fde8d0'},
+    {id:'medium',    color:'#f5c5a3'},
+    {id:'tan',       color:'#c8a882'},
+    {id:'brown',     color:'#a0704a'},
+    {id:'dark',      color:'#6a4030'},
+    {id:'ebony',     color:'#3a2010'},
   ];
-
   const EYE_COLORS = [
-    {id:'blue',    color:'#2f7bff'},
-    {id:'cyan',    color:'#00c8ff'},
-    {id:'green',   color:'#2fbf6a'},
-    {id:'hazel',   color:'#8a6420'},
-    {id:'brown',   color:'#5a3010'},
-    {id:'red',     color:'#ff3d77'},
-    {id:'purple',  color:'#9a5cf0'},
-    {id:'gold',    color:'#ffd93d'},
+    {id:'blue',   color:'#2f7bff'},
+    {id:'cyan',   color:'#00c8ff'},
+    {id:'green',  color:'#2fbf6a'},
+    {id:'hazel',  color:'#8a6420'},
+    {id:'brown',  color:'#5a3010'},
+    {id:'red',    color:'#ff3d77'},
+    {id:'purple', color:'#9a5cf0'},
+    {id:'gold',   color:'#ffd93d'},
   ];
-
   const HAIR_COLORS = [
-    {id:'black',    color:'#1a1008'},
-    {id:'darkbrown',color:'#2d1f12'},
-    {id:'brown',    color:'#5c3a24'},
-    {id:'blonde',   color:'#c8a832'},
-    {id:'red',      color:'#c03010'},
-    {id:'pink',     color:'#ff8ad8'},
-    {id:'cyan',     color:'#00e0ff'},
-    {id:'white',    color:'#e8e8f0'},
+    {id:'black',     color:'#1a1008'},
+    {id:'darkbrown', color:'#2d1f12'},
+    {id:'brown',     color:'#5c3a24'},
+    {id:'blonde',    color:'#c8a832'},
+    {id:'red',       color:'#c03010'},
+    {id:'pink',      color:'#ff8ad8'},
+    {id:'cyan',      color:'#00e0ff'},
+    {id:'white',     color:'#e8e8f0'},
   ];
-
   const AVAILABLE_HAIR = [
-    {id:'none',   label:'Bald',   cost:0},
-    {id:'short',  label:'Short',  cost:0},
-    {id:'spiky',  label:'Spiky',  cost:80},
-    {id:'long',   label:'Long',   cost:80},
-    {id:'bun',    label:'Bun',    cost:120},
-    {id:'mohawk', label:'Mohawk', cost:200},
-    {id:'afro',   label:'Afro',   cost:150},
+    {id:'none',    label:'Bald',    cost:0},
+    {id:'short',   label:'Short',   cost:0},
+    {id:'spiky',   label:'Spiky',   cost:80},
+    {id:'long',    label:'Long',    cost:80},
+    {id:'bun',     label:'Bun',     cost:120},
+    {id:'mohawk',  label:'Mohawk',  cost:200},
+    {id:'afro',    label:'Afro',    cost:150},
   ];
-
-  const AVAILABLE_OUTFITS = [
-    {id:'none',   label:'None',    cost:0  },
-    {id:'tshirt', label:'T-Shirt', cost:0  },
-    {id:'hoodie', label:'Hoodie',  cost:100},
-    {id:'armor',  label:'Armor',   cost:300},
-    {id:'robe',   label:'Robe',    cost:300},
-    {id:'suit',   label:'Suit',    cost:500},
-  ];
-
   const AVATAR_POSES = [
     {id:'standing', label:'Standing'},
     {id:'waving',   label:'Waving'},
@@ -4417,341 +4510,312 @@ ENGINES.breakout = function(stage){
     {id:'sitting',  label:'Sitting'},
   ];
 
-  function _lhex(hex, a){
-    if(!hex) return '#ffffff';
-    let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
-    return '#'+[r,g,b].map(v=>Math.min(255,Math.floor(v+(255-v)*a)).toString(16).padStart(2,'0')).join('');
+  // Clothing shop items — 50+ items across categories
+  const CLOTHING_TOPS = [
+    {id:'none',            label:'None',              cost:0,   color:'#f5c5a3', desc:'Bare'},
+    {id:'white-tee',       label:'White T-Shirt',     cost:0,   color:'#ffffff', desc:'Classic'},
+    {id:'black-tee',       label:'Black T-Shirt',     cost:50,  color:'#1a1a2e', desc:'Streetwear'},
+    {id:'red-tee',         label:'Red T-Shirt',       cost:50,  color:'#ff3d77', desc:'Bold'},
+    {id:'blue-tee',        label:'Blue T-Shirt',      cost:50,  color:'#2f7bff', desc:'Cool'},
+    {id:'green-tee',       label:'Green T-Shirt',     cost:50,  color:'#2fbf6a', desc:'Fresh'},
+    {id:'yellow-tee',      label:'Yellow T-Shirt',    cost:50,  color:'#ffd93d', desc:'Bright'},
+    {id:'purple-tee',      label:'Purple T-Shirt',    cost:50,  color:'#9a5cf0', desc:'Vibes'},
+    {id:'navy-hoodie',     label:'Navy Hoodie',       cost:120, color:'#1c2a5e', desc:'Cozy'},
+    {id:'red-hoodie',      label:'Red Hoodie',        cost:120, color:'#c03010', desc:'Fire'},
+    {id:'grey-hoodie',     label:'Grey Hoodie',       cost:120, color:'#666680', desc:'Casual'},
+    {id:'black-hoodie',    label:'Black Hoodie',      cost:150, color:'#0a0a14', desc:'Dark'},
+    {id:'pink-hoodie',     label:'Pink Hoodie',       cost:150, color:'#ff8ad8', desc:'Cute'},
+    {id:'white-hoodie',    label:'White Hoodie',      cost:150, color:'#f0f0f8', desc:'Clean'},
+    {id:'tank-white',      label:'White Tank',        cost:80,  color:'#f5f5ff', desc:'Gym'},
+    {id:'tank-black',      label:'Black Tank',        cost:80,  color:'#141420', desc:'Gym'},
+    {id:'tank-red',        label:'Red Tank',          cost:80,  color:'#cc2244', desc:'Bold'},
+    {id:'denim-jacket',    label:'Denim Jacket',      cost:200, color:'#3a5080', desc:'Retro'},
+    {id:'leather-jacket',  label:'Leather Jacket',    cost:350, color:'#1a1210', desc:'Punk'},
+    {id:'varsity',         label:'Varsity Jacket',    cost:300, color:'#8b0000', desc:'Sport'},
+    {id:'tracksuit-top',   label:'Tracksuit Top',     cost:180, color:'#1a3060', desc:'Runner'},
+    {id:'polo-white',      label:'White Polo',        cost:100, color:'#f8f8ff', desc:'Preppy'},
+    {id:'polo-navy',       label:'Navy Polo',         cost:100, color:'#1c2a5e', desc:'Preppy'},
+    {id:'flannel',         label:'Flannel Shirt',     cost:160, color:'#8b3a3a', desc:'Lumberjack'},
+    {id:'crop-top',        label:'Crop Top',          cost:90,  color:'#ff6b9d', desc:'Trendy'},
+    {id:'armor-chest',     label:'Battle Armor',      cost:500, color:'#7080a8', desc:'Warrior'},
+    {id:'robe-dark',       label:'Dark Robe',         cost:400, color:'#2a1045', desc:'Mystic'},
+    {id:'robe-light',      label:'Light Robe',        cost:400, color:'#e8d8c0', desc:'Sage'},
+    {id:'suit-black',      label:'Black Suit',        cost:600, color:'#0a0a14', desc:'Formal'},
+    {id:'suit-grey',       label:'Grey Suit',         cost:600, color:'#505060', desc:'Formal'},
+    {id:'tuxedo',          label:'Tuxedo',            cost:800, color:'#050508', desc:'Gala'},
+    {id:'hawaiian',        label:'Hawaiian Shirt',    cost:140, color:'#e05010', desc:'Vacation'},
+    {id:'stripes',         label:'Striped Tee',       cost:70,  color:'#304080', desc:'Nautical'},
+    {id:'camo',            label:'Camo Jacket',       cost:250, color:'#4a5a30', desc:'Stealth'},
+    {id:'fur-coat',        label:'Fur Coat',          cost:700, color:'#d8c0a0', desc:'Luxury'},
+    {id:'trench',          label:'Trench Coat',       cost:450, color:'#c8a868', desc:'Detective'},
+    {id:'windbreaker',     label:'Windbreaker',       cost:200, color:'#20a8d8', desc:'Sporty'},
+    {id:'crop-hoodie',     label:'Crop Hoodie',       cost:180, color:'#9a5cf0', desc:'Trendy'},
+    {id:'cardigan',        label:'Cardigan',          cost:160, color:'#c8a0a0', desc:'Cozy'},
+    {id:'bomber',          label:'Bomber Jacket',     cost:320, color:'#1a3020', desc:'Military'},
+    {id:'wizard-robe',     label:'Wizard Robe',       cost:550, color:'#5a2090', desc:'Magic'},
+    {id:'knight-armor',    label:'Knight Armor',      cost:900, color:'#909090', desc:'Medieval'},
+    {id:'lab-coat',        label:'Lab Coat',          cost:280, color:'#f0f0f8', desc:'Scientist'},
+    {id:'chef-jacket',     label:'Chef Jacket',       cost:220, color:'#f8f8f8', desc:'Chef'},
+    {id:'kimono',          label:'Kimono',            cost:480, color:'#c82030', desc:'Traditional'},
+    {id:'space-suit',      label:'Space Suit',        cost:1200, color:'#d8d8e8', desc:'Astronaut'},
+    {id:'superhero',       label:'Superhero Suit',    cost:1000, color:'#c01010', desc:'Hero'},
+    {id:'neon-jacket',     label:'Neon Jacket',       cost:380, color:'#00ff88', desc:'Cyber'},
+    {id:'rainbow-tee',     label:'Rainbow Tee',       cost:180, color:'#ff6060', desc:'Colorful'},
+    {id:'sport-jersey',    label:'Sport Jersey',      cost:200, color:'#ff4400', desc:'Athlete'},
+    {id:'gold-jacket',     label:'Gold Jacket',       cost:999, color:'#c8901c', desc:'Champion'},
+  ];
+
+  const CLOTHING_BOTTOMS = [
+    {id:'none',            label:'None',              cost:0,   color:'#f5c5a3', desc:'Bare'},
+    {id:'jeans-blue',      label:'Blue Jeans',        cost:0,   color:'#3a5080', desc:'Classic'},
+    {id:'jeans-black',     label:'Black Jeans',       cost:80,  color:'#1a1a2e', desc:'Sleek'},
+    {id:'jeans-grey',      label:'Grey Jeans',        cost:80,  color:'#606070', desc:'Casual'},
+    {id:'shorts-white',    label:'White Shorts',      cost:60,  color:'#f5f5ff', desc:'Summer'},
+    {id:'shorts-black',    label:'Black Shorts',      cost:60,  color:'#0a0a14', desc:'Sport'},
+    {id:'shorts-red',      label:'Red Shorts',        cost:60,  color:'#cc2244', desc:'Bright'},
+    {id:'shorts-camo',     label:'Camo Shorts',       cost:100, color:'#4a5a30', desc:'Casual'},
+    {id:'tracksuit-bottom',label:'Tracksuit Bottom',  cost:150, color:'#1a3060', desc:'Runner'},
+    {id:'sweatpants',      label:'Sweatpants',        cost:120, color:'#606070', desc:'Comfy'},
+    {id:'leggings-black',  label:'Black Leggings',    cost:100, color:'#0a0a14', desc:'Athletic'},
+    {id:'leggings-pattern',label:'Patterned Leggings',cost:140, color:'#9a5cf0', desc:'Fun'},
+    {id:'skirt-mini',      label:'Mini Skirt',        cost:110, color:'#ff8ad8', desc:'Chic'},
+    {id:'skirt-long',      label:'Long Skirt',        cost:130, color:'#5c3a24', desc:'Elegant'},
+    {id:'skirt-plaid',     label:'Plaid Skirt',       cost:150, color:'#8b2020', desc:'School'},
+    {id:'dress-black',     label:'Black Dress',       cost:200, color:'#0a0a14', desc:'Evening'},
+    {id:'dress-red',       label:'Red Dress',         cost:220, color:'#cc1122', desc:'Stunning'},
+    {id:'cargo',           label:'Cargo Pants',       cost:160, color:'#4a5a30', desc:'Utility'},
+    {id:'chinos-beige',    label:'Beige Chinos',      cost:140, color:'#d8c090', desc:'Smart'},
+    {id:'chinos-navy',     label:'Navy Chinos',       cost:140, color:'#1c2a5e', desc:'Smart'},
+    {id:'suit-pants-black',label:'Black Suit Pants',  cost:250, color:'#0a0a14', desc:'Formal'},
+    {id:'suit-pants-grey', label:'Grey Suit Pants',   cost:250, color:'#505060', desc:'Formal'},
+    {id:'shorts-sport',    label:'Sport Shorts',      cost:90,  color:'#1c3060', desc:'Gym'},
+    {id:'joggers',         label:'Joggers',           cost:130, color:'#303050', desc:'Street'},
+    {id:'flare-pants',     label:'Flare Pants',       cost:180, color:'#2a2050', desc:'Retro'},
+    {id:'leather-pants',   label:'Leather Pants',     cost:400, color:'#0a0808', desc:'Punk'},
+    {id:'linen-pants',     label:'Linen Pants',       cost:160, color:'#d8c8a8', desc:'Beach'},
+    {id:'swim-trunks',     label:'Swim Trunks',       cost:80,  color:'#1090c8', desc:'Beach'},
+    {id:'overalls',        label:'Overalls',          cost:200, color:'#2a4080', desc:'Worker'},
+    {id:'knight-legs',     label:'Knight Greaves',    cost:600, color:'#909090', desc:'Medieval'},
+    {id:'armor-legs',      label:'Armor Leggings',    cost:450, color:'#6870a0', desc:'Warrior'},
+    {id:'space-pants',     label:'Space Suit Legs',   cost:1000,color:'#d8d8e8', desc:'Astronaut'},
+    {id:'wizard-robe-bot', label:'Wizard Robe (Bot)', cost:400, color:'#5a2090', desc:'Magic'},
+    {id:'kimono-bottom',   label:'Kimono Bottom',     cost:400, color:'#c82030', desc:'Traditional'},
+    {id:'superhero-legs',  label:'Superhero Tights',  cost:800, color:'#0010c0', desc:'Hero'},
+    {id:'track-pants',     label:'Track Pants',       cost:120, color:'#cc3300', desc:'Sport'},
+    {id:'pleated-skirt',   label:'Pleated Skirt',     cost:160, color:'#2040a0', desc:'School'},
+    {id:'palazzo',         label:'Palazzo Pants',     cost:220, color:'#9040a0', desc:'Elegant'},
+    {id:'yoga-pants',      label:'Yoga Pants',        cost:140, color:'#30205a', desc:'Fitness'},
+    {id:'neon-pants',      label:'Neon Pants',        cost:300, color:'#00ff88', desc:'Cyber'},
+    {id:'pinstripe',       label:'Pinstripe Trousers',cost:300, color:'#202040', desc:'Dapper'},
+    {id:'patterned-shorts',label:'Patterned Shorts',  cost:110, color:'#e04000', desc:'Tropical'},
+    {id:'denim-shorts',    label:'Denim Shorts',      cost:90,  color:'#4060a0', desc:'Casual'},
+    {id:'gym-shorts',      label:'Gym Shorts',        cost:70,  color:'#801818', desc:'Athletic'},
+    {id:'gold-pants',      label:'Gold Pants',        cost:800, color:'#c0901c', desc:'Champion'},
+    {id:'velvet-pants',    label:'Velvet Pants',      cost:350, color:'#601040', desc:'Luxe'},
+    {id:'shorts-tie-dye',  label:'Tie-Dye Shorts',   cost:130, color:'#7030a0', desc:'Groovy'},
+    {id:'bell-bottoms',    label:'Bell Bottoms',      cost:200, color:'#402060', desc:'70s'},
+    {id:'board-shorts',    label:'Board Shorts',      cost:100, color:'#1070c0', desc:'Surf'},
+    {id:'corduroy',        label:'Corduroy Pants',    cost:170, color:'#704820', desc:'Vintage'},
+    {id:'wide-leg',        label:'Wide Leg Pants',    cost:190, color:'#1a1a30', desc:'Fashion'},
+  ];
+
+  const CLOTHING_SHOES = [
+    {id:'none',            label:'Bare Feet',         cost:0,   color:'#f5c5a3', desc:'Natural'},
+    {id:'sneakers-white',  label:'White Sneakers',    cost:0,   color:'#f8f8ff', desc:'Classic'},
+    {id:'sneakers-black',  label:'Black Sneakers',    cost:60,  color:'#0a0a14', desc:'Sleek'},
+    {id:'sneakers-red',    label:'Red Sneakers',      cost:60,  color:'#cc2244', desc:'Bold'},
+    {id:'sneakers-blue',   label:'Blue Sneakers',     cost:60,  color:'#2040c0', desc:'Cool'},
+    {id:'sneakers-neon',   label:'Neon Sneakers',     cost:120, color:'#00ff88', desc:'Bright'},
+    {id:'high-tops-black', label:'Black High Tops',   cost:100, color:'#0a0a14', desc:'Street'},
+    {id:'high-tops-white', label:'White High Tops',   cost:100, color:'#f8f8ff', desc:'Clean'},
+    {id:'boots-brown',     label:'Brown Boots',       cost:180, color:'#5c3a24', desc:'Rugged'},
+    {id:'boots-black',     label:'Black Boots',       cost:180, color:'#0a0a14', desc:'Tough'},
+    {id:'boots-combat',    label:'Combat Boots',      cost:250, color:'#1a1a10', desc:'Punk'},
+    {id:'boots-cowboy',    label:'Cowboy Boots',      cost:300, color:'#6a3a18', desc:'Western'},
+    {id:'heels-black',     label:'Black Heels',       cost:200, color:'#0a0a14', desc:'Elegant'},
+    {id:'heels-red',       label:'Red Heels',         cost:200, color:'#cc1122', desc:'Bold'},
+    {id:'heels-nude',      label:'Nude Heels',        cost:200, color:'#d8a888', desc:'Classic'},
+    {id:'loafers',         label:'Loafers',           cost:150, color:'#3a2010', desc:'Preppy'},
+    {id:'oxfords',         label:'Oxford Shoes',      cost:200, color:'#1a1008', desc:'Formal'},
+    {id:'sandals',         label:'Sandals',           cost:80,  color:'#c8a868', desc:'Casual'},
+    {id:'flip-flops',      label:'Flip Flops',        cost:40,  color:'#1090c8', desc:'Beach'},
+    {id:'slippers',        label:'Slippers',          cost:60,  color:'#8888a0', desc:'Cozy'},
+    {id:'uggs',            label:'Ugg Boots',         cost:220, color:'#c8a878', desc:'Cozy'},
+    {id:'platforms',       label:'Platform Shoes',    cost:280, color:'#0a0a14', desc:'Alt'},
+    {id:'cleats',          label:'Cleats',            cost:160, color:'#102080', desc:'Sport'},
+    {id:'running-shoes',   label:'Running Shoes',     cost:140, color:'#cc4400', desc:'Athletic'},
+    {id:'basketball-shoes',label:'Basketball Shoes',  cost:200, color:'#cc1144', desc:'Sport'},
+    {id:'crocs',           label:'Crocs',             cost:70,  color:'#008800', desc:'Iconic'},
+    {id:'rain-boots',      label:'Rain Boots',        cost:130, color:'#1060a0', desc:'Rainy'},
+    {id:'moccasins',       label:'Moccasins',         cost:170, color:'#7a4820', desc:'Casual'},
+    {id:'ballet-flats',    label:'Ballet Flats',      cost:140, color:'#ff8ad8', desc:'Cute'},
+    {id:'slip-on',         label:'Slip-On Shoes',     cost:90,  color:'#606070', desc:'Easy'},
+    {id:'roller-skates',   label:'Roller Skates',     cost:400, color:'#ff4080', desc:'Fun'},
+    {id:'ice-skates',      label:'Ice Skates',        cost:450, color:'#a0c0e0', desc:'Ice'},
+    {id:'knight-boots',    label:'Knight Boots',      cost:500, color:'#909090', desc:'Medieval'},
+    {id:'space-boots',     label:'Space Boots',       cost:800, color:'#d8d8e8', desc:'Astronaut'},
+    {id:'dragon-boots',    label:'Dragon Scale Boots',cost:700, color:'#28c06a', desc:'Exotic'},
+    {id:'fur-boots',       label:'Fur-Lined Boots',   cost:300, color:'#c0a080', desc:'Winter'},
+    {id:'sneakers-gold',   label:'Gold Sneakers',     cost:600, color:'#c8901c', desc:'Flex'},
+    {id:'slides',          label:'Slides',            cost:80,  color:'#303050', desc:'Street'},
+    {id:'chelsea-boots',   label:'Chelsea Boots',     cost:250, color:'#1a1008', desc:'Urban'},
+    {id:'wedges',          label:'Wedge Shoes',       cost:200, color:'#8a6040', desc:'Trendy'},
+    {id:'espadrilles',     label:'Espadrilles',       cost:150, color:'#d8c090', desc:'Summer'},
+    {id:'mary-janes',      label:'Mary Janes',        cost:160, color:'#1a1a2e', desc:'Classic'},
+    {id:'geta',            label:'Geta (Japanese)',   cost:350, color:'#8a6030', desc:'Traditional'},
+    {id:'mukluks',         label:'Mukluks',           cost:280, color:'#c8a878', desc:'Arctic'},
+    {id:'water-shoes',     label:'Water Shoes',       cost:100, color:'#2090c0', desc:'Aquatic'},
+    {id:'wingtip',         label:'Wingtip Shoes',     cost:280, color:'#3a2010', desc:'Dapper'},
+    {id:'mules',           label:'Mules',             cost:160, color:'#c08060', desc:'Chic'},
+    {id:'thigh-highs',     label:'Thigh-High Boots',  cost:350, color:'#0a0a14', desc:'Fashion'},
+    {id:'neon-boots',      label:'Neon Boots',        cost:280, color:'#00ffcc', desc:'Cyber'},
+    {id:'moon-boots',      label:'Moon Boots',        cost:380, color:'#d0d0f0', desc:'Retro'},
+    {id:'sneakers-collab', label:'Limited Edition',   cost:1500,color:'#ffd93d', desc:'Rare'},
+  ];
+
+  // === THREE.JS AVATAR RENDERER ===
+  // Returns a THREE scene/camera/renderer bundle attached to a container element.
+  // Call dispose() to clean up when done.
+
+  /* ===================================================================
+     KLYP AVATAR SYSTEM — Avaturn SDK + Three.js GLTFLoader
+     Real 3D avatars loaded from Avaturn's CDN as .glb files.
+     The Avaturn creator opens in a full-screen overlay; when the user
+     clicks Done, the exported .glb URL is captured, stored in Supabase,
+     and loaded into every avatar display via Three.js GLTFLoader.
+     Procedural animation drives idle breathing, head wander, and a
+     walking-in-place cycle on the loaded humanoid skeleton.
+     =================================================================== */
+
+  /* ===================================================================
+     GLB UPLOAD SYSTEM — no third-party account needed.
+     Users download a free .glb character from characters3d.com or any
+     other source, then upload it here. The file is read as a data URL,
+     stored in localStorage (keyed by username so each account has its
+     own), and loaded into the Three.js scene via GLTFLoader.
+     =================================================================== */
+
+  function getStoredGlbKey(){ return "klypGlb_" + (profile ? profile.username : "guest"); }
+
+  function loadStoredGlb(){
+    try { return localStorage.getItem(getStoredGlbKey()); } catch(e){ return null; }
   }
 
-  // Core draw — called every frame for animation
-  function drawKlypAvatar(canvas, config, animState){
-    const {skinId='medium', eyeColorId='blue', hairId='short', hairColorId='darkbrown',
-           outfitId='tshirt', poseId='standing'} = config || {};
-    const anim = animState || {breathY:0, blinkT:1, spinX:0};
-
-    const W=160, H=260;
-    if(canvas.width!==W) canvas.width=W;
-    if(canvas.height!==H) canvas.height=H;
-    const c = canvas.getContext('2d');
-    c.clearRect(0,0,W,H);
-    c.lineJoin='round'; c.lineCap='round';
-
-    const SK = SKIN_TONES.find(s=>s.id===skinId)||SKIN_TONES[1];
-    const EC = EYE_COLORS.find(e=>e.id===eyeColorId)||EYE_COLORS[0];
-    const HC = HAIR_COLORS.find(h=>h.id===hairColorId)||HAIR_COLORS[1];
-    const OL = '#18100a';
-
-    // Breathing offset
-    const by = anim.breathY || 0;
-
-    function rg(cx,cy,r,cl,cd){
-      const g=c.createRadialGradient(cx-r*.3,cy-r*.35,r*.04,cx,cy,r*1.1);
-      g.addColorStop(0,cl); g.addColorStop(.5,cl); g.addColorStop(1,cd); return g;
-    }
-    function fs(col,st,lw){ c.fillStyle=col; c.fill(); if(lw>0){c.strokeStyle=st;c.lineWidth=lw;c.stroke();} }
-    function E(cx,cy,rx,ry,col,st,lw){ c.beginPath();c.ellipse(cx,cy+by,rx,ry,0,0,Math.PI*2);fs(col,st||OL,lw==null?1.5:lw); }
-    function R(ax,ay,w,h,r,col,st,lw){
-      ay+=by;
-      c.beginPath(); c.moveTo(ax+r,ay); c.lineTo(ax+w-r,ay);
-      c.quadraticCurveTo(ax+w,ay,ax+w,ay+r); c.lineTo(ax+w,ay+h-r);
-      c.quadraticCurveTo(ax+w,ay+h,ax+w-r,ay+h); c.lineTo(ax+r,ay+h);
-      c.quadraticCurveTo(ax,ay+h,ax,ay+h-r); c.lineTo(ax,ay+r);
-      c.quadraticCurveTo(ax,ay,ax+r,ay); c.closePath(); fs(col,st||OL,lw==null?1.5:lw);
-    }
-
-    function outfitColor(o){
-      return{tshirt:'#ff3d77',hoodie:'#2f7bff',armor:'#8090b8',robe:'#7a3fd6',suit:'#1c1c2e'}[o]||'#888';
-    }
-
-    // Pose arm angles
-    const PA={standing:{la:0,ldy:0,ra:0,rdy:0},waving:{la:0,ldy:0,ra:-80,rdy:-48},
-              victory:{la:80,ldy:-48,ra:-80,rdy:-48},sitting:{la:0,ldy:0,ra:0,rdy:0}};
-    const ps=PA[poseId]||PA.standing;
-
-    function drawLimb(ax,ay,w,h,r){ R(ax,ay,w,h,r,rg(ax+w/2,ay+h/2,w*.9,SK.sh,SK.sd)); }
-
-    // BACK ARM (left)
-    const laY=108+ps.ldy;
-    c.save(); c.translate(22+9,laY+by); c.rotate(-ps.la*Math.PI/180); c.translate(-(22+9),-(laY+by));
-    drawLimb(22,laY,18,76,9);
-    if(outfitId&&outfitId!=='none'){
-      const sl=outfitId==='hoodie'||outfitId==='suit'?56:outfitId==='robe'?68:38;
-      R(22,laY,18,sl,9,outfitColor(outfitId),OL,1.2);
-    }
-    E(22+9,laY+80,9,9,rg(31,laY+76,9,SK.sh,SK.sd));
-    c.restore();
-
-    // LEGS
-    if(poseId==='sitting'){
-      R(36,196,42,18,9,rg(57,205,22,SK.sh,SK.sd));
-      R(82,196,42,18,9,rg(103,205,22,SK.sh,SK.sd));
-      R(19,208,22,52,11,rg(30,234,22,SK.sh,SK.sd));
-      R(119,208,22,52,11,rg(130,234,22,SK.sh,SK.sd));
-    } else {
-      R(50,178,24,66,11,rg(62,211,22,SK.sh,SK.sd));
-      R(86,178,24,66,11,rg(98,211,22,SK.sh,SK.sd));
-    }
-    // Shoes
-    E(62,246,18,10,'#1a1a2e',OL,1.5);
-    E(98,246,18,10,'#1a1a2e',OL,1.5);
-
-    // UNDERWEAR — always visible under everything
-    c.save(); c.translate(0,by);
-    c.beginPath(); c.moveTo(52,178); c.lineTo(108,178); c.lineTo(106,200); c.lineTo(80,196); c.lineTo(54,200); c.closePath();
-    c.fillStyle='#f5f5ff'; c.fill(); c.strokeStyle='#c0c0d8'; c.lineWidth=1.5; c.stroke();
-    c.fillStyle='#e0e0f0'; c.fillRect(52,174,56,8);
-    c.strokeStyle='#9090b8'; c.lineWidth=1; c.strokeRect(52,174,56,8);
-    c.restore();
-
-    // OUTFIT
-    if(outfitId&&outfitId!=='none'){
-      const oc=outfitColor(outfitId);
-      const dk=_lhex(oc,-0.3)||'#444';
-      const lt=_lhex(oc,0.3);
-      if(outfitId==='tshirt'){
-        R(50,108,60,76,18,oc);
-        c.save(); c.translate(0,by);
-        c.beginPath(); c.moveTo(68,108); c.lineTo(80,122); c.lineTo(92,108);
-        c.strokeStyle=dk; c.lineWidth=2; c.stroke(); c.restore();
-      }
-      else if(outfitId==='hoodie'){
-        R(50,108,60,76,18,oc);
-        c.save(); c.translate(0,by);
-        c.beginPath(); c.moveTo(50,108); c.quadraticCurveTo(80,80,110,108);
-        c.fillStyle=dk; c.fill(); c.strokeStyle=OL; c.lineWidth=1.5; c.stroke();
-        c.strokeStyle=dk; c.lineWidth=2; c.setLineDash([4,3]);
-        c.beginPath(); c.moveTo(80,115); c.lineTo(80,180); c.stroke(); c.setLineDash([]);
-        c.restore();
-        R(62,148,36,20,6,dk,OL,1);
-      }
-      else if(outfitId==='armor'){
-        R(50,108,60,76,14,oc);
-        R(56,114,48,62,10,dk);
-        E(80,138,9,10,'#ffd93d',OL,1.5);
-        E(80,138,4.5,5.5,_lhex('#ffd93d',0.5),'none',0);
-        R(32,100,26,22,10,oc); R(102,100,26,22,10,oc);
-        R(22,128,18,46,8,'#6878a8');
-        R(120,128,18,46,8,'#6878a8');
-        R(52,172,56,10,4,'#4a5578');
-      }
-      else if(outfitId==='robe'){
-        c.save(); c.translate(0,by);
-        c.beginPath(); c.moveTo(50,108); c.lineTo(28,180); c.lineTo(28,260); c.lineTo(132,260); c.lineTo(132,180); c.lineTo(110,108); c.closePath();
-        c.fillStyle=oc; c.fill(); c.strokeStyle=OL; c.lineWidth=1.5; c.stroke();
-        c.beginPath(); c.moveTo(80,112); c.lineTo(80,260); c.strokeStyle=dk; c.lineWidth=3; c.stroke();
-        for(const s of [{x:62,y:132},{x:98,y:152},{x:68,y:170}]){
-          c.beginPath(); c.arc(s.x,s.y+by,4,0,Math.PI*2); c.fillStyle='#ffe27a'; c.fill();
-        }
-        c.restore();
-      }
-      else if(outfitId==='suit'){
-        R(50,108,60,76,18,oc);
-        c.save(); c.translate(0,by);
-        c.beginPath(); c.moveTo(80,120); c.lineTo(60,108); c.lineTo(60,152); c.lineTo(80,140); c.closePath();
-        c.fillStyle='#ffffff'; c.fill();
-        c.beginPath(); c.moveTo(80,120); c.lineTo(100,108); c.lineTo(100,152); c.lineTo(80,140); c.closePath();
-        c.fillStyle='#ffffff'; c.fill();
-        c.beginPath(); c.moveTo(78,124); c.lineTo(75,176); c.lineTo(80,182); c.lineTo(85,176); c.lineTo(82,124); c.closePath();
-        c.fillStyle='#ff3d77'; c.fill(); c.strokeStyle=OL; c.lineWidth=1; c.stroke();
-        for(let i=0;i<3;i++){ c.beginPath(); c.arc(80,134+i*14,2.5,0,Math.PI*2); c.fillStyle='#d0d0e0'; c.fill(); }
-        c.restore();
-      }
-    } else {
-      R(50,108,60,76,18,rg(80,146,36,SK.sh,SK.sd));
-    }
-
-    // FRONT ARM (right)
-    const raY=108+ps.rdy;
-    c.save(); c.translate(120+9,raY+by); c.rotate(ps.ra*Math.PI/180); c.translate(-(120+9),-(raY+by));
-    drawLimb(120,raY,18,76,9);
-    if(outfitId&&outfitId!=='none'){
-      const sl=outfitId==='hoodie'||outfitId==='suit'?56:outfitId==='robe'?68:38;
-      R(120,raY,18,sl,9,outfitColor(outfitId),OL,1.2);
-    }
-    E(120+9,raY+80,9,9,rg(129,raY+76,9,SK.sh,SK.sd));
-    c.restore();
-
-    // NECK
-    R(66,90,28,22,10,rg(80,101,16,SK.sh,SK.sd));
-
-    // HEAD — large, cartoon-proportion
-    const HY=66;
-    E(80,HY,46,50,rg(62,46,48,SK.sh,SK.sd));
-    // Ears
-    E(34,HY,8,10,rg(29,HY,9,SK.sh,SK.sd)); E(34,HY,4,6,SK.sd,'none',0);
-    E(126,HY,8,10,rg(131,HY,9,SK.sh,SK.sd)); E(126,HY,4,6,SK.sd,'none',0);
-
-    // FACE
-    // Eyebrows — strong, slightly arched
-    c.save(); c.translate(0,by);
-    c.strokeStyle='#18100a'; c.lineWidth=2.8;
-    c.beginPath(); c.moveTo(50,50); c.quadraticCurveTo(62,45,74,50); c.stroke();
-    c.beginPath(); c.moveTo(86,50); c.quadraticCurveTo(98,45,110,50); c.stroke();
-    c.restore();
-
-    // Eye whites
-    E(62,60,14,13,'#ffffff');
-    E(98,60,14,13,'#ffffff');
-
-    // Iris — rich gradient
-    const blinkScale = anim.blinkT||1;
-    c.save(); c.translate(0,by);
-    const ig=rg(60,57,10,_lhex(EC.color,0.5),EC.color);
-    c.beginPath(); c.ellipse(62,61,8.5,9.5*blinkScale,0,0,Math.PI*2); c.fillStyle=ig; c.fill();
-    c.beginPath(); c.ellipse(98,61,8.5,9.5*blinkScale,0,0,Math.PI*2); c.fillStyle=ig; c.fill();
-    // Pupils
-    c.beginPath(); c.ellipse(62,62,4,5*blinkScale,0,0,Math.PI*2); c.fillStyle='#060408'; c.fill();
-    c.beginPath(); c.ellipse(98,62,4,5*blinkScale,0,0,Math.PI*2); c.fillStyle='#060408'; c.fill();
-    // Shine — makes eyes look alive
-    if(blinkScale>0.4){
-      c.beginPath(); c.ellipse(58,56.5,2.5,3,0,0,Math.PI*2); c.fillStyle='rgba(255,255,255,0.95)'; c.fill();
-      c.beginPath(); c.ellipse(94,56.5,2.5,3,0,0,Math.PI*2); c.fill();
-      c.beginPath(); c.ellipse(65,65,1.4,1.6,0,0,Math.PI*2); c.fillStyle='rgba(255,255,255,0.5)'; c.fill();
-      c.beginPath(); c.ellipse(101,65,1.4,1.6,0,0,Math.PI*2); c.fill();
-    }
-    // Eye outline
-    c.beginPath(); c.ellipse(62,60,14,13,0,0,Math.PI*2); c.strokeStyle=OL; c.lineWidth=1.5; c.stroke();
-    c.beginPath(); c.ellipse(98,60,14,13,0,0,Math.PI*2); c.stroke();
-    c.restore();
-
-    // Nose (subtle)
-    c.save(); c.translate(0,by);
-    c.beginPath(); c.moveTo(77,72); c.quadraticCurveTo(80,80,83,72);
-    c.strokeStyle=SK.sd; c.lineWidth=1.8; c.stroke();
-    // Blush
-    c.beginPath(); c.ellipse(48,75,10,7,0,0,Math.PI*2); c.fillStyle='rgba(255,120,120,0.28)'; c.fill();
-    c.beginPath(); c.ellipse(112,75,10,7,0,0,Math.PI*2); c.fill();
-    // Mouth — friendly smile
-    c.beginPath(); c.moveTo(62,82); c.quadraticCurveTo(80,96,98,82);
-    c.strokeStyle='#be5040'; c.lineWidth=2.4; c.stroke();
-    c.beginPath(); c.moveTo(66,84); c.quadraticCurveTo(80,92,94,84);
-    c.strokeStyle='rgba(190,80,64,0.3)'; c.lineWidth=3.5; c.stroke();
-    c.restore();
-
-    // HAIR
-    if(hairId&&hairId!=='none'){
-      const hc = HC.color;
-      const hl = _lhex(hc,0.35);
-      const hd = _lhex(hc,-0.15)||hc;
-      c.save(); c.translate(0,by);
-      if(hairId==='short'){
-        c.beginPath(); c.arc(80,63,49,-Math.PI*.97,-Math.PI*.03);
-        c.lineTo(129,44); c.arc(80,63,51,-Math.PI*.03,-Math.PI*.97,true); c.closePath();
-        c.fillStyle=rg(68,20,50,hl,hc); c.fill(); c.strokeStyle=OL; c.lineWidth=1.5; c.stroke();
-      }
-      else if(hairId==='spiky'){
-        for(let i=0;i<8;i++){
-          const ang=-Math.PI+(i+.5)*(Math.PI/8), len=26+(i%3)*12;
-          c.beginPath();
-          c.moveTo(80+Math.cos(ang-.18)*44,63+Math.sin(ang-.18)*50);
-          c.lineTo(80+Math.cos(ang)*(44+len),63+Math.sin(ang)*(50+len));
-          c.lineTo(80+Math.cos(ang+.18)*44,63+Math.sin(ang+.18)*50);
-          c.closePath();
-          c.fillStyle=rg(80+Math.cos(ang)*24,63+Math.sin(ang)*26,15,hl,hc); c.fill();
-          c.strokeStyle=OL; c.lineWidth=1.2; c.stroke();
-        }
-        c.beginPath(); c.arc(80,63,47,-Math.PI,0); c.closePath();
-        c.fillStyle=hc; c.fill(); c.strokeStyle=OL; c.lineWidth=1.5; c.stroke();
-      }
-      else if(hairId==='long'){
-        c.beginPath(); c.moveTo(33,57); c.quadraticCurveTo(16,124,24,206); c.lineTo(41,206); c.quadraticCurveTo(38,138,44,57); c.closePath();
-        c.fillStyle=hc; c.fill(); c.strokeStyle=OL; c.lineWidth=1; c.stroke();
-        c.beginPath(); c.moveTo(127,57); c.quadraticCurveTo(144,124,136,206); c.lineTo(119,206); c.quadraticCurveTo(122,138,116,57); c.closePath();
-        c.fillStyle=hc; c.fill(); c.stroke();
-        c.beginPath(); c.arc(80,63,49,-Math.PI,0); c.closePath();
-        c.fillStyle=rg(68,20,50,hl,hc); c.fill(); c.strokeStyle=OL; c.lineWidth=1.5; c.stroke();
-      }
-      else if(hairId==='bun'){
-        c.beginPath(); c.arc(80,63,49,-Math.PI,0); c.closePath();
-        c.fillStyle=hc; c.fill(); c.strokeStyle=OL; c.lineWidth=1.5; c.stroke();
-        c.beginPath(); c.ellipse(80,16,20,20,0,0,Math.PI*2); c.fillStyle=rg(72,10,20,hl,hc); c.fill(); c.strokeStyle=OL; c.lineWidth=1.5; c.stroke();
-        c.beginPath(); c.ellipse(80,36,6,6,0,0,Math.PI*2); c.fillStyle=hl; c.fill(); c.strokeStyle=OL; c.lineWidth=1; c.stroke();
-      }
-      else if(hairId==='mohawk'){
-        c.beginPath(); c.arc(80,63,47,-Math.PI,0); c.closePath();
-        c.fillStyle='#181820'; c.fill(); c.strokeStyle=OL; c.lineWidth=1.5; c.stroke();
-        c.beginPath();
-        c.moveTo(68,24); c.lineTo(72,-14); c.lineTo(76,22); c.lineTo(80,-22); c.lineTo(84,22); c.lineTo(88,-14); c.lineTo(92,24);
-        c.quadraticCurveTo(88,34,80,32); c.quadraticCurveTo(72,34,68,24); c.closePath();
-        const mg=c.createLinearGradient(80,-22,80,34);
-        mg.addColorStop(0,'#ffffff'); mg.addColorStop(.25,hc); mg.addColorStop(1,hd);
-        c.fillStyle=mg; c.fill(); c.strokeStyle=hd; c.lineWidth=1.5; c.stroke();
-      }
-      else if(hairId==='afro'){
-        c.beginPath(); c.ellipse(80,36,60,52,0,0,Math.PI*2);
-        c.fillStyle=rg(80,28,62,hl,hc); c.fill();
-        c.fillStyle=hc;
-        for(let i=0;i<16;i++){
-          const a=(i/16)*Math.PI*2;
-          c.beginPath(); c.arc(80+Math.cos(a)*52,36+Math.sin(a)*44,14,0,Math.PI*2); c.fill();
-        }
-        c.beginPath(); c.ellipse(80,36,60,52,0,0,Math.PI*2);
-        c.strokeStyle=OL; c.lineWidth=1.5; c.stroke();
-      }
-      c.restore();
+  function saveStoredGlb(dataUrl){
+    try {
+      localStorage.setItem(getStoredGlbKey(), dataUrl);
+      return true;
+    } catch(e){
+      if(e.name === "QuotaExceededError") return false;
+      throw e;
     }
   }
 
-  /* Idle animation state + requestAnimationFrame loop attached to a canvas */
-  function startAvatarIdleAnimation(canvas, getConfig){
-    let running=true, t=0, blinkTimer=0, blinkState=1;
-    const anim={breathY:0,blinkT:1};
-    function frame(){
-      if(!running||!canvas.isConnected){ running=false; return; }
-      t+=0.04;
-      // Breathing: subtle 2px vertical sine
-      anim.breathY = Math.sin(t*0.8)*2;
-      // Blink every ~4 seconds
-      blinkTimer++;
-      if(blinkTimer>200){
-        blinkState = blinkTimer<206 ? Math.max(0.05,1-(blinkTimer-200)/3) : blinkTimer<210 ? 0.05 : Math.min(1,(blinkTimer-210)/3);
-        if(blinkTimer>220){ blinkTimer=0; blinkState=1; }
+  // Wire the hidden file input once — called from renderProfileSection
+  let glbInputWired = false;
+  function wireGlbInput(){
+    if(glbInputWired) return;
+    glbInputWired = true;
+    document.getElementById("avatarGlbInput").addEventListener("change", async (e)=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      if(!file.name.match(/\.(glb|gltf)$/i)){
+        toast("Please choose a .glb or .gltf file."); return;
       }
-      anim.blinkT = blinkState;
-      drawKlypAvatar(canvas, getConfig(), anim);
-      requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-    return ()=>{ running=false; };
+      if(file.size > 30 * 1024 * 1024){
+        toast("File is over 30 MB — try a smaller model (most characters are 1–5 MB)."); return;
+      }
+      toast("Reading file…");
+      const reader = new FileReader();
+      reader.onload = async (ev)=>{
+        const dataUrl = ev.target.result;
+        const ok = saveStoredGlb(dataUrl);
+        if(!ok){
+          toast("⚠️ File too large for browser storage. Try a model under 5 MB."); return;
+        }
+        if(profile) profile.avatarGlbUrl = dataUrl;
+        saveProfile();
+        // Persist a flag to Supabase so other devices know this user has a custom avatar
+        if(supabaseClient && profile){
+          await supabaseClient.from("users").upsert({
+            username: profile.username,
+            equipped_outfit: "custom_glb", // marker
+            last_seen: new Date().toISOString(),
+          });
+        }
+        toast("✅ Avatar loaded!");
+        renderProfileSection();
+        refreshEquippedAvatarPreview();
+      };
+      reader.onerror = ()=> toast("⚠️ Couldn't read that file.");
+      reader.readAsDataURL(file);
+    });
   }
 
-  /* Mouse/touch drag to spin the avatar wrapper div */
-  function addAvatarSpinDrag(wrapper){
-    let dragging=false, startX=0, baseRot=0, rot=0;
-    function onDown(e){ dragging=true; startX=e.touches?e.touches[0].clientX:e.clientX; baseRot=rot; }
-    function onMove(e){
-      if(!dragging) return;
-      const cx=e.touches?e.touches[0].clientX:e.clientX;
-      rot = baseRot + (cx-startX)*0.6;
-      wrapper.style.transform=`rotateY(${rot}deg)`;
-      e.preventDefault();
-    }
-    function onUp(){ dragging=false; }
-    wrapper.addEventListener('mousedown',onDown);
-    wrapper.addEventListener('touchstart',onDown,{passive:false});
-    window.addEventListener('mousemove',onMove);
-    window.addEventListener('touchmove',onMove,{passive:false});
-    window.addEventListener('mouseup',onUp);
-    window.addEventListener('touchend',onUp);
-    wrapper.style.cursor='grab';
-    wrapper.style.perspective='600px';
-    wrapper.style.display='inline-block';
-    return ()=>{
-      wrapper.removeEventListener('mousedown',onDown);
-      wrapper.removeEventListener('touchstart',onDown);
-      window.removeEventListener('mousemove',onMove);
-      window.removeEventListener('touchmove',onMove);
-      window.removeEventListener('mouseup',onUp);
-      window.removeEventListener('touchend',onUp);
+  // Snapshot the avatar for 2D uses (profile button, leaderboard thumbnails)
+  // by rendering one frame offscreen and exporting the canvas
+  function snapshotAvatar(glbDataUrl, cb){
+    const div = document.createElement("div");
+    div.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:120px;height:196px;pointer-events:none;";
+    document.body.appendChild(div);
+    const handle = loadAvaturnIntoScene(div, glbDataUrl, {width:120,height:196,interactive:false,animate:false});
+    // Wait one frame for the model to finish loading, then capture
+    let attempts = 0;
+    const tryCapture = ()=>{
+      attempts++;
+      if(div.querySelector("canvas")){
+        const canvas = div.querySelector("canvas");
+        // Give Three.js one render tick
+        setTimeout(()=>{
+          try { cb(canvas.toDataURL("image/png")); } catch(e){ cb(null); }
+          handle.dispose();
+          document.body.removeChild(div);
+        }, 200);
+      } else if(attempts < 30){
+        setTimeout(tryCapture, 200);
+      } else {
+        handle.dispose();
+        document.body.removeChild(div);
+        cb(null);
+      }
     };
+    setTimeout(tryCapture, 400);
   }
 
-  async function composeAvatarImage(skinId, eyeColorId, hairId, hairColorId, outfitId, poseId){
-    const canvas=document.createElement('canvas');
-    drawKlypAvatar(canvas,{skinId,eyeColorId,hairId,hairColorId,outfitId:outfitId||'tshirt',poseId:poseId||'standing'},{breathY:0,blinkT:1});
-    return canvas.toDataURL('image/png');
+  async function saveAvatarGlbUrl(glbUrl){
+    if(!profile) return;
+    profile.avatarGlbUrl = glbUrl;
+    saveProfile();
+    refreshEquippedAvatarPreview();
+    toast("✅ Avatar saved!");
   }
 
+  // Stub kept for backwards compat — no longer converts .glb → .png via external service
+  function glbToPng(glbUrl){ return null; }
+
+  // --- createKlypThreeAvatar: main entry point used throughout the site ---
+  // Checks profile, config, and localStorage for a GLB data URL in that order.
+  // Shows a friendly "Upload your avatar" placeholder if nothing is found yet.
+  function createKlypThreeAvatar(container, config, opts){
+    // Priority: explicit config URL → profile URL → localStorage backup
+    const glbUrl = (config && config.glbUrl)
+      || (profile && profile.avatarGlbUrl)
+      || loadStoredGlb()
+      || null;
+    if(glbUrl && glbUrl.length > 10){
+      return loadAvaturnIntoScene(container, glbUrl, opts);
+    }
+    // Friendly placeholder
+    const ph = document.createElement("div");
+    ph.style.cssText="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0d1117;border-radius:12px;gap:10px;color:#7c89ad;font-size:13px;text-align:center;padding:20px;box-sizing:border-box;";
+    ph.innerHTML=`<div style="font-size:40px;">🧍</div><p style="margin:0;font-weight:600;color:#fff;">No avatar yet</p><p style="margin:0;font-size:11px;">Go to My Profile → Upload 3D Avatar</p>`;
+    container.appendChild(ph);
+    return { dispose(){ container.innerHTML=""; } };
+  }
+
+  async function composeAvatarImage(){
+    return null; // GLB avatars don't have a simple 2D equivalent — handled separately
+  }
 
 
   async function getOwnedCosmeticIds(){
@@ -4761,17 +4825,11 @@ ENGINES.breakout = function(stage){
   }
 
   async function refreshEquippedAvatarPreview(){
-    const uri = await composeAvatarImage(
-      profile.equippedSkin   || "medium",
-      profile.equippedEye    || "blue",
-      profile.equippedHair   || "short",
-      profile.equippedHairColor || "darkbrown",
-      profile.equippedOutfit || "tshirt",
-      profile.equippedPose   || "standing"
-    );
-    profile.equippedAvatar = uri;
-    setProfileBtnAvatar(uri);
-    return uri;
+    // Load stored GLB into profile if not already there
+    if(!profile.avatarGlbUrl) profile.avatarGlbUrl = loadStoredGlb() || null;
+    const btn = document.getElementById("profileBtn");
+    if(btn) btn.innerHTML = "👤 " + (profile.username||"");
+    return null;
   }
 
   async function renderAvatarShop(){
@@ -4783,20 +4841,11 @@ ENGINES.breakout = function(stage){
       eyeColorId:   profile.equippedEye       || "blue",
       hairId:       profile.equippedHair      || "short",
       hairColorId:  profile.equippedHairColor || "darkbrown",
-      outfitId:     profile.equippedOutfit    || "tshirt",
+      topId:        profile.equippedTop       || "white-tee",
+      bottomId:     profile.equippedBottom    || "jeans-blue",
+      shoeId:       profile.equippedShoe      || "sneakers-white",
       poseId:       profile.equippedPose      || "standing",
     });
-
-    // Pre-render the live preview canvas with idle animation
-    const previewCanvas = document.createElement("canvas");
-    previewCanvas.style.cssText = "width:130px;height:211px;image-rendering:auto;filter:drop-shadow(0 8px 24px rgba(47,123,255,.4));display:block;margin:0 auto 20px;cursor:grab;";
-    drawKlypAvatar(previewCanvas, profileConfig(), {breathY:0,blinkT:1});
-
-    // Store the stop-animation function so we can cancel when shop is closed
-    if(window.__avatarShopStopAnim) window.__avatarShopStopAnim();
-    window.__avatarShopStopAnim = startAvatarIdleAnimation(previewCanvas, profileConfig);
-    if(window.__avatarShopStopSpin) window.__avatarShopStopSpin();
-    window.__avatarShopStopSpin = addAvatarSpinDrag(previewCanvas);
 
     async function persist(){
       saveProfile();
@@ -4804,106 +4853,155 @@ ENGINES.breakout = function(stage){
       if(supabaseClient) await supabaseClient.from("users").upsert({
         username:        profile.username,
         equipped_hair:   profile.equippedHair,
-        equipped_outfit: profile.equippedOutfit,
+        equipped_outfit: profile.equippedTop, // keep backwards compat column
         last_seen:       new Date().toISOString(),
       });
     }
 
-    function buildSection(title, items, getEquipped, onEquip, onUnequip, previewFn, xpField){
-      const wrap = document.createElement("div");
-      wrap.className = "avatarShopSectionBlock";
-      wrap.innerHTML = `<h4 class="modalCard__subhead">${title}</h4>`;
-      const row = document.createElement("div");
-      row.className = "avatarShop__row";
-      items.forEach(item=>{
-        const equipped = getEquipped() === item.id;
-        const cell = document.createElement("div");
-        cell.className = "avatarCell" + (equipped ? " equipped" : "");
-        cell.title = equipped ? "Click to remove" : item.label || item.id;
-        // Tiny preview canvas per option
-        const tc = document.createElement("canvas");
-        tc.style.cssText = "width:46px;height:75px;image-rendering:auto;display:block;margin:0 auto;";
-        const pc = previewFn(item.id);
-        drawKlypAvatar(tc, pc, {breathY:0,blinkT:1});
-        const lbl = document.createElement("div");
-        lbl.className = "avatarCell__cost";
-        lbl.textContent = equipped ? "✓" : item.id==="none"||item.id==="default"||!item.cost ? "Free" : item.cost+" XP";
-        cell.appendChild(tc); cell.appendChild(lbl);
-        cell.addEventListener("click", async ()=>{
-          if(equipped){ onUnequip(); }
-          else { onEquip(item); }
-          drawKlypAvatar(previewCanvas, profileConfig(), {breathY:0,blinkT:1});
-          await persist();
-          renderAvatarShop(); // re-render to update selected states
-        });
-        row.appendChild(cell);
-      });
-      wrap.appendChild(row);
-      return wrap;
-    }
-
     containers.forEach(container=>{
-      container.innerHTML="";
-      container.appendChild(previewCanvas.cloneNode(true));
+      container.innerHTML = "";
 
-      // We only use the first container for live animation — others get static snapshots
+      // Live 3D preview
+      const previewWrap = document.createElement("div");
+      previewWrap.style.cssText = "display:flex;justify-content:center;margin:0 0 20px;";
+      const previewDiv = document.createElement("div");
+      previewDiv.style.cssText = "width:180px;height:292px;border-radius:16px;overflow:hidden;";
+      previewWrap.appendChild(previewDiv);
+      container.appendChild(previewWrap);
+
+      if(window.__avatarShopHandle){ window.__avatarShopHandle.dispose(); window.__avatarShopHandle=null; }
       if(container === containers[0]){
-        container.innerHTML="";
-        container.appendChild(previewCanvas);
-      } else {
-        const snap=document.createElement("canvas");
-        snap.style.cssText="width:130px;height:211px;display:block;margin:0 auto 20px;";
-        drawKlypAvatar(snap,profileConfig(),{breathY:0,blinkT:1});
-        container.appendChild(snap);
+        window.__avatarShopHandle = createKlypThreeAvatar(previewDiv, profileConfig(), {width:180,height:292,interactive:true,animate:true});
       }
 
-      // Pose
-      container.appendChild(buildSection("🧍 Pose", AVATAR_POSES,
-        ()=>profile.equippedPose||"standing",
-        item=>{ profile.equippedPose=item.id; },
-        ()=>{ profile.equippedPose="standing"; },
-        id=>({...profileConfig(),poseId:id}), "equippedPose"
-      ));
+      function buildSection(title, items, getEquipped, onEquip, onUnequip){
+        const wrap = document.createElement("div");
+        wrap.className = "avatarShopSectionBlock";
+        wrap.innerHTML = `<h4 class="modalCard__subhead">${title}</h4>`;
+        const row = document.createElement("div");
+        row.className = "avatarShop__row";
+        items.forEach(item=>{
+          const equipped = getEquipped() === item.id;
+          const canAfford = (item.cost||0) === 0 || profile.xp >= (item.cost||0);
+          const cell = document.createElement("div");
+          cell.className = "avatarCell" + (equipped ? " equipped" : "") + (!canAfford&&!equipped?" locked":"");
+          cell.title = item.label + (item.desc ? " — " + item.desc : "");
+          // Color swatch
+          const swatch = document.createElement("div");
+          swatch.style.cssText = `width:34px;height:34px;border-radius:8px;background:${item.color||"#888"};margin:0 auto 3px;border:2px solid rgba(0,0,0,0.15);`;
+          const lbl = document.createElement("div");
+          lbl.className = "avatarCell__cost";
+          lbl.innerHTML = equipped ? "✓ On" : (item.cost||0)===0 ? "Free" : (profile.xp>=(item.cost||0)?`<span style="color:var(--cyan)">${item.cost} XP</span>`:`<span style="color:var(--muted)">${item.cost} XP</span>`);
+          const name = document.createElement("div");
+          name.style.cssText = "font-size:9px;color:var(--muted);margin-top:2px;text-align:center;";
+          name.textContent = item.label;
+          cell.appendChild(swatch); cell.appendChild(lbl); cell.appendChild(name);
+          cell.addEventListener("click", async ()=>{
+            if(equipped){ onUnequip(); }
+            else {
+              if((item.cost||0)>0 && profile.xp < (item.cost||0)){
+                toast(`Need ${item.cost} XP — you have ${profile.xp}.`); return;
+              }
+              onEquip(item);
+            }
+            if(window.__avatarShopHandle){
+              window.__avatarShopHandle.dispose();
+              window.__avatarShopHandle = createKlypThreeAvatar(previewDiv, profileConfig(), {width:180,height:292,interactive:true,animate:true});
+            }
+            await persist();
+            renderAvatarShop();
+          });
+          row.appendChild(cell);
+        });
+        wrap.appendChild(row);
+        return wrap;
+      }
 
-      // Skin tone
-      container.appendChild(buildSection("🎨 Skin Tone", SKIN_TONES,
+      // Tabs for clothing categories
+      const tabsWrap = document.createElement("div");
+      tabsWrap.style.cssText = "display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;";
+      const sections = [
+        {key:"appearance", label:"👤 Appearance"},
+        {key:"tops",       label:"👕 Tops"},
+        {key:"bottoms",    label:"👖 Bottoms"},
+        {key:"shoes",      label:"👟 Shoes"},
+      ];
+      let activeTab = "appearance";
+      const sectionDivs = {};
+
+      function showTab(key){
+        activeTab = key;
+        Object.entries(sectionDivs).forEach(([k,div])=>{
+          div.style.display = k===key ? "" : "none";
+        });
+        tabsWrap.querySelectorAll(".shopTab").forEach(t=>{
+          t.classList.toggle("active", t.dataset.tab===key);
+        });
+      }
+
+      sections.forEach(s=>{
+        const tab = document.createElement("button");
+        tab.className = "shopTab" + (s.key===activeTab ? " active" : "");
+        tab.dataset.tab = s.key;
+        tab.textContent = s.label;
+        tab.addEventListener("click", ()=>showTab(s.key));
+        tabsWrap.appendChild(tab);
+      });
+      container.appendChild(tabsWrap);
+
+      // Appearance section
+      const appearDiv = document.createElement("div");
+      appearDiv.appendChild(buildSection("🎨 Skin Tone", SKIN_TONES,
         ()=>profile.equippedSkin||"medium",
-        item=>{ profile.equippedSkin=item.id; },
-        ()=>{ profile.equippedSkin="medium"; },
-        id=>({...profileConfig(),skinId:id}), "equippedSkin"
+        item=>{profile.equippedSkin=item.id;}, ()=>{profile.equippedSkin="medium";}
       ));
-
-      // Eye color
-      container.appendChild(buildSection("👁 Eye Color", EYE_COLORS,
+      appearDiv.appendChild(buildSection("👁 Eye Color", EYE_COLORS,
         ()=>profile.equippedEye||"blue",
-        item=>{ profile.equippedEye=item.id; },
-        ()=>{ profile.equippedEye="blue"; },
-        id=>({...profileConfig(),eyeColorId:id}), "equippedEye"
+        item=>{profile.equippedEye=item.id;}, ()=>{profile.equippedEye="blue";}
       ));
-
-      // Hair style
-      container.appendChild(buildSection("✂️ Hair Style", AVAILABLE_HAIR,
+      appearDiv.appendChild(buildSection("✂️ Hair Style", AVAILABLE_HAIR,
         ()=>profile.equippedHair||"short",
-        item=>{ profile.equippedHair=item.id; },
-        ()=>{ profile.equippedHair="none"; },
-        id=>({...profileConfig(),hairId:id}), "equippedHair"
+        item=>{profile.equippedHair=item.id;}, ()=>{profile.equippedHair="none";}
       ));
-
-      // Hair color
-      container.appendChild(buildSection("🎨 Hair Color", HAIR_COLORS,
+      appearDiv.appendChild(buildSection("🎨 Hair Color", HAIR_COLORS,
         ()=>profile.equippedHairColor||"darkbrown",
-        item=>{ profile.equippedHairColor=item.id; },
-        ()=>{ profile.equippedHairColor="darkbrown"; },
-        id=>({...profileConfig(),hairColorId:id}), "equippedHairColor"
+        item=>{profile.equippedHairColor=item.id;}, ()=>{profile.equippedHairColor="darkbrown";}
       ));
+      appearDiv.appendChild(buildSection("🧍 Pose", AVATAR_POSES,
+        ()=>profile.equippedPose||"standing",
+        item=>{profile.equippedPose=item.id;}, ()=>{profile.equippedPose="standing";}
+      ));
+      sectionDivs.appearance = appearDiv;
+      container.appendChild(appearDiv);
 
-      // Outfit
-      container.appendChild(buildSection("👕 Outfit", AVAILABLE_OUTFITS,
-        ()=>profile.equippedOutfit||"tshirt",
-        item=>{ profile.equippedOutfit=item.id; },
-        ()=>{ profile.equippedOutfit="none"; },
-        id=>({...profileConfig(),outfitId:id}), "equippedOutfit"
+      // Tops
+      const topsDiv = document.createElement("div");
+      topsDiv.appendChild(buildSection("👕 Tops ("+CLOTHING_TOPS.length+" items)", CLOTHING_TOPS,
+        ()=>profile.equippedTop||"white-tee",
+        item=>{profile.equippedTop=item.id;}, ()=>{profile.equippedTop="none";}
       ));
+      sectionDivs.tops = topsDiv;
+      container.appendChild(topsDiv);
+
+      // Bottoms
+      const bottomsDiv = document.createElement("div");
+      bottomsDiv.appendChild(buildSection("👖 Bottoms ("+CLOTHING_BOTTOMS.length+" items)", CLOTHING_BOTTOMS,
+        ()=>profile.equippedBottom||"jeans-blue",
+        item=>{profile.equippedBottom=item.id;}, ()=>{profile.equippedBottom="none";}
+      ));
+      sectionDivs.bottoms = bottomsDiv;
+      container.appendChild(bottomsDiv);
+
+      // Shoes
+      const shoesDiv = document.createElement("div");
+      shoesDiv.appendChild(buildSection("👟 Shoes ("+CLOTHING_SHOES.length+" items)", CLOTHING_SHOES,
+        ()=>profile.equippedShoe||"sneakers-white",
+        item=>{profile.equippedShoe=item.id;}, ()=>{profile.equippedShoe="none";}
+      ));
+      sectionDivs.shoes = shoesDiv;
+      container.appendChild(shoesDiv);
+
+      showTab("appearance");
     });
   }
 
@@ -4919,8 +5017,8 @@ ENGINES.breakout = function(stage){
       lastPlayDate:null, badges:[],
       equippedSkin:"medium", equippedEye:"blue",
       equippedHair:"short", equippedHairColor:"darkbrown",
-      equippedOutfit:"tshirt", equippedPose:"standing",
-      equippedAvatar:""
+      equippedTop:"white-tee", equippedBottom:"jeans-blue", equippedShoe:"sneakers-white",
+      equippedPose:"standing", equippedAvatar:""
     };
   }
 
@@ -4938,15 +5036,24 @@ ENGINES.breakout = function(stage){
       if(!profile.equippedEye)       profile.equippedEye       = "blue";
       if(!profile.equippedHair)      profile.equippedHair      = "short";
       if(!profile.equippedHairColor) profile.equippedHairColor = "darkbrown";
-      if(!profile.equippedOutfit)    profile.equippedOutfit    = "tshirt";
+      if(!profile.equippedTop)       profile.equippedTop       = "white-tee";
+      if(!profile.equippedBottom)    profile.equippedBottom    = "jeans-blue";
+      if(!profile.equippedShoe)      profile.equippedShoe      = "sneakers-white";
       if(!profile.equippedPose)      profile.equippedPose      = "standing";
+      // Migrate old single outfit field
+      if(profile.equippedOutfit && !profile.equippedTop) profile.equippedTop = profile.equippedOutfit;
       window.__klypProfile = profile;
       await refreshEquippedAvatarPreview();
       if(supabaseClient){
         const { data } = await supabaseClient.from("users").select("equipped_hair,equipped_outfit,is_admin,is_muted,is_banned").eq("username", profile.username).maybeSingle();
         if(data){
-          if(data.equipped_hair)   profile.equippedHair   = data.equipped_hair;
-          if(data.equipped_outfit) profile.equippedOutfit = data.equipped_outfit;
+          if(data.equipped_hair) profile.equippedHair = data.equipped_hair;
+          // equipped_outfit stores the Avaturn GLB URL if it starts with http
+          if(data.equipped_outfit && data.equipped_outfit.startsWith("http")){
+            profile.avatarGlbUrl = data.equipped_outfit;
+          } else if(data.equipped_outfit){
+            profile.equippedOutfit = data.equipped_outfit;
+          }
           profile.isAdmin  = !!data.is_admin;
           profile.isMuted  = !!data.is_muted;
           profile.isBanned = !!data.is_banned;
@@ -5153,9 +5260,7 @@ ENGINES.breakout = function(stage){
 
   document.getElementById("profileBtn").addEventListener("click", async ()=>{
     if(!(await ensureProfile())) return;
-    renderProfilePanel();
-    renderAvatarShop();
-    profileOverlay.classList.add("open");
+    switchToSection("profile");
   });
   document.getElementById("profileClose").addEventListener("click", ()=> profileOverlay.classList.remove("open"));
   document.getElementById("profileRename").addEventListener("click", async ()=>{
@@ -5254,16 +5359,20 @@ ENGINES.breakout = function(stage){
     document.querySelectorAll(".sectionRail__btn").forEach(b=>{
       b.classList.toggle("active", b.dataset.section === section);
     });
-    document.getElementById("homeSection").style.display = section==="home" ? "" : "none";
-    document.getElementById("gamingSection").style.display = section==="gaming" ? "" : "none";
-    document.getElementById("messagingSection").style.display = section==="messaging" ? "" : "none";
-    document.getElementById("shortsSection").style.display = section==="shorts" ? "" : "none";
-    document.getElementById("videosSection").style.display = section==="videos" ? "" : "none";
-    document.getElementById("appsSection").style.display = section==="apps" ? "" : "none";
-    document.getElementById("avatarShopSection").style.display = section==="avatarshop" ? "" : "none";
-    document.getElementById("adminPanelSection").style.display = section==="adminpanel" ? "" : "none";
+    const allSections = ["homeSection","gamingSection","messagingSection","shortsSection",
+      "videosSection","appsSection","avatarShopSection","adminPanelSection",
+      "profileSection","shopTopsSection","shopBottomsSection","shopShoesSection"];
+    const sectionMap = {home:"homeSection",gaming:"gamingSection",messaging:"messagingSection",
+      shorts:"shortsSection",videos:"videosSection",apps:"appsSection",
+      avatarshop:"avatarShopSection",adminpanel:"adminPanelSection",
+      profile:"profileSection",shoptops:"shopTopsSection",shopbottoms:"shopBottomsSection",
+      shopshoes:"shopShoesSection"};
+    allSections.forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.style.display = (sectionMap[section]===id) ? "" : "none";
+    });
 
-    // Search bar adapts to whichever page you're actually on.
+    // Search bar placeholder
     const search = document.getElementById("searchInput");
     if(search){
       search.placeholder = section==="videos" ? "Search YouTube for a video..." : section==="messaging" ? "Search your chats..." : "Search games...";
@@ -5284,6 +5393,16 @@ ENGINES.breakout = function(stage){
     if(section==="apps" && !appsRendered){ renderAppsGrid(); appsRendered = true; }
     if(section==="avatarshop"){ ensureProfile().then(ok=>{ if(ok) renderAvatarShop(); }); }
     if(section==="adminpanel"){ ensureProfile().then(ok=>{ if(ok && !isAdmin()){ toast("Admins only."); switchToSection("home"); } }); }
+    if(section==="profile"){ ensureProfile().then(ok=>{ if(ok) renderProfileSection(); }); }
+    if(section==="shoptops"){ ensureProfile().then(ok=>{ if(ok) renderShopPage("tops"); }); }
+    if(section==="shopbottoms"){ ensureProfile().then(ok=>{ if(ok) renderShopPage("bottoms"); }); }
+    if(section==="shopshoes"){ ensureProfile().then(ok=>{ if(ok) renderShopPage("shoes"); }); }
+
+    // Clean up Three.js instances when leaving relevant pages
+    if(!["profile","shoptops","shopbottoms","shopshoes"].includes(section)){
+      if(window.__profileSectionHandle){ window.__profileSectionHandle.dispose(); window.__profileSectionHandle=null; }
+      if(window.__shopPageHandle){ window.__shopPageHandle.dispose(); window.__shopPageHandle=null; }
+    }
   }
 
   document.querySelectorAll(".sectionRail__btn").forEach(btn=>{
@@ -5825,7 +5944,7 @@ ENGINES.breakout = function(stage){
   function openLongVideo(video){
     document.getElementById("videoPlayerTitle").textContent = video.title;
     document.getElementById("videoPlayerBox").innerHTML =
-      `<iframe src="https://www.youtube.com/embed/${video.id}?autoplay=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
+      `<iframe src="https://www.youtube.com/embed/${video.id}?autoplay=1&origin=${encodeURIComponent(window.location.origin||window.location.href)}" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
     document.getElementById("videoPlayerOverlay").classList.add("open");
     recordLongVideoView(video);
   }
@@ -5881,7 +6000,7 @@ ENGINES.breakout = function(stage){
         src="https://w.soundcloud.com/player/?url=https://api.soundcloud.com/tracks/293&color=%232f7bff&auto_play=false&show_artwork=true"></iframe>` },
     { id:"youtube", name:"YouTube", icon:"https://cdn.simpleicons.org/youtube/FF0000", iconBg:"#0c1326", desc:"Videos",
       siteUrl:"https://www.youtube.com",
-      render:()=>`<iframe width="100%" height="600" src="https://www.youtube.com/embed/yAi0MYo5Mzw"
+      render:()=>`<iframe width="100%" height="600" src="https://www.youtube.com/embed/yAi0MYo5Mzw?origin=${encodeURIComponent(window.location.origin||window.location.href)}"
         title="YouTube" frameBorder="0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>` },
     { id:"vimeo", name:"Vimeo", icon:"https://cdn.simpleicons.org/vimeo/1AB7EA", iconBg:"#0c1326", desc:"Video hosting",
       siteUrl:"https://vimeo.com",
@@ -6034,42 +6153,45 @@ ENGINES.breakout = function(stage){
     ]);
     if(!lbRow && !userRow){ toast("Couldn't find that account."); return; }
 
-    const xp = (lbRow && lbRow.xp) || 0;
+    const xp    = (lbRow && lbRow.xp)    || 0;
     const level = (lbRow && lbRow.level) || 1;
-    const isMe = username === profile.username;
-    const equippedHair = (userRow && userRow.equipped_hair) || "short";
-    const equippedOutfit = (userRow && userRow.equipped_outfit) || "tshirt";
-    let pose = (userRow && userRow.equipped_body) || "default";
+    const isMe  = username === profile.username;
+
+    // Get Avaturn GLB URL — stored in equipped_outfit column for the other user,
+    // or from profile.avatarGlbUrl for the current user
+    const glbUrl = isMe
+      ? profile.avatarGlbUrl
+      : ((userRow && userRow.equipped_outfit && userRow.equipped_outfit.startsWith("http")) ? userRow.equipped_outfit : null);
+    const avatarConfig = { glbUrl };
 
     document.getElementById("profilePageName").textContent = username;
     document.getElementById("profilePageSub").textContent = `Level ${level} · ${xp} XP`;
 
-    async function renderPose(p){
-      pose = p;
-      const uri = await composeAvatarImage(p, equippedHair, equippedOutfit);
-      document.getElementById("profilePageAvatarImg").src = uri;
-      document.querySelectorAll(".profilePage__poseBtn").forEach(b=>{
-        b.classList.toggle("active", b.dataset.pose === p);
-      });
-      if(isMe){
-        profile.equippedBody = p;
-        saveProfile();
-        if(supabaseClient) await supabaseClient.from("users").upsert({ username, equipped_body:p, last_seen:new Date().toISOString() });
-      }
-    }
-    await renderPose(pose);
+    // Live 3D avatar in the profile page
+    const avatarDiv = document.getElementById("profilePageAvatarDiv");
+    avatarDiv.innerHTML = "";
+    if(window.__profilePageAvatarHandle){ window.__profilePageAvatarHandle.dispose(); }
+    window.__profilePageAvatarHandle = createKlypThreeAvatar(avatarDiv, avatarConfig, {width:200,height:325,interactive:true,animate:true});
 
+    // Pose selector
     const poseRow = document.getElementById("profilePagePoseRow");
     poseRow.innerHTML = "";
-    PROFILE_POSE_OPTIONS.forEach(p=>{
+    AVATAR_POSES.forEach(p=>{
       const btn = document.createElement("button");
-      btn.className = "profilePage__poseBtn" + (p.id===pose ? " active" : "");
+      btn.className = "profilePage__poseBtn" + (p.id===avatarConfig.poseId ? " active" : "");
       btn.dataset.pose = p.id;
       btn.textContent = p.label;
-      // Anyone can preview poses on someone else's profile, but only the
-      // account owner's selection actually persists — handled above via
-      // the isMe check before writing to Supabase.
-      btn.addEventListener("click", ()=> renderPose(p.id));
+      btn.addEventListener("click", ()=>{
+        avatarConfig.poseId = p.id;
+        poseRow.querySelectorAll(".profilePage__poseBtn").forEach(b=>b.classList.toggle("active", b.dataset.pose===p.id));
+        if(window.__profilePageAvatarHandle){ window.__profilePageAvatarHandle.dispose(); }
+        window.__profilePageAvatarHandle = createKlypThreeAvatar(avatarDiv, avatarConfig, {width:200,height:325,interactive:true,animate:true});
+        if(isMe){
+          profile.equippedPose = p.id;
+          saveProfile();
+          if(supabaseClient) supabaseClient.from("users").upsert({ username, equipped_body:p.id, last_seen:new Date().toISOString() });
+        }
+      });
       poseRow.appendChild(btn);
     });
 
@@ -6094,6 +6216,7 @@ ENGINES.breakout = function(stage){
   }
   document.getElementById("profilePageClose")?.addEventListener("click", ()=>{
     document.getElementById("profilePageOverlay").classList.remove("open");
+    if(window.__profilePageAvatarHandle){ window.__profilePageAvatarHandle.dispose(); window.__profilePageAvatarHandle=null; }
   });
 
   /* ----- Contacts ----- */
@@ -6610,7 +6733,7 @@ ENGINES.breakout = function(stage){
       // controls:0 — this removes YouTube's own native control bar, which
       // is exactly the thing that was popping up on click and not going
       // away on its own. We supply our own tap-to-pause below instead.
-      playerVars:{ autoplay:1, mute:0, controls:0, rel:0, playsinline:1, modestbranding:1 },
+      playerVars:{ autoplay:1, mute:0, controls:0, rel:0, playsinline:1, modestbranding:1, origin:window.location.origin||window.location.href },
       events:{
         onReady:(e)=>{
           try{
@@ -7257,6 +7380,250 @@ ENGINES.breakout = function(stage){
     voiceLocalStream.getAudioTracks().forEach(t=> t.enabled = !voiceMuted);
     e.target.textContent = voiceMuted ? "🔇" : "🔊";
   });
+
+  /* ===== FULL-PAGE PROFILE SECTION ===== */
+  function renderProfileSection(){
+    wireGlbInput(); // ensure file input is wired
+
+    // Load GLB from localStorage if not already in profile
+    if(!profile.avatarGlbUrl) profile.avatarGlbUrl = loadStoredGlb() || null;
+
+    // 3D avatar — uses uploaded GLB if available
+    const d3 = document.getElementById("profileSection3d");
+    d3.innerHTML = "";
+    if(window.__profileSectionHandle){ window.__profileSectionHandle.dispose(); }
+    window.__profileSectionHandle = createKlypThreeAvatar(d3, {glbUrl: profile.avatarGlbUrl}, {width:200,height:325,interactive:true,animate:true});
+
+    document.getElementById("profileSectionName").textContent = profile.username;
+    document.getElementById("profileSectionSub").textContent = `Level ${profile.level||1} · ${profile.xp||0} XP`;
+
+    // Upload button row
+    const pr = document.getElementById("profileSectionPoseRow");
+    pr.innerHTML = "";
+
+    const hasAvatar = !!(profile.avatarGlbUrl && profile.avatarGlbUrl.length > 10);
+
+    const uploadBtn = document.createElement("button");
+    uploadBtn.className = "btn btn--primary";
+    uploadBtn.style.cssText = "width:100%;margin-bottom:8px;font-size:14px;padding:12px;";
+    uploadBtn.textContent = hasAvatar ? "🔄 Replace 3D Avatar (.glb)" : "📁 Upload 3D Avatar (.glb)";
+    uploadBtn.addEventListener("click", ()=> document.getElementById("avatarGlbInput").click());
+    pr.appendChild(uploadBtn);
+
+    if(!hasAvatar){
+      // Step-by-step instructions
+      const steps = document.createElement("div");
+      steps.style.cssText = "background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:12px;line-height:1.7;color:var(--muted);";
+      steps.innerHTML = `
+        <p style="margin:0 0 8px;font-weight:700;color:var(--fg);">How to get a free 3D avatar:</p>
+        <ol style="margin:0;padding-left:18px;">
+          <li>Go to <a href="https://characters3d.com" target="_blank" style="color:var(--cyan)">characters3d.com</a> — free, no account needed</li>
+          <li>Pick any character you like and click Download</li>
+          <li>Choose the <strong>.glb</strong> format</li>
+          <li>Come back here and click "Upload 3D Avatar"</li>
+        </ol>
+        <p style="margin:8px 0 0;font-size:11px;">Any .glb file works — from Sketchfab, Mixamo, Blender exports, etc.</p>
+      `;
+      pr.appendChild(steps);
+    } else {
+      const hint = document.createElement("p");
+      hint.style.cssText = "font-size:11px;color:var(--muted);text-align:center;margin:4px 0 0;";
+      hint.textContent = "Drag the avatar to spin it. Upload a new .glb to replace it.";
+      pr.appendChild(hint);
+
+      // Remove avatar button
+      const removeBtn = document.createElement("button");
+      removeBtn.style.cssText = "width:100%;margin-top:8px;padding:8px;background:none;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:12px;cursor:pointer;";
+      removeBtn.textContent = "🗑 Remove avatar";
+      removeBtn.addEventListener("click", ()=>{
+        if(!confirm("Remove your 3D avatar?")) return;
+        try{ localStorage.removeItem(getStoredGlbKey()); }catch(e){}
+        profile.avatarGlbUrl = null;
+        saveProfile();
+        document.getElementById("profileBtn").innerHTML = "👤 " + profile.username;
+        renderProfileSection();
+      });
+      pr.appendChild(removeBtn);
+    }
+
+    // Stats
+    const stats = document.getElementById("profileSectionStats");
+    stats.innerHTML = `
+      <div class="profilePage__statCell"><span class="profilePage__statNum">${profile.totalPlays||0}</span><span class="profilePage__statLabel">Games Played</span></div>
+      <div class="profilePage__statCell"><span class="profilePage__statNum">🔥${profile.streak||0}</span><span class="profilePage__statLabel">Streak</span></div>
+      <div class="profilePage__statCell"><span class="profilePage__statNum">🟢</span><span class="profilePage__statLabel">Online</span></div>
+    `;
+
+    document.getElementById("profileSectionBack").onclick = ()=> switchToSection("home");
+    renderAvatarShop();
+  }
+
+  /* ===== FULL-PAGE SHOP SECTIONS ===== */
+  function drawItemImage(canvas, item, category){
+    const W=120, H=120;
+    canvas.width=W; canvas.height=H;
+    const ctx = canvas.getContext("2d");
+    const col = item.color || "#888888";
+    const dark = col === "#ffffff" || col === "#f8f8ff" || col === "#f5f5ff" || col === "#f0f0f8" ? "#ddddee" : col;
+
+    // Background gradient
+    const bg = ctx.createLinearGradient(0,0,W,H);
+    bg.addColorStop(0, "#16182a");
+    bg.addColorStop(1, "#0a0d1a");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0,0,W,H);
+
+    // Draw category-specific shape
+    ctx.save();
+    if(category === "tops"){
+      // T-shirt silhouette
+      ctx.fillStyle = col;
+      ctx.strokeStyle = "#ffffff22";
+      ctx.lineWidth = 1.5;
+      // Body
+      ctx.beginPath();
+      ctx.roundRect(28,40,64,65,8);
+      ctx.fill(); ctx.stroke();
+      // Left sleeve
+      ctx.beginPath();
+      ctx.moveTo(28,40); ctx.lineTo(8,55); ctx.lineTo(16,68); ctx.lineTo(28,58);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // Right sleeve
+      ctx.beginPath();
+      ctx.moveTo(92,40); ctx.lineTo(112,55); ctx.lineTo(104,68); ctx.lineTo(92,58);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // Collar
+      ctx.beginPath();
+      ctx.ellipse(60,40,14,8,0,0,Math.PI*2);
+      ctx.fillStyle = dark; ctx.fill();
+    } else if(category === "bottoms"){
+      // Pants silhouette
+      ctx.fillStyle = col;
+      ctx.strokeStyle = "#ffffff22";
+      ctx.lineWidth = 1.5;
+      // Waist
+      ctx.beginPath();
+      ctx.roundRect(22,20,76,20,4);
+      ctx.fill(); ctx.stroke();
+      // Left leg
+      ctx.beginPath();
+      ctx.roundRect(22,38,34,75,6);
+      ctx.fill(); ctx.stroke();
+      // Right leg
+      ctx.beginPath();
+      ctx.roundRect(64,38,34,75,6);
+      ctx.fill(); ctx.stroke();
+    } else if(category === "shoes"){
+      // Shoe silhouette
+      ctx.fillStyle = col;
+      ctx.strokeStyle = "#ffffff22";
+      ctx.lineWidth = 1.5;
+      // Sole
+      ctx.beginPath();
+      ctx.ellipse(60,85,42,12,0,0,Math.PI*2);
+      ctx.fillStyle = dark; ctx.fill(); ctx.stroke();
+      // Upper
+      ctx.beginPath();
+      ctx.moveTo(18,80); ctx.quadraticCurveTo(20,50,45,45);
+      ctx.quadraticCurveTo(60,42,80,48); ctx.quadraticCurveTo(100,54,102,80);
+      ctx.closePath();
+      ctx.fillStyle = col; ctx.fill(); ctx.stroke();
+      // Laces
+      ctx.strokeStyle = "#ffffff66"; ctx.lineWidth = 1.5;
+      for(let i=0;i<3;i++){
+        ctx.beginPath();
+        ctx.moveTo(40+i*10, 60-i*3);
+        ctx.lineTo(72+i*5, 56-i*3);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+
+    // Shine overlay
+    const shine = ctx.createRadialGradient(30,20,0,30,20,80);
+    shine.addColorStop(0,"rgba(255,255,255,0.12)");
+    shine.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle = shine;
+    ctx.fillRect(0,0,W,H);
+  }
+
+  function renderShopPage(category){
+    const items = category==="tops" ? CLOTHING_TOPS : category==="bottoms" ? CLOTHING_BOTTOMS : CLOTHING_SHOES;
+    const gridId = category==="tops" ? "shopTopsGrid" : category==="bottoms" ? "shopBottomsGrid" : "shopShoesGrid";
+    const previewId = category==="tops" ? "shopTops3d" : category==="bottoms" ? "shopBottoms3d" : "shopShoes3d";
+    const getEquipped = ()=> category==="tops" ? (profile.equippedTop||"white-tee") : category==="bottoms" ? (profile.equippedBottom||"jeans-blue") : (profile.equippedShoe||"sneakers-white");
+    const setEquipped = (id)=>{ if(category==="tops") profile.equippedTop=id; else if(category==="bottoms") profile.equippedBottom=id; else profile.equippedShoe=id; };
+
+    // Live 3D preview
+    const previewDiv = document.getElementById(previewId);
+    previewDiv.innerHTML = "";
+    if(window.__shopPageHandle){ window.__shopPageHandle.dispose(); }
+    const pc = {
+      skinId:profile.equippedSkin||"medium", eyeColorId:profile.equippedEye||"blue",
+      hairId:profile.equippedHair||"short", hairColorId:profile.equippedHairColor||"darkbrown",
+      topId:profile.equippedTop||"white-tee", bottomId:profile.equippedBottom||"jeans-blue",
+      shoeId:profile.equippedShoe||"sneakers-white", poseId:profile.equippedPose||"standing",
+    };
+    window.__shopPageHandle = createKlypThreeAvatar(previewDiv, pc, {width:140,height:228,interactive:true,animate:true});
+
+    // Grid
+    const grid = document.getElementById(gridId);
+    grid.innerHTML = "";
+    items.forEach(item=>{
+      const equipped = getEquipped()===item.id;
+      const canAfford = !item.cost || item.cost===0 || profile.xp>=item.cost;
+      const card = document.createElement("div");
+      card.className = "shopItem" + (equipped?" equipped":"") + (!canAfford&&!equipped?" locked":"");
+
+      // Image
+      const imgWrap = document.createElement("div");
+      imgWrap.className = "shopItem__img";
+      const canvas = document.createElement("canvas");
+      canvas.style.cssText = "width:100%;height:100%;display:block;";
+      drawItemImage(canvas, item, category);
+      imgWrap.appendChild(canvas);
+
+      if(equipped){
+        const badge = document.createElement("div");
+        badge.className = "shopItem__equipped";
+        badge.textContent = "ON";
+        card.appendChild(badge);
+      }
+
+      const name = document.createElement("div"); name.className = "shopItem__name"; name.textContent = item.label;
+      const desc = document.createElement("div"); desc.className = "shopItem__desc"; desc.textContent = item.desc||"";
+      const price = document.createElement("div");
+      price.className = "shopItem__price" + (!item.cost||item.cost===0?" free":!canAfford?" cantafford":"");
+      price.textContent = !item.cost||item.cost===0 ? "Free" : equipped ? "Equipped" : item.cost+" XP";
+
+      card.appendChild(imgWrap); card.appendChild(name); card.appendChild(desc); card.appendChild(price);
+      card.addEventListener("click", ()=>{
+        if(!canAfford && !equipped){ toast(`Need ${item.cost} XP (you have ${profile.xp||0}).`); return; }
+        if(equipped){ setEquipped(category==="tops"?"none":category==="bottoms"?"none":"none"); }
+        else setEquipped(item.id);
+        saveProfile();
+        refreshEquippedAvatarPreview();
+        if(supabaseClient) supabaseClient.from("users").upsert({username:profile.username,equipped_hair:profile.equippedHair,equipped_outfit:profile.equippedTop,last_seen:new Date().toISOString()});
+        // Rebuild the preview
+        previewDiv.innerHTML = "";
+        if(window.__shopPageHandle){ window.__shopPageHandle.dispose(); }
+        const pc2 = {...pc};
+        if(category==="tops") pc2.topId=profile.equippedTop||"none";
+        else if(category==="bottoms") pc2.bottomId=profile.equippedBottom||"none";
+        else pc2.shoeId=profile.equippedShoe||"none";
+        window.__shopPageHandle = createKlypThreeAvatar(previewDiv, pc2, {width:140,height:228,interactive:true,animate:true});
+        renderShopPage(category); // re-render to update equipped states
+      });
+      grid.appendChild(card);
+    });
+
+    // Back buttons
+    document.querySelectorAll(".shopPage__back").forEach(btn=>{
+      btn.onclick = ()=> switchToSection(btn.dataset.back||"avatarshop");
+    });
+  }
+
+  /* Also update renderAvatarShop to show "open full shop" buttons for each clothing category */
 
   /* ===================== INIT ===================== */
   loadTheme();
