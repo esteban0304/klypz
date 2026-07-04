@@ -1129,8 +1129,8 @@ html[data-theme="light"] .hero{
 <div id="studyMode">
   <header class="study__topbar">
     <div class="study__brand">
-      <span class="study__logoMark" id="studyLogo">📚</span>
-      <span class="study__brandName">StudyHub</span>
+      <span class="study__logoMark" id="studyLogo" style="cursor:pointer;" title="psst… triple-click me">📚</span>
+      <span class="study__brandName" id="studyBrandName" style="cursor:pointer;">StudyHub</span>
     </div>
     <nav class="study__nav">
       <a href="#study-timer">Timer</a>
@@ -4233,12 +4233,28 @@ document.getElementById("appPlayerClose").addEventListener("click", ()=>{
    Klyp flip you back instantly.
 ===================================================================== */
 let studyClicks = 0, studyClickTimer = null;
-document.getElementById("studyLogo").addEventListener("click", ()=>{
+function studySecretTap(){
   studyClicks++;
   clearTimeout(studyClickTimer);
-  studyClickTimer = setTimeout(()=>{ studyClicks = 0; }, 900);
+  studyClickTimer = setTimeout(()=>{ studyClicks = 0; }, 1200);
   if(studyClicks >= 3){ studyClicks = 0; switchToKlyp(); }
+}
+document.getElementById("studyLogo").addEventListener("click", studySecretTap);
+document.getElementById("studyBrandName").addEventListener("click", studySecretTap);
+// Keyboard entrance too: press K three times quickly (ignored while typing)
+let kPresses = 0, kTimer = null;
+document.addEventListener("keydown", e=>{
+  if(document.getElementById("studyMode").style.display === "none") return;
+  const t = e.target.tagName;
+  if(t === "INPUT" || t === "TEXTAREA") return;
+  if(e.key.toLowerCase() === "k"){
+    kPresses++;
+    clearTimeout(kTimer);
+    kTimer = setTimeout(()=>{ kPresses = 0; }, 1200);
+    if(kPresses >= 3){ kPresses = 0; switchToKlyp(); }
+  } else kPresses = 0;
 });
+console.log("%cKlyp: triple-click the 📚 logo (or press K K K) to enter.", "color:#2f7bff;font-weight:bold;");
 
 function switchToKlyp(){
   runHexTransition(()=>{
