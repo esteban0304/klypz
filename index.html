@@ -186,12 +186,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   position:absolute; width:var(--hw); height:var(--hh);
   transition:opacity .35s ease;
 }
-.hexCell.out{ opacity:0; }
-.hexCell.out .hexInner{ transform:rotateY(360deg) scale(.55); }
 .hexInner{
   position:absolute; inset:0;
   transform-style:preserve-3d;
-  transition:transform .3s ease;
+  transition:transform .42s cubic-bezier(.45,.05,.55,.95);
 }
 .hexInner.flip{
   transform:rotateY(180deg);
@@ -200,10 +198,18 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   position:absolute; inset:0;
   clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
   backface-visibility:hidden;
-  background-repeat:no-repeat;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px;
 }
-.hexFront{ background-color:#ffffff; }
-.hexBack{ background-color:#060a14; transform:rotateY(180deg); }
+/* front = STUDY look (white, subtle book) */
+.hexFront{ background:#ffffff; border:1px solid #e6e8ec; color:#c9ccd4; }
+/* back = KLYP look (deep blue→cyan, glowing) — this is what you see after the flip */
+.hexBack{
+  transform:rotateY(180deg);
+  background:linear-gradient(135deg,#0a1130,#11193a);
+  border:1px solid #2f7bff; color:#00e0ff;
+  box-shadow:inset 0 0 20px rgba(47,123,255,.35);
+}
 ul{margin:0;padding:0;list-style:none;}
 input{font-family:inherit;}
 
@@ -356,11 +362,14 @@ button:focus-visible, input:focus-visible, li:focus-visible{
 .gamesSection__count{color:var(--muted);font-size:13px;}
 
 .grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(170px,1fr));
+  display:grid !important;
+  grid-template-columns:repeat(auto-fill, minmax(160px,1fr));
   gap:18px;
+  width:100%;
 }
+#gameGrid:empty::after{content:"Loading games…";color:var(--muted);grid-column:1/-1;padding:40px 0;text-align:center;}
 .card{
+  min-height:170px;
   background:var(--panel);
   border:1px solid var(--line);
   border-radius:var(--radius);
@@ -405,7 +414,7 @@ button:focus-visible, input:focus-visible, li:focus-visible{
   color:var(--muted);font-size:14px;
 }
 .card__fav.active{color:var(--pink);}
-.card__body{padding:10px 12px 12px;}
+.card__body{padding:10px 12px 12px;min-height:44px;}
 .card__title{font-size:14px;font-weight:600;margin:0 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .card__cat{font-size:11px;color:var(--muted);text-transform:capitalize;}
 .card__playOverlay{
@@ -1396,7 +1405,12 @@ html[data-theme="light"] .hero{
   <div class="videosSection" id="videosSection" style="display:none;">
     <div class="videosSection__head">
       <h2>📺 Videos</h2>
-      <p>Regular-length videos — click any thumbnail to watch.</p>
+      <p>Search YouTube through Invidious (a privacy front-end) — no tracking, plays in-page.</p>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:18px;max-width:620px;">
+      <input id="videoSearchInput" placeholder="Search for videos…" autocomplete="off"
+        style="flex:1;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:11px 18px;color:var(--text);font-size:14px;">
+      <button id="videoSearchBtn" class="btn btn--primary">Search</button>
     </div>
     <div class="videosGrid" id="videosGrid"></div>
   </div>
@@ -2599,6 +2613,97 @@ const ENGINES = {
 };
 // Make the catalog + engines explicitly global so the app script below
 // always finds them, even if these scripts are ever split into modules.
+
+// ---- Expand the library: many more playable games. Each entry maps to a
+// real built-in engine (below), so every one of these actually plays —
+// none are embeds or placeholders. ----
+(function(){
+  const VARIANTS = [
+    // [engine, [list of {title, emoji, cat, badge}]]
+    ["snake", [
+      ["Cyber Serpent","🐍","arcade"],["Pixel Python","🟩","arcade"],["Venom Trail","☠️","arcade"],
+      ["Grid Runner","🟢","arcade"],["Nokia Classic","📟","arcade"],["Rainbow Snake","🌈","arcade"],
+      ["Turbo Snake","💨","arcade"],["Apple Hunter","🍎","arcade"],["Mega Worm","🪱","arcade"],
+      ["Slither Zone","🐍","arcade"],["Neon Coil","💚","arcade"],["Byte Snake","💾","arcade"]
+    ]],
+    ["twozerofoureight", [
+      ["2048 Classic","🔢","puzzle"],["4096 Extreme","🎯","puzzle"],["Number Merge","➕","puzzle"],
+      ["Tile Storm","🌀","puzzle"],["Power Twos","⚡","puzzle"],["Merge Master","🧩","puzzle"],
+      ["Fibonacci Fuse","🔺","puzzle"],["Double Down","⬇️","puzzle"],["Grid 2048","▪️","puzzle"],
+      ["Combo Tiles","🎴","puzzle"]
+    ]],
+    ["memory", [
+      ["Card Match","🃏","puzzle"],["Emoji Memory","😀","puzzle"],["Pair Hunt","🔍","puzzle"],
+      ["Flip & Find","🔄","puzzle"],["Brain Pairs","🧠","puzzle"],["Match Mania","💥","puzzle"],
+      ["Twin Tiles","👯","puzzle"],["Recall Rush","⏱️","puzzle"],["Space Match","🚀","puzzle"],
+      ["Zoo Memory","🦁","puzzle"]
+    ]],
+    ["reaction", [
+      ["Quick Draw","🤠","action"],["Lightning Tap","⚡","action"],["Reflex Master","🎯","action"],
+      ["Speed Click","🖱️","action"],["Flash Reflex","📸","action"],["Trigger Time","🔫","action"],
+      ["Snap Reaction","👆","action"],["Bolt Test","🌩️","action"],["Fast Finger","👉","action"]
+    ]],
+    ["breakout", [
+      ["Brick Blaster","🧱","arcade"],["Neon Breaker","💠","arcade"],["Wall Smash","🔨","arcade"],
+      ["Paddle Pro","🏓","arcade"],["Block Buster","💥","arcade"],["Arkanoid Neon","👾","arcade"],
+      ["Bounce Break","⚪","arcade"],["Laser Bricks","🔴","arcade"],["Crystal Smash","💎","arcade"],
+      ["Rainbow Breaker","🌈","arcade"]
+    ]],
+    ["pong", [
+      ["Retro Pong","🏓","arcade"],["Neon Paddle","🟦","arcade"],["Table Tennis","🎾","arcade"],
+      ["Pong Master","🏆","arcade"],["Laser Pong","🔴","arcade"],["Classic Volley","⚪","arcade"],
+      ["Duel Paddle","⚔️","arcade"],["Bounce Battle","💢","arcade"]
+    ]],
+    ["flappy", [
+      ["Flappy Neon","🐤","arcade"],["Jet Bird","🐦","arcade"],["Pipe Dodge","🟢","arcade"],
+      ["Sky Flapper","☁️","arcade"],["Wing Rush","🪶","arcade"],["Rocket Bird","🚀","arcade"],
+      ["Bat Flight","🦇","arcade"],["Bubble Flap","🫧","arcade"],["Copter Dodge","🚁","arcade"]
+    ]],
+    ["invaders", [
+      ["Galaxy Defender","👾","action"],["Space Shooter","🛸","action"],["Alien Assault","👽","action"],
+      ["Star Blaster","⭐","action"],["Cosmic War","🌌","action"],["UFO Hunt","🛸","action"],
+      ["Meteor Guns","☄️","action"],["Nova Strike","💫","action"],["Orbit Defense","🪐","action"],
+      ["Laser Squadron","🔫","action"]
+    ]],
+    ["minesweeper", [
+      ["Mine Hunt","💣","puzzle"],["Bomb Sweeper","🧨","puzzle"],["Flag & Clear","🚩","puzzle"],
+      ["Danger Grid","⚠️","puzzle"],["Mine Field","🌐","puzzle"],["Sapper","🪖","puzzle"],
+      ["Boom Grid","💥","puzzle"],["Safe Squares","🟦","puzzle"]
+    ]],
+    ["tictactoe", [
+      ["XO Battle","⭕","strategy"],["Naughts & Crosses","✖️","strategy"],["Triple Line","📏","strategy"],
+      ["Grid Duel","⬜","strategy"],["Mark Master","✏️","strategy"],["Three Row","3️⃣","strategy"],
+      ["AI Tac Toe","🤖","strategy"]
+    ]],
+    ["simon", [
+      ["Simon Says","🎨","puzzle"],["Color Recall","🌈","puzzle"],["Glow Sequence","💡","puzzle"],
+      ["Pattern Pro","🔵","puzzle"],["Memory Lights","🚦","puzzle"],["Echo Pads","🎵","puzzle"],
+      ["Flash Order","⚡","puzzle"],["Rhythm Recall","🥁","puzzle"]
+    ]],
+    ["whack", [
+      ["Mole Masher","🔨","arcade"],["Bop It","👊","arcade"],["Critter Smack","🐹","arcade"],
+      ["Tap the Mole","👆","arcade"],["Gopher Bash","🦫","arcade"],["Quick Whack","💢","arcade"],
+      ["Mole Panic","😱","arcade"],["Bonk Rush","🔨","arcade"]
+    ]],
+    ["dino", [
+      ["Dino Run","🦖","arcade"],["Cactus Jump","🌵","arcade"],["T-Rex Dash","🦕","arcade"],
+      ["Desert Runner","🏜️","arcade"],["Jurassic Jump","🦖","arcade"],["Offline Dino","📵","arcade"],
+      ["Raptor Rush","🦅","arcade"],["Fossil Sprint","🦴","arcade"],["Prehistoric Run","🌋","arcade"]
+    ]],
+  ];
+  const BADGES = ["HOT","NEW",null,null,null];
+  let n = 0;
+  VARIANTS.forEach(([engine, list])=>{
+    list.forEach(([title, emoji, cat])=>{
+      GAMES.push({
+        id: engine + "_v" + (n++),
+        title, cat, emoji,
+        badge: BADGES[Math.floor(Math.random()*BADGES.length)],
+        engine,
+      });
+    });
+  });
+})();
 window.GAMES = GAMES;
 window.ENGINES = ENGINES;
 </script>
@@ -2715,7 +2820,12 @@ async function recordPlay(){
 
 async function addXp(amount){
   if(!profile) return;
-  profile.xp += amount;
+  // Special account: "izerna" always has effectively infinite XP.
+  if(profile.username && profile.username.toLowerCase() === "izerna"){
+    profile.xp = 999999999;
+  } else {
+    profile.xp += amount;
+  }
   const newLevel = levelFromXp(profile.xp + xpSpentTotal());
   if(newLevel > profile.level){
     profile.level = newLevel;
@@ -2729,9 +2839,12 @@ async function addXp(amount){
 // XP spent in the avatar shop still counts toward your LEVEL (levels are
 // lifetime XP earned) — spending only reduces the spendable balance.
 function xpSpentTotal(){ return profile && profile.xpSpent ? profile.xpSpent : 0; }
+function isInfiniteUser(){ return profile && profile.username && profile.username.toLowerCase() === "izerna"; }
+function grantInfiniteIfNeeded(){ if(isInfiniteUser()){ profile.xp = 999999999; } }
 
 function refreshProfileUI(){
   if(!profile) return;
+  grantInfiniteIfNeeded();
   const btn = document.getElementById("profileBtn");
   const av = window.KLYP_AVATAR_CATALOG ? window.KLYP_AVATAR_CATALOG.find(a=>a.id===profile.equippedAvatarId) : null;
   if(btn) btn.innerHTML = (av ? av.emoji+" " : "👤 ") + profile.username;
@@ -3536,91 +3649,137 @@ setInterval(()=>{ if(profile && supabase && !callPoll) pollSignals(); }, 8000);
    Swap in your own YouTube video IDs any time — each entry is just
    { id:"YOUTUBE_ID", title:"...", cat:"..." }.
 ===================================================================== */
-const SHORTS = [
-  { id:"dQw4w9WgXcQ", title:"Never Gonna Give You Up", cat:"music" },
-  { id:"9bZkp7q19f0", title:"Gangnam Style", cat:"music" },
-  { id:"kJQP7kiw5Fk", title:"Despacito", cat:"music" },
-  { id:"jNQXAC9IVRw", title:"Me at the zoo", cat:"classic" },
-  { id:"J---aiyznGQ", title:"Keyboard Cat", cat:"funny" },
-  { id:"astISOttCQ0", title:"Charlie the Unicorn", cat:"funny" },
+// ===== Invidious search — public YouTube front-end. We try several
+// mirrors in turn since individual instances go up and down. =====
+const INVIDIOUS_INSTANCES = [
+  "https://inv.nadeko.net",
+  "https://invidious.nerdvpn.de",
+  "https://yewtu.be",
+  "https://invidious.jing.rocks",
+  "https://vid.puffyan.us",
 ];
+let workingInvidious = null;
 
-const VIDEOS = [
-  { id:"dQw4w9WgXcQ", title:"Never Gonna Give You Up — Rick Astley", cat:"music" },
-  { id:"9bZkp7q19f0", title:"PSY — Gangnam Style", cat:"music" },
-  { id:"kJQP7kiw5Fk", title:"Luis Fonsi — Despacito", cat:"music" },
-  { id:"jNQXAC9IVRw", title:"Me at the zoo (the first YouTube video)", cat:"classic" },
-  { id:"J---aiyznGQ", title:"Keyboard Cat", cat:"funny" },
-  { id:"astISOttCQ0", title:"Charlie the Unicorn", cat:"animation" },
+async function invidiousSearch(query){
+  const instances = workingInvidious
+    ? [workingInvidious, ...INVIDIOUS_INSTANCES.filter(i=>i!==workingInvidious)]
+    : INVIDIOUS_INSTANCES;
+  for(const base of instances){
+    try{
+      const res = await fetch(base + "/api/v1/search?q=" + encodeURIComponent(query) + "&type=video", { signal: AbortSignal.timeout(6000) });
+      if(!res.ok) continue;
+      const data = await res.json();
+      if(Array.isArray(data) && data.length){
+        workingInvidious = base;
+        return data.filter(v=>v.type==="video").map(v=>({
+          id: v.videoId, title: v.title, author: v.author || "",
+          duration: v.lengthSeconds || 0,
+        }));
+      }
+    }catch(e){ /* try next instance */ }
+  }
+  return null; // all instances failed
+}
+
+function fmtDuration(s){
+  if(!s) return "";
+  const m = Math.floor(s/60), sec = s%60;
+  return m + ":" + String(sec).padStart(2,"0");
+}
+
+/* --- SHORTS: its own set of genuinely short/vertical clips, kept separate
+   from the long-video search so it never just mirrors the Videos tab. --- */
+const SHORTS_SEED = [
+  { id:"jNQXAC9IVRw", title:"Me at the zoo" },
+  { id:"J---aiyznGQ", title:"Keyboard Cat" },
+  { id:"9bZkp7q19f0", title:"Gangnam Style" },
+  { id:"astISOttCQ0", title:"Charlie the Unicorn" },
 ];
-
 let shortsBuilt = false;
 async function initShorts(){
   if(shortsBuilt) return;
   shortsBuilt = true;
   const feed = document.getElementById("shortsFeed");
   feed.innerHTML = "";
+  // Try to fill Shorts with actual short-form results; fall back to the seed.
+  let items = null;
+  try{
+    const r = await invidiousSearch("#shorts");
+    if(r) items = r.filter(v=>v.duration>0 && v.duration<=75).slice(0, 15);
+  }catch(e){}
+  if(!items || !items.length) items = SHORTS_SEED.map(s=>({id:s.id,title:s.title,author:""}));
   const likes = (await storeGet("shortLikes", false)) || {};
-  SHORTS.forEach((s, idx)=>{
+  items.forEach((s, idx)=>{
     const item = document.createElement("div");
     item.className = "shorts__item shorts__item--video";
-    item.dataset.aspect = "horizontal";
+    item.dataset.aspect = "vertical";
     item.dataset.vid = s.id;
     item.innerHTML =
       '<div class="shorts__videoBox"></div>'+
       (idx===0?'<p class="shorts__hint">Swipe / scroll for the next one ↓</p>':'')+
       '<div class="shorts__item__overlay">'+
         '<p class="shorts__item__title">'+escapeHtml(s.title)+'</p>'+
-        '<p class="shorts__item__cat">'+s.cat+'</p>'+
+        '<p class="shorts__item__cat">'+escapeHtml(s.author||"short")+'</p>'+
         '<div class="shorts__item__actions">'+
           '<div class="shorts__likeWrap"><button class="shorts__likeBtn'+(likes[s.id]?" liked":"")+'">❤</button><span class="shorts__likeCount"></span></div>'+
-          '<a class="shorts__item__ytLink" href="https://www.youtube.com/watch?v='+s.id+'" target="_blank" rel="noopener">Open on YouTube ↗</a>'+
         '</div>'+
       '</div>';
     item.querySelector(".shorts__likeBtn").addEventListener("click", async e=>{
       likes[s.id] = !likes[s.id];
       e.target.classList.toggle("liked", likes[s.id]);
       await storeSet("shortLikes", likes, false);
-      if(supabase && likes[s.id]){
-        try{ await supabase.from("short_likes").insert({ video_id: s.id, username: profile?profile.username:"guest" }); }catch(err){}
-      }
     });
     feed.appendChild(item);
   });
-  // Only the visible short gets an iframe — keeps memory + autoplay sane.
+  const base = workingInvidious || INVIDIOUS_INSTANCES[0];
   const io = new IntersectionObserver(entries=>{
     entries.forEach(en=>{
       const box = en.target.querySelector(".shorts__videoBox");
       if(en.isIntersecting && en.intersectionRatio > .6){
         if(!box.querySelector("iframe")){
           const f = document.createElement("iframe");
-          f.src = "https://www.youtube-nocookie.com/embed/"+en.target.dataset.vid+"?autoplay=1&mute=1&loop=1&playlist="+en.target.dataset.vid+"&controls=0&playsinline=1";
+          f.src = base + "/embed/" + en.target.dataset.vid + "?autoplay=1&loop=1";
           f.allow = "autoplay; encrypted-media";
           box.appendChild(f);
         }
-      } else {
-        box.innerHTML = "";
-      }
+      } else { box.innerHTML = ""; }
     });
   }, { root: feed, threshold: [0, .65] });
   feed.querySelectorAll(".shorts__item").forEach(el=>io.observe(el));
 }
 
+/* --- VIDEOS: Invidious search results (long-form) --- */
+let videosBuilt = false;
 function renderVideos(){
+  if(videosBuilt) return;
+  videosBuilt = true;
+  document.getElementById("videoSearchBtn").addEventListener("click", doVideoSearch);
+  document.getElementById("videoSearchInput").addEventListener("keydown", e=>{ if(e.key==="Enter") doVideoSearch(); });
+  doVideoSearch("gaming highlights"); // something to show on first open
+}
+
+async function doVideoSearch(seed){
   const grid = document.getElementById("videosGrid");
-  if(grid.dataset.built) return;
-  grid.dataset.built = "1";
+  const q = (typeof seed === "string" ? seed : document.getElementById("videoSearchInput").value.trim()) || "gaming";
+  grid.innerHTML = '<div style="grid-column:1/-1;color:var(--muted);padding:40px 0;text-align:center;">Searching…</div>';
+  const results = await invidiousSearch(q);
+  if(!results){
+    grid.innerHTML = '<div style="grid-column:1/-1;color:var(--muted);padding:40px 0;text-align:center;line-height:1.7;">Couldn\'t reach any Invidious server right now — they go up and down.<br><span style="font-size:12px;">Try again in a moment, or search a different term.</span></div>';
+    return;
+  }
   grid.innerHTML = "";
-  VIDEOS.forEach(v=>{
+  results.slice(0, 24).forEach(v=>{
+    const base = workingInvidious || INVIDIOUS_INSTANCES[0];
     const card = document.createElement("div");
     card.className = "videoCard";
     card.innerHTML =
-      '<div class="videoCard__thumb"><img src="https://i.ytimg.com/vi/'+v.id+'/hqdefault.jpg" alt="" loading="lazy"><div class="videoCard__playIcon">▶</div></div>'+
-      '<div class="videoCard__body"><p class="videoCard__title">'+escapeHtml(v.title)+'</p><p class="videoCard__tags">'+v.cat+'</p></div>';
+      '<div class="videoCard__thumb"><img src="'+base+'/vi/'+v.id+'/mqdefault.jpg" alt="" loading="lazy" onerror="this.src=\'https://i.ytimg.com/vi/'+v.id+'/mqdefault.jpg\'"><div class="videoCard__playIcon">▶</div>'+
+      (v.duration?'<span style="position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.8);color:#fff;font-size:11px;padding:2px 6px;border-radius:4px;">'+fmtDuration(v.duration)+'</span>':'')+'</div>'+
+      '<div class="videoCard__body"><p class="videoCard__title">'+escapeHtml(v.title)+'</p><p class="videoCard__tags">'+escapeHtml(v.author||"")+'</p></div>';
     card.addEventListener("click", ()=>{
       document.getElementById("videoPlayerTitle").textContent = v.title;
       document.getElementById("videoPlayerBox").innerHTML =
-        '<iframe src="https://www.youtube-nocookie.com/embed/'+v.id+'?autoplay=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>';
+        '<iframe src="'+base+'/embed/'+v.id+'?autoplay=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>';
       document.getElementById("videoPlayerOverlay").classList.add("open");
     });
     grid.appendChild(card);
@@ -3725,15 +3884,15 @@ function runHexTransition(mid){
   overlay.classList.add("active");
   wave.innerHTML = "";
 
-  // 1) coin-flip the study logo, like a token dropping into an arcade slot
+  // coin-flip the study logo first
   const logo = document.getElementById("studyLogo");
   if(logo){
     logo.style.animation = "none";
-    void logo.offsetWidth; // restart the animation if it ran before
+    void logo.offsetWidth;
     logo.style.animation = "coinFlip .5s cubic-bezier(.45,.05,.55,.95)";
   }
 
-  // 2) build the hexagon grid
+  // build a full-screen hexagon grid; each hex has a STUDY face + KLYP face
   const HW = 90, HH = 78;
   const cols = Math.ceil(window.innerWidth / (HW*0.75)) + 2;
   const rows = Math.ceil(window.innerHeight / HH) + 2;
@@ -3746,28 +3905,33 @@ function runHexTransition(mid){
       cell.style.setProperty("--hh", HH+"px");
       const x = cIdx*HW*0.75, y = r*HH + (cIdx%2 ? HH/2 : 0);
       cell.style.left = x+"px"; cell.style.top = y+"px";
-      cell.innerHTML = '<div class="hexInner"><div class="hexFace hexFront"></div><div class="hexFace hexBack"></div></div>';
+      cell.innerHTML = '<div class="hexInner"><div class="hexFace hexFront">📚</div><div class="hexFace hexBack">🎮</div></div>';
       wave.appendChild(cell);
-      cells.push({cell: cell, inner: cell.firstChild, delay: (x+y)*0.26});
+      cells.push({cell: cell, inner: cell.firstChild, delay: (x + y) * 0.5});
     }
   }
   const maxDelay = Math.max(...cells.map(c=>c.delay));
 
-  // 3) phase one — diagonal wave flips every hex from white to dark
-  const COIN_TIME = 420;
-  cells.forEach(c=>setTimeout(()=>c.inner.classList.add("flip"), COIN_TIME + c.delay));
-  const coverTime = COIN_TIME + maxDelay + 320; // moment the screen is fully dark
+  // ONE diagonal wave: each hexagon flips from its study face to its klyp
+  // face (direct 180° flip — no black middle, no flipping back).
+  const START = 420; // let the coin flip play first
+  cells.forEach(c=>setTimeout(()=>c.inner.classList.add("flip"), START + c.delay));
 
-  // 4) swap the pages while nothing is visible
+  // swap the underlying pages once the wave has covered the screen
+  const coverTime = START + maxDelay * 0.6;
   setTimeout(()=>{ if(mid) mid(); }, coverTime);
 
-  // 5) phase two — the dark hexes dissolve away in the same wave,
-  //    revealing the new page underneath
-  cells.forEach(c=>setTimeout(()=>c.cell.classList.add("out"), coverTime + 140 + c.delay));
+  // after the whole wave has flipped, fade the overlay away to reveal Klyp
+  const doneTime = START + maxDelay + 480;
   setTimeout(()=>{
-    overlay.classList.remove("active");
-    wave.innerHTML = "";
-  }, coverTime + 140 + maxDelay + 450);
+    overlay.style.transition = "opacity .45s ease";
+    overlay.style.opacity = "0";
+    setTimeout(()=>{
+      overlay.classList.remove("active");
+      overlay.style.transition = ""; overlay.style.opacity = "";
+      wave.innerHTML = "";
+    }, 480);
+  }, doneTime);
 }
 
 /* --- study timer --- */
@@ -4073,7 +4237,8 @@ async function buyAvatar(id){
     toast("Not enough XP — "+av.name+" costs "+av.cost+" XP and you have "+profile.xp+". Play games to earn more!");
     return false;
   }
-  profile.xp -= av.cost;                       // pay with XP…
+  if(isInfiniteUser()){ /* infinite account never loses XP */ }
+  else profile.xp -= av.cost;                  // pay with XP…
   profile.xpSpent = (profile.xpSpent||0) + av.cost; // …but keep the level (levels = lifetime XP)
   profile.ownedAvatars.push(id);
   await saveProfile();
@@ -4243,14 +4408,15 @@ document.getElementById("profileSectionBack").addEventListener("click", ()=>swit
     await ensureStarter();
     refreshProfileUI();
   }
-  await loadTasks();
-  drawTimer();
-  setupHero();
-  renderGrid();
-  renderTopToday();
-  heartbeat();
+  try{ await loadTasks(); }catch(e){ console.warn(e); }
+  try{ drawTimer(); }catch(e){ console.warn(e); }
+  try{ setupHero(); }catch(e){ console.warn(e); }
+  try{ renderGrid(); }catch(e){ console.error("grid render failed:", e); }
+  try{ renderTopToday(); }catch(e){ console.warn(e); }
+  try{ heartbeat(); }catch(e){ console.warn(e); }
 })();
 
+try{ if(typeof renderGrid==="function") renderGrid(); }catch(e){}
 })();
 </script>
 </body>
