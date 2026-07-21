@@ -8143,7 +8143,7 @@ window.ENGINES = ENGINES;
 /* Bump this whenever the file is rebuilt. The Diagnostics panel shows it, so
    you can instantly tell whether GitHub Pages is serving the newest upload or
    a cached older one. */
-const KLYP_BUILD = "2026-07-21 · build 8 (backend restored)";
+const KLYP_BUILD = "2026-07-21 · build 9 (avatar starter fix)";
 window.KLYP_BUILD = KLYP_BUILD;
 
 /* =====================================================================
@@ -8287,8 +8287,8 @@ function normalizeProfile(p){
   if(!Array.isArray(p.ownedAvatars)) p.ownedAvatars = [];
   // Shelly is the free starter — make sure it's owned & equipped so the preview
   // never shows "None" with an empty stage.
-  if(!p.ownedAvatars.includes("shelly")) p.ownedAvatars.push("shelly");
-  if(!p.equippedAvatarId) p.equippedAvatarId = "shelly";
+  if(!p.ownedAvatars.includes("soldier")) p.ownedAvatars.push("soldier");
+  if(!p.equippedAvatarId) p.equippedAvatarId = "soldier";
   if(typeof p.xp !== "number") p.xp = 0;
   if(typeof p.level !== "number") p.level = 1;
   if(typeof p.plays !== "number") p.plays = 0;
@@ -8664,11 +8664,13 @@ async function runFullDiagnostics(){
   const okCdnjs  = await probe("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", "cdnjs.cloudflare.com (three.js)");
   const okJsd    = await probe("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2", "cdn.jsdelivr.net (supabase-js)");
   const okSupa   = await probe(SUPABASE_URL+"/rest/v1/", "supabase.co (chat & leaderboard)");
-  if(okSelf && !(okCdnjs && okJsd && okSupa)){
-    push(null, "DIAGNOSIS: your network blocks third-party sites",
-      "Your own site loads fine, but the outside domains above are blocked — this is a school/work Wi-Fi filter (or an ad-blocker). "+
-      "Avatars can be fixed by putting the libraries in a local lib/ folder (see the comment block in this file). "+
-      "Chat & leaderboard need supabase.co itself, which a local file cannot work around — they will only work on an unfiltered network.");
+  const thirdPartyOK = (okCdnjs?1:0) + (okJsd?1:0);
+  if(okSelf && thirdPartyOK === 0 && !okSupa){
+    push(null, "DIAGNOSIS: your network blocks outside sites",
+      "Your own site loads but every external domain failed — a Wi-Fi filter or ad-blocker. Put the libraries in a local lib/ folder (see the comment block in this file); chat needs supabase.co itself, which no local file can work around.");
+  } else if(okSelf && thirdPartyOK > 0 && !okSupa){
+    push(null, "DIAGNOSIS: your network is fine — this Supabase project is unreachable",
+      "Other outside sites load normally, so nothing is being blocked. Only "+SUPABASE_URL+" fails, which means that address doesn't currently exist: the project is paused/still resuming, was deleted, or — most often — the URL here doesn't match the project you actually have. Open your Supabase dashboard, copy the Project URL from Settings → API, and paste it in with Ctrl+Shift+B.");
   }
 
   /* ---- 3. 3D engine ---- */
@@ -10168,8 +10170,8 @@ if(window.THREE) THREE.Cache.enabled = true; // big models download once, then i
 
 const AVATAR_CATALOG = [
   // file paths MUST match the .glb filenames committed in your /avatars folder EXACTLY (case-sensitive on GitHub Pages)
-  { id:"shelly",         name:"Shelly",           file:"avatars/shelly.glb",                                     cost:0,    emoji:"🐚", rarity:"Starter",   size:"4 MB"  },
-  { id:"soldier",        name:"Recon Soldier",    file:"avatars/free_mixamo_retextured_model.glb",               cost:100,  emoji:"🪖", rarity:"Common",    size:"7 MB"  },
+  { id:"soldier",        name:"Recon Soldier",    file:"avatars/free_mixamo_retextured_model.glb",               cost:0,    emoji:"🪖", rarity:"Starter",   size:"7 MB"  },
+  { id:"shelly",         name:"Shelly",           file:"avatars/shelly.glb",                                     cost:100,  emoji:"🐚", rarity:"Common",    size:"4 MB"  },
   { id:"miku",           name:"Miku Yuki",        file:"avatars/hatsune_miku_lbx_ver_yuki_custom__redesign.glb", cost:150,  emoji:"🎤", rarity:"Common",    size:"4 MB"  },
   { id:"jack_of_blades", name:"Jack of Blades",   file:"avatars/jack_of_blades.glb",                             cost:300,  emoji:"🗡", rarity:"Rare",      size:"23 MB" },
   { id:"dragonkin",      name:"Silver Dragonkin", file:"avatars/silver_dragonkin_mir4.glb",                      cost:400,  emoji:"🐲", rarity:"Epic",      size:"25 MB" },
@@ -10263,6 +10265,17 @@ window.loadAvaturnIntoScene = function(container, glbUrl, opts){
       const showMsg = (title, detail)=>{ loadingEl.innerHTML =
         '<div style="text-align:center;padding:12px;line-height:1.5;max-width:230px;">⚠️ '+title+
         '<br><span style="font-size:10px;color:#9fb0da;">'+detail+'</span></div>'; };
+      // If this model is broken, try the next avatar that actually works so the
+      // user is never left staring at an empty stage.
+      const tryFallback = ()=>{
+        if(opts && opts.__noFallback) return false;
+        const cat = window.KLYP_AVATAR_CATALOG || [];
+        const alt = cat.find(a=>a.file !== glbUrl && a.file !== (glbUrl||"").replace(location.origin+"/",""));
+        if(!alt) return false;
+        console.warn("[klyp] falling back to avatar:", alt.file);
+        window.loadAvaturnIntoScene(container, alt.file, Object.assign({}, opts, {__noFallback:true}));
+        return true;
+      };
       if(location.protocol === "file:"){
         showMsg("Blocked by the browser","This page was opened from disk (file://). 3D models only load from a server — use VS Code Live Server or <code>python -m http.server</code>.");
       } else if(!window.THREE || !THREE.GLTFLoader){
@@ -10277,7 +10290,12 @@ window.loadAvaturnIntoScene = function(container, glbUrl, opts){
             if(/^version https:\/\/git-lfs/.test(head)){
               showMsg("File is a Git LFS pointer","This .glb was committed with Git LFS, so Pages serves a tiny text pointer, not the model. Remove it from LFS (or don't use LFS for these files) and re-commit.");
             } else if(r.ok){
-              showMsg("File loaded but couldn't be parsed","The .glb may be corrupted or truncated (GitHub warns above 50 MB, blocks 100 MB+). Re-export / re-upload it.");
+              const len = Number(r.headers && r.headers.get ? (r.headers.get("content-length")||0) : 0);
+              if(len === 0 || head.length === 0){
+                if(!tryFallback()) showMsg("That avatar file is empty (0 KB)","<b>"+glbUrl+"</b> uploaded as a 0-byte file. Delete it and re-upload the real model.");
+              } else if(!tryFallback()){
+                showMsg("File loaded but couldn't be parsed","The .glb may be corrupted or truncated (GitHub warns above 50 MB, blocks 100 MB+). Re-export / re-upload it.");
+              }
             } else {
               showMsg("Couldn't load (HTTP "+r.status+")","Check that <b>"+glbUrl+"</b> is committed to the repo at this exact path, next to the page.");
             }
@@ -10382,7 +10400,7 @@ async function buyAvatar(id){
 async function ensureStarter(){
   if(!profile) return;
   ownedAvatarIds();
-  if(!profile.equippedAvatarId) await equipAvatar("shelly");
+  if(!profile.equippedAvatarId) await equipAvatar("soldier");
 }
 
 /* --- the shop UI: try-on stage + character grid --- */
@@ -10394,7 +10412,7 @@ function renderShop(host){
   if(!host) return;
   if(!profile){ host.innerHTML = '<p style="color:var(--muted);padding:20px;">Create your account first, then come back to the shop.</p>'; return; }
   ensureStarter();
-  if(!shopSelectedId) shopSelectedId = profile.equippedAvatarId || "shelly";
+  if(!shopSelectedId) shopSelectedId = profile.equippedAvatarId || "soldier";
   host.innerHTML = "";
 
   const wrap = document.createElement("div");
@@ -10504,7 +10522,7 @@ function refreshProfileSection3d(){
   const d3 = document.getElementById("profileSection3d");
   if(!d3 || !profile) return;
   if(profileSection3dHandle && profileSection3dHandle.dispose) profileSection3dHandle.dispose();
-  profileSection3dHandle = loadAvaturnIntoScene(d3, profile.avatarGlbUrl || avatarById("shelly").file, { width:200, height:325, interactive:true, animate:true });
+  profileSection3dHandle = loadAvaturnIntoScene(d3, profile.avatarGlbUrl || (avatarById(profile.equippedAvatarId)||avatarById("soldier")).file, { width:200, height:325, interactive:true, animate:true });
 }
 
 async function renderProfileSection(){
