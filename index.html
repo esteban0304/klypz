@@ -1581,6 +1581,40 @@ html[data-theme="light"] .hero{
     <p class="modalCard__note">Shared across everyone using this site — top players by XP.</p>
     <ol class="leaderboardList" id="leaderboardList"></ol>
     <div id="backendDiag" style="margin-top:14px;padding:10px 12px;background:rgba(10,16,32,.6);border:1px solid var(--line);border-radius:8px;color:var(--muted);"></div>
+    <button id="openDiagFromLb" style="margin-top:10px;width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--cyan);font-weight:700;cursor:pointer;">🩺 Run full diagnostics</button>
+  </div>
+</div>
+
+<!-- ===== BACKEND SETUP ===== -->
+<div class="modalOverlay" id="backendOverlay">
+  <div class="modalCard" style="max-width:560px;">
+    <button class="modalCard__close" id="backendClose">✕</button>
+    <h3 class="modalCard__title">🔌 Backend setup</h3>
+    <p class="modalCard__note">Chat &amp; the leaderboard need your own free Supabase project. Create one at <b>supabase.com</b>, then open <b>Settings → API</b> and copy the two values below. They're saved in this browser.</p>
+    <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">Project URL</label>
+    <input id="backendUrl" placeholder="https://yourproject.supabase.co" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);margin-bottom:10px;">
+    <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:4px;">anon public key</label>
+    <input id="backendKey" placeholder="eyJhbGciOi..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);margin-bottom:10px;">
+    <div id="backendResult" style="font-size:12px;line-height:1.6;color:var(--muted);min-height:20px;"></div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button id="backendTest" style="flex:1;padding:11px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-weight:700;cursor:pointer;">Test connection</button>
+      <button id="backendSave" style="flex:1;padding:11px;border-radius:8px;border:none;background:var(--cyan);color:#04070f;font-weight:700;cursor:pointer;">Save &amp; reload</button>
+    </div>
+    <button id="backendSql" style="margin-top:10px;width:100%;padding:9px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--cyan);font-weight:600;cursor:pointer;font-size:12px;">Copy the setup SQL for your new project</button>
+  </div>
+</div>
+
+<!-- ===== SELF-TEST / DIAGNOSTICS ===== -->
+<div class="modalOverlay" id="diagOverlay">
+  <div class="modalCard" style="max-width:640px;">
+    <button class="modalCard__close" id="diagClose">✕</button>
+    <h3 class="modalCard__title">🩺 Diagnostics</h3>
+    <p class="modalCard__note">Runs in your browser and reports exactly why avatars / chat / leaderboard fail.</p>
+    <div id="diagBody" style="max-height:52vh;overflow:auto;padding:6px 10px;background:rgba(10,16,32,.6);border:1px solid var(--line);border-radius:8px;">Press “Run tests”.</div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <button id="diagRun" style="flex:1;padding:11px;border-radius:8px;border:none;background:var(--cyan);color:#04070f;font-weight:700;cursor:pointer;">Run tests</button>
+      <button id="diagCopy" style="flex:1;padding:11px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-weight:700;cursor:pointer;">Copy report</button>
+    </div>
   </div>
 </div>
 
@@ -8106,8 +8140,37 @@ window.ENGINES = ENGINES;
    The 🏆 Leaderboard panel now shows a live ✅/❌ check of each table so you
    can see exactly which one is missing.
 ===================================================================== */
-const SUPABASE_URL = "https://iyvzawibkqfvjkhtoolw.supabase.co";
-const SUPABASE_KEY = "sb_publishable_DU50t5sisuJpoAQNqTosnA_cj_idZGo";
+/* Bump this whenever the file is rebuilt. The Diagnostics panel shows it, so
+   you can instantly tell whether GitHub Pages is serving the newest upload or
+   a cached older one. */
+const KLYP_BUILD = "2026-07-21 · build 8 (backend restored)";
+window.KLYP_BUILD = KLYP_BUILD;
+
+/* =====================================================================
+   BACKEND CREDENTIALS
+   These point at the site's Supabase project. If chat/leaderboard stop
+   working with "Failed to fetch", the project is almost certainly PAUSED —
+   free Supabase projects pause after ~1 week of inactivity and their address
+   stops resolving. Open the Supabase dashboard and press Resume.
+   To point the site at a different project instead:
+     1. Make a free project at supabase.com
+     2. Dashboard -> Settings -> API : copy the Project URL and the
+        "anon public" key
+     3. In the site press Ctrl+Shift+B (or Diagnostics -> Backend setup)
+        and paste them in. They're saved in your browser and used from
+        then on — no need to edit this file.
+===================================================================== */
+const SUPABASE_URL_DEFAULT = "https://iyvzawibkqfvjkhtoolw.supabase.co";
+const SUPABASE_KEY_DEFAULT = "sb_publishable_DU50t5sisuJpoAQNqTosnA_cj_idZGo";
+function klypBackendCfg(){
+  try{
+    const raw = localStorage.getItem("klyp:backend");
+    if(raw){ const o = JSON.parse(raw); if(o && o.url && o.key) return o; }
+  }catch(e){}
+  return { url: SUPABASE_URL_DEFAULT, key: SUPABASE_KEY_DEFAULT };
+}
+let SUPABASE_URL = klypBackendCfg().url;
+let SUPABASE_KEY = klypBackendCfg().key;
 let supabase = null;
 try{
   if(window.supabase && SUPABASE_KEY.indexOf("PASTE_") === -1){
@@ -8359,12 +8422,44 @@ async function heartbeat(){
 }
 setInterval(heartbeat, 25000);
 
+/* Offline leaderboard: when there's no shared backend, show the player's own
+   best scores from localStorage so the panel is still genuinely useful. */
+function renderLocalLeaderboard(){
+  const list = document.getElementById("leaderboardList");
+  if(!list) return;
+  const games = (window.GAMES||[]);
+  const rows = [];
+  games.forEach(g=>{
+    let best = 0;
+    try{ best = (window.KLYP && window.KLYP.best) ? (window.KLYP.best(g.id)||0) : 0; }catch(e){}
+    if(best > 0) rows.push({title:g.title, emoji:g.emoji||"🎮", best});
+  });
+  rows.sort((a,b)=>b.best-a.best);
+  const coins = (window.KLYP && window.KLYP.getCoins) ? window.KLYP.getCoins() : 0;
+  list.innerHTML =
+    '<li style="list-style:none;padding:10px 12px;background:rgba(0,224,255,.08);border:1px solid var(--line);border-radius:8px;margin-bottom:10px;color:var(--text);">'+
+    '<b>Your personal bests</b><br><span style="font-size:11px;color:var(--muted);">The shared online leaderboard isn\'t reachable right now — if it\'s a free Supabase project it may have <b>paused</b> (open the dashboard and press Resume), or you can point the site at another one with <b>Ctrl+Shift+B</b>. Here are your own records meanwhile.</span></li>';
+  if(!rows.length){
+    list.innerHTML += '<li style="color:var(--muted);list-style:none;padding:8px;">No scores yet — play a few games and they\'ll show up here.</li>';
+  } else {
+    list.innerHTML += '<li style="list-style:none;padding:6px 12px;color:#ffd93d;font-weight:700;">🪙 '+coins+' coins earned</li>';
+    rows.slice(0,25).forEach((r,i)=>{
+      list.innerHTML += '<li style="list-style:none;display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.05);">'+
+        '<span style="color:var(--muted);font-weight:700;min-width:22px;">'+(i+1)+'</span>'+
+        '<span style="font-size:16px;">'+r.emoji+'</span>'+
+        '<span style="flex:1;color:var(--text);">'+escapeHtml(r.title)+'</span>'+
+        '<span style="color:var(--cyan);font-weight:700;">'+r.best+'</span></li>';
+    });
+  }
+}
+
 async function openLeaderboard(){
   const list = document.getElementById("leaderboardList");
   list.innerHTML = '<li style="color:var(--muted);">Loading…</li>';
   document.getElementById("leaderboardOverlay").classList.add("open");
   if(!supabase){
-    list.innerHTML = '<li style="color:var(--muted);">Leaderboard needs the shared backend — add your Supabase key at the top of the script.</li>';
+    renderLocalLeaderboard();
+    runBackendDiagnostics();
     return;
   }
   try{
@@ -8391,10 +8486,324 @@ async function openLeaderboard(){
     if(!rows || !rows.length) list.innerHTML = '<li style="color:var(--muted);">No players yet — be the first!</li>';
   }catch(e){
     console.error("leaderboard load failed:", e);
-    list.innerHTML = '<li style="color:#ff9db8;padding:10px;line-height:1.5;">Couldn\'t load the leaderboard.<br><span style="font-size:11px;color:var(--muted);">'+escapeHtml(String(e && e.message ? e.message : e))+'<br>If this says a table is missing, run the setup SQL (see the ⚙ diagnostics).</span></li>';
+    const m = String(e && e.message ? e.message : e);
+    if(/failed to fetch|networkerror|load failed/i.test(m)){
+      // Server unreachable (very often a paused free Supabase project).
+      // Show the player's own records rather than an empty panel.
+      renderLocalLeaderboard();
+      list.insertAdjacentHTML("afterbegin",
+        '<li style="list-style:none;color:#ff9db8;padding:10px;line-height:1.5;">Couldn\'t reach the online leaderboard.<br><span style="font-size:11px;color:var(--muted);">A free Supabase project pauses after about a week of inactivity — open your Supabase dashboard and click <b>Resume</b>. Showing your own records meanwhile.</span></li>');
+    } else {
+      list.innerHTML = '<li style="color:#ff9db8;padding:10px;line-height:1.5;">Couldn\'t load the leaderboard.<br><span style="font-size:11px;color:var(--muted);">'+escapeHtml(m)+'<br>If this says a table is missing, run the setup SQL (Ctrl+Shift+B → Copy the setup SQL).</span></li>';
+    }
   }
   runBackendDiagnostics();
 }
+
+/* =====================================================================
+   FULL SELF-TEST  (Ctrl+Shift+D, or the 🩺 button in the top bar)
+   Runs entirely in YOUR browser and reports the real reason each system
+   fails — 3D engine, every avatar file, and every Supabase table plus a
+   live write test. Copy the report to share it.
+===================================================================== */
+function klypDiagLine(ok, label, detail){
+  const col = ok===true ? "#2fbf6a" : ok===false ? "#ff6b8a" : "#ffd93d";
+  const icon = ok===true ? "PASS" : ok===false ? "FAIL" : "WARN";
+  return '<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06);">'+
+    '<span style="color:'+col+';font-weight:700;font-size:11px;min-width:38px;">'+icon+'</span>'+
+    '<span style="flex:1;font-size:12px;"><b>'+escapeHtml(label)+'</b>'+
+    (detail? '<br><span style="color:#9fb0da;font-size:11px;">'+escapeHtml(detail)+'</span>':'')+'</span></div>';
+}
+/* ---- Backend setup panel (Ctrl+Shift+B) ---- */
+const KLYP_SETUP_SQL = `create table if not exists messages (
+  id bigint generated by default as identity primary key,
+  channel text, author text, text text, created_at timestamptz default now());
+create table if not exists leaderboard (
+  username text primary key, level int default 1, xp int default 0,
+  updated_at timestamptz default now());
+create table if not exists presence (
+  username text primary key, last_seen timestamptz, playing text);
+create table if not exists play_events (
+  id bigint generated by default as identity primary key,
+  game_id text, game_title text, day text, created_at timestamptz default now());
+create table if not exists moderation (username text primary key, banned bool, muted bool);
+create table if not exists call_signals (
+  id bigint generated by default as identity primary key,
+  from_user text, to_user text, kind text, payload text, created_at timestamptz default now());
+
+alter table messages     enable row level security;
+alter table leaderboard  enable row level security;
+alter table presence     enable row level security;
+alter table play_events  enable row level security;
+alter table moderation   enable row level security;
+alter table call_signals enable row level security;
+create policy "public rw messages"     on messages     for all using (true) with check (true);
+create policy "public rw leaderboard"  on leaderboard  for all using (true) with check (true);
+create policy "public rw presence"     on presence     for all using (true) with check (true);
+create policy "public rw play_events"  on play_events  for all using (true) with check (true);
+create policy "public read moderation" on moderation   for select using (true);
+create policy "public rw call_signals" on call_signals for all using (true) with check (true);`;
+
+/* A free Supabase project pauses after roughly a week of inactivity, and once
+   paused its address stops resolving — every request then fails with
+   "Failed to fetch". Probe once at startup so the cause is obvious instead of
+   chat and the leaderboard just appearing broken. */
+async function checkBackendAwake(){
+  if(!SUPABASE_URL) return;
+  try{
+    await fetch(SUPABASE_URL+"/rest/v1/", {method:"GET", mode:"no-cors", cache:"no-store"});
+    window.__klypBackendAwake = true;
+  }catch(e){
+    window.__klypBackendAwake = false;
+    console.warn("[klyp] backend unreachable:", e && e.message);
+    try{ toast("⚠️ Chat/leaderboard server unreachable — if it's a free Supabase project, open the dashboard and press Resume."); }catch(_){}
+  }
+}
+window.addEventListener("load", ()=>{ setTimeout(checkBackendAwake, 2500); });
+
+function openBackendSetup(){
+  const ov = document.getElementById("backendOverlay"); if(!ov) return;
+  const cfg = klypBackendCfg();
+  const u = document.getElementById("backendUrl"), k = document.getElementById("backendKey");
+  if(u && cfg.url !== SUPABASE_URL_DEFAULT) u.value = cfg.url;
+  if(k && cfg.key !== SUPABASE_KEY_DEFAULT) k.value = cfg.key;
+  ov.classList.add("open");
+}
+async function testBackend(){
+  const res = document.getElementById("backendResult");
+  const url = (document.getElementById("backendUrl").value||"").trim().replace(/\/+$/,"");
+  const key = (document.getElementById("backendKey").value||"").trim();
+  if(!url || !key){ res.innerHTML = '<span style="color:#ffd93d;">Fill in both fields first.</span>'; return false; }
+  if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)){
+    res.innerHTML = '<span style="color:#ffd93d;">That URL looks off — it should look like <b>https://abcdefgh.supabase.co</b> with no path.</span>'; return false; }
+  res.textContent = "Testing…";
+  try{
+    const r = await fetch(url+"/rest/v1/messages?select=*&limit=1", {headers:{apikey:key, Authorization:"Bearer "+key}});
+    if(r.status === 200){ res.innerHTML = '<span style="color:#2fbf6a;">✓ Connected and the <b>messages</b> table is readable. Save &amp; reload.</span>'; return true; }
+    const body = await r.text();
+    if(r.status === 404 || /does not exist/i.test(body)){
+      res.innerHTML = '<span style="color:#ffd93d;">Connected to the project, but the tables don\'t exist yet. Click “Copy the setup SQL”, run it in Supabase → SQL Editor, then test again.</span>'; return true; }
+    if(r.status === 401 || r.status === 403){
+      res.innerHTML = '<span style="color:#ff9db8;">The key was rejected (HTTP '+r.status+'). Copy the <b>anon public</b> key from Settings → API.</span>'; return false; }
+    res.innerHTML = '<span style="color:#ff9db8;">HTTP '+r.status+' — '+escapeHtml(body.slice(0,120))+'</span>'; return false;
+  }catch(e){
+    res.innerHTML = '<span style="color:#ff9db8;">Couldn\'t reach that address at all ('+escapeHtml(String(e.message||e))+').<br>Usually this means the project URL is mistyped, or the project was paused/deleted. Check it\'s still listed in your Supabase dashboard.</span>';
+    return false;
+  }
+}
+document.addEventListener("DOMContentLoaded", ()=>{
+  const c=document.getElementById("backendClose");
+  if(c) c.addEventListener("click", ()=>document.getElementById("backendOverlay").classList.remove("open"));
+  const t=document.getElementById("backendTest"); if(t) t.addEventListener("click", testBackend);
+  const sv=document.getElementById("backendSave");
+  if(sv) sv.addEventListener("click", ()=>{
+    const url=(document.getElementById("backendUrl").value||"").trim().replace(/\/+$/,"");
+    const key=(document.getElementById("backendKey").value||"").trim();
+    if(!url||!key){ document.getElementById("backendResult").innerHTML='<span style="color:#ffd93d;">Fill in both fields first.</span>'; return; }
+    try{ localStorage.setItem("klyp:backend", JSON.stringify({url,key})); }catch(e){}
+    location.reload();
+  });
+  const sq=document.getElementById("backendSql");
+  if(sq) sq.addEventListener("click", ()=>{
+    if(navigator.clipboard) navigator.clipboard.writeText(KLYP_SETUP_SQL).then(()=>toast("Setup SQL copied — paste it into Supabase → SQL Editor")).catch(()=>toast("Couldn't copy"));
+  });
+});
+window.addEventListener("keydown", e=>{
+  if(e.ctrlKey && e.shiftKey && (e.key==="B"||e.key==="b")){ e.preventDefault(); openBackendSetup(); }
+});
+window.klypBackendSetup = openBackendSetup;
+
+function openDiagnostics(){
+  const ov = document.getElementById("diagOverlay");
+  if(!ov) return;
+  ov.classList.add("open");
+  runFullDiagnostics();
+}
+document.addEventListener("DOMContentLoaded", ()=>{
+  const cl = document.getElementById("diagClose");
+  if(cl) cl.addEventListener("click", ()=>document.getElementById("diagOverlay").classList.remove("open"));
+  const run = document.getElementById("diagRun");
+  if(run) run.addEventListener("click", runFullDiagnostics);
+  const lb = document.getElementById("openDiagFromLb");
+  if(lb) lb.addEventListener("click", ()=>{ document.getElementById("leaderboardOverlay").classList.remove("open"); openDiagnostics(); });
+  const cp = document.getElementById("diagCopy");
+  if(cp) cp.addEventListener("click", ()=>{
+    const t = window.__klypDiagText || "(run the tests first)";
+    if(navigator.clipboard) navigator.clipboard.writeText(t).then(()=>toast("Report copied")).catch(()=>toast("Couldn't copy — select the text manually"));
+    else toast("Clipboard unavailable — select the text manually");
+  });
+});
+// Ctrl+Shift+D opens diagnostics from anywhere
+window.addEventListener("keydown", e=>{
+  if(e.ctrlKey && e.shiftKey && (e.key==="D"||e.key==="d")){ e.preventDefault(); openDiagnostics(); }
+});
+window.klypDiagnostics = openDiagnostics;
+
+async function runFullDiagnostics(){
+  const box = document.getElementById("diagBody");
+  if(!box) return;
+  const plain = [];
+  const push = (ok,label,detail)=>{ box.innerHTML += klypDiagLine(ok,label,detail);
+    plain.push((ok===true?"PASS":ok===false?"FAIL":"WARN")+"  "+label+(detail?"  — "+detail:"")); };
+  box.innerHTML = "";
+
+  /* ---- 1. which build & where ---- */
+  push(null, "Build running right now", (window.KLYP_BUILD||"unknown")+
+    "   (if this isn't the file you just uploaded, your browser or GitHub is serving a cached copy — hard-refresh with Ctrl+Shift+R)");
+  push(null, "Page address", location.href);
+  if(location.protocol === "file:")
+    push(false, "Opened from disk (file://)", "3D avatars and the backend cannot work from file://. Use the GitHub Pages URL.");
+  else push(true, "Served over "+location.protocol, "");
+
+  /* ---- 2. what the network actually allows ---- */
+  async function probe(url, label){
+    try{ await fetch(url, {mode:"no-cors", cache:"no-store"}); push(true, "network: "+label, "reachable"); return true; }
+    catch(e){ push(false, "network: "+label, "BLOCKED — "+(e.message||e)); return false; }
+  }
+  const okSelf   = await probe(location.href, "your own site (GitHub Pages)");
+  const okCdnjs  = await probe("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", "cdnjs.cloudflare.com (three.js)");
+  const okJsd    = await probe("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2", "cdn.jsdelivr.net (supabase-js)");
+  const okSupa   = await probe(SUPABASE_URL+"/rest/v1/", "supabase.co (chat & leaderboard)");
+  if(okSelf && !(okCdnjs && okJsd && okSupa)){
+    push(null, "DIAGNOSIS: your network blocks third-party sites",
+      "Your own site loads fine, but the outside domains above are blocked — this is a school/work Wi-Fi filter (or an ad-blocker). "+
+      "Avatars can be fixed by putting the libraries in a local lib/ folder (see the comment block in this file). "+
+      "Chat & leaderboard need supabase.co itself, which a local file cannot work around — they will only work on an unfiltered network.");
+  }
+
+  /* ---- 3. 3D engine ---- */
+  try{ await recoverBlockedLibraries(); }catch(e){}
+  const notes = window.__klypLibNotes || [];
+  if(notes.length) push(true, "local lib/ fallback used", notes.join(", "));
+  const hasTHREE = !!window.THREE, hasGLTF = !!(window.THREE && THREE.GLTFLoader);
+  push(hasTHREE, "three.js loaded", hasTHREE ? ("version r"+(THREE.REVISION||"?")) : "CDN blocked AND no lib/three.min.js found — avatars cannot render. Add the local lib/ folder (see comment in this file).");
+  push(hasGLTF, "GLTFLoader loaded", hasGLTF ? "" : "Without this, .glb avatar files can't be parsed");
+
+  /* ---- 4. every avatar file ---- */
+  const cat = window.KLYP_AVATAR_CATALOG || [];
+  if(!cat.length) push(false, "Avatar catalog", "empty");
+  for(const av of cat){
+    const url = new URL(av.file, location.href).href;
+    try{
+      const r = await fetch(url, {cache:"no-store"});
+      if(r.status === 404){
+        push(false, "avatar: "+av.file, "404 NOT FOUND at "+url+" — the committed filename must match EXACTLY (case-sensitive on GitHub Pages)");
+      } else if(!r.ok){
+        push(false, "avatar: "+av.file, "HTTP "+r.status);
+      } else {
+        const buf = await r.arrayBuffer();
+        const head = new TextDecoder().decode(buf.slice(0,60));
+        const kb = Math.round(buf.byteLength/1024);
+        if(/^version https:\/\/git-lfs/.test(head))
+          push(false, "avatar: "+av.file, "This is a Git LFS pointer ("+kb+" KB), not the model. Remove it from Git LFS and re-commit the real file.");
+        else if(buf.byteLength < 2048)
+          push(false, "avatar: "+av.file, "Only "+kb+" KB — too small to be a real model (likely an error page or truncated upload)");
+        else if(head.slice(0,4) !== "glTF")
+          push(false, "avatar: "+av.file, kb+" KB but not a valid .glb (missing glTF header) — re-export the file");
+        else
+          push(true, "avatar: "+av.file, kb+" KB, valid .glb ✓");
+      }
+    }catch(e){ push(false, "avatar: "+av.file, "Network error: "+(e.message||e)); }
+  }
+
+  /* ---- 5. Supabase ---- */
+  push(!!window.supabase, "supabase-js library loaded", window.supabase ? "" : "CDN blocked — chat & leaderboard cannot work");
+  push(!!supabase, "Supabase client created", supabase ? "connected to "+SUPABASE_URL : "client is null (library missing or key rejected)");
+  push(null, "Backend project", SUPABASE_URL+"  (change it any time with Ctrl+Shift+B)");
+  push(null, "API key type", SUPABASE_KEY.startsWith("sb_publishable_")
+      ? "new-style publishable key. This only works if the project has the new API keys ENABLED (Dashboard → Settings → API). If chat still fails with an auth error below, paste the legacy 'anon public' key instead."
+      : SUPABASE_KEY.startsWith("eyJ") ? "legacy anon JWT key" : "unrecognised key format");
+
+  if(supabase){
+    for(const t of ["messages","leaderboard","presence","play_events","moderation"]){
+      try{
+        const { error } = await supabase.from(t).select("*",{count:"exact",head:true}).limit(1);
+        if(error){
+          const m=(error.message||"").toLowerCase();
+          const why = m.includes("does not exist") ? "TABLE MISSING — run the setup SQL (in a comment near the top of this file)"
+                    : m.includes("permission") || m.includes("rls") || m.includes("policy") ? "BLOCKED BY ROW-LEVEL SECURITY — add a public policy for this table"
+                    : m.includes("api key") || m.includes("jwt") || m.includes("unauthorized") ? "KEY REJECTED — paste the correct key from your dashboard"
+                    : error.message;
+          push(false, "table read: "+t, why);
+        } else push(true, "table read: "+t, "readable ✓");
+      }catch(e){ push(false, "table read: "+t, e.message||String(e)); }
+    }
+    // live write test — this is what actually breaks chat
+    try{
+      const probe = "__klyp_selftest_"+Date.now();
+      const { error } = await supabase.from("messages").insert({ channel:"__selftest", author:probe, text:"self-test", created_at:new Date().toISOString() });
+      if(error){
+        const m=(error.message||"").toLowerCase();
+        push(false, "CHAT WRITE TEST (this is why messages fail)",
+          m.includes("policy") || m.includes("rls") || m.includes("permission")
+            ? "Row-Level Security is blocking inserts. In Supabase → SQL Editor run:  create policy \"public rw messages\" on messages for all using (true) with check (true);"
+            : m.includes("does not exist") ? "The messages table doesn't exist — run the setup SQL."
+            : error.message);
+      } else {
+        push(true, "CHAT WRITE TEST", "a test message was inserted successfully — chat should work");
+        try{ await supabase.from("messages").delete().eq("author", probe); }catch(e){}
+      }
+    }catch(e){ push(false, "CHAT WRITE TEST", e.message||String(e)); }
+  }
+
+  window.__klypDiagText = "KLYP DIAGNOSTICS\n"+plain.join("\n");
+  box.innerHTML += '<div style="margin-top:12px;font-size:11px;color:#9fb0da;">Every FAIL above names its own fix. Use “Copy report” to send it over.</div>';
+}
+
+/* =====================================================================
+   BLOCKED-CDN FALLBACK
+   School / work Wi-Fi filters routinely block cdnjs, jsdelivr and
+   supabase.co while allowing your own GitHub Pages domain. If a CDN
+   library didn't arrive, retry the SAME file from a local "lib/" folder
+   next to this page — those requests are same-origin, so filters don't
+   block them.
+
+   To enable this, download these four files into a folder called `lib`
+   in your repo (right next to the .html), keeping these exact names:
+     lib/three.min.js       <- https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
+     lib/GLTFLoader.js      <- https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js
+     lib/supabase.js        <- https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2
+     lib/html2canvas.min.js <- https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js
+   Avatars and the page transition will then work even on a filtered
+   network. (Chat/leaderboard also need supabase.co itself to be
+   reachable — a local library can't work around that.)
+===================================================================== */
+function loadLocalScript(src){
+  return new Promise(resolve=>{
+    const s = document.createElement("script");
+    s.src = src; s.async = false;
+    s.onload = ()=>resolve(true);
+    s.onerror = ()=>resolve(false);
+    document.head.appendChild(s);
+  });
+}
+async function recoverBlockedLibraries(){
+  const notes = [];
+  if(!window.THREE){
+    if(await loadLocalScript("lib/three.min.js")) notes.push("three.js loaded locally");
+  }
+  if(window.THREE && !THREE.GLTFLoader){
+    if(await loadLocalScript("lib/GLTFLoader.js")) notes.push("GLTFLoader loaded locally");
+  }
+  if(!window.supabase){
+    if(await loadLocalScript("lib/supabase.js")) notes.push("supabase-js loaded locally");
+  }
+  if(typeof html2canvas === "undefined"){
+    await loadLocalScript("lib/html2canvas.min.js");
+  }
+  // now that THREE may exist, re-init anything that needs it
+  if(window.supabase && !window.__klypSupabase){
+    try{
+      const cl = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      window.__klypSupabase = cl; supabase = cl;
+      notes.push("backend client created");
+    }catch(e){}
+  }
+  if(notes.length) console.log("[klyp] recovered from blocked CDN:", notes.join(", "));
+  window.__klypLibNotes = notes;
+  return notes;
+}
+window.addEventListener("load", ()=>{ setTimeout(recoverBlockedLibraries, 1200); });
 
 /* Quick check of which backend tables actually exist / are readable.
    This turns silent "nothing happens" failures into a clear list. */
@@ -8405,14 +8814,22 @@ async function runBackendDiagnostics(){
   el.innerHTML = 'Checking backend…';
   const tables = ["messages","leaderboard","presence","play_events","moderation"];
   const out = [];
+  let networkBlocked = false;
   for(const t of tables){
     try{ const { error } = await supabase.from(t).select("*",{count:"exact",head:true}).limit(1);
-      out.push((error? "❌ "+t+" — "+(error.message||"error") : "✅ "+t)); }
-    catch(e){ out.push("❌ "+t+" — "+(e.message||e)); }
+      if(error && /failed to fetch|networkerror|load failed/i.test(error.message||"")){ networkBlocked = true; out.push("❌ "+t+" — network blocked"); }
+      else out.push((error? "❌ "+t+" — "+(error.message||"error") : "✅ "+t)); }
+    catch(e){ const m=String(e&&e.message||e);
+      if(/failed to fetch|networkerror|load failed/i.test(m)) networkBlocked = true;
+      out.push("❌ "+t+" — "+m); }
   }
   const anyMissing = out.some(l=>l.startsWith("❌"));
   el.innerHTML = out.map(l=>'<div style="font-size:11px;">'+escapeHtml(l)+'</div>').join("") +
-    (anyMissing? '<div style="margin-top:6px;font-size:11px;color:#ffd93d;">Missing/blocked tables above must exist with public read/insert policies. See the pinned setup SQL in the code comments.</div>' : '<div style="margin-top:6px;font-size:11px;color:#2fbf6a;">All backend tables reachable ✓</div>');
+    (networkBlocked
+      ? '<div style="margin-top:8px;font-size:11px;color:#ff9db8;line-height:1.6;"><b>This is NOT a missing-table problem.</b> “Failed to fetch” means the request never reached the server. Most likely <b>your Supabase project is paused</b> — free projects pause after ~1 week idle and the address stops resolving. Open your Supabase dashboard and press <b>Resume</b>. If it is already running, a network filter or ad-blocker is blocking supabase.co. Creating tables will not help either way.</div>'
+      : anyMissing
+        ? '<div style="margin-top:6px;font-size:11px;color:#ffd93d;">Missing/blocked tables above must exist with public read/insert policies. See the pinned setup SQL in the code comments.</div>'
+        : '<div style="margin-top:6px;font-size:11px;color:#2fbf6a;">All backend tables reachable ✓</div>');
 }
 
 /* ===================== OTHER PLAYERS' PROFILE PAGE ===================== */
@@ -9113,7 +9530,13 @@ document.getElementById("messagingForm").addEventListener("submit", async e=>{
     profile.messagesSent = (profile.messagesSent||0)+1;
     try{ await saveProfile(); }catch(e){}
     loadMessages();
-  }catch(err){ console.error("chat send failed:", err); toast("Message didn't send: "+(err.message||err)); }
+  }catch(err){
+    console.error("chat send failed:", err);
+    const m = String(err && err.message || err);
+    if(/failed to fetch|networkerror|load failed/i.test(m))
+      toast("Can't reach the chat server. A free Supabase project pauses after ~7 days idle — open your dashboard and hit Resume.");
+    else toast("Message didn't send: "+m);
+  }
 });
 
 document.getElementById("addContactBtn").addEventListener("click", async ()=>{
