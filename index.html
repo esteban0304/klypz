@@ -15,6 +15,7 @@
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://www.youtube.com">
 <link rel="preconnect" href="https://i.ytimg.com">
@@ -8144,7 +8145,7 @@ window.ENGINES = ENGINES;
 /* Bump this whenever the file is rebuilt. The Diagnostics panel shows it, so
    you can instantly tell whether GitHub Pages is serving the newest upload or
    a cached older one. */
-const KLYP_BUILD = "2026-07-22 · build 13 (shop + thread fix)";
+const KLYP_BUILD = "2026-07-22 · build 14 (draco + username + avatar clarity)";
 window.KLYP_BUILD = KLYP_BUILD;
 
 /* =====================================================================
@@ -8729,6 +8730,7 @@ async function runFullDiagnostics(){
   const okSelf   = await probe(location.href, "your own site (GitHub Pages)");
   const okCdnjs  = await probe("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", "cdnjs.cloudflare.com (three.js)");
   const okJsd    = await probe("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2", "cdn.jsdelivr.net (supabase-js)");
+  await probe("https://www.gstatic.com/draco/versioned/decoders/1.5.6/draco_decoder.js", "gstatic.com (Draco decoder for avatars)");
   const okSupa   = await probe(SUPABASE_URL+"/rest/v1/", "supabase.co (chat & leaderboard)");
   const thirdPartyOK = (okCdnjs?1:0) + (okJsd?1:0);
   if(okSelf && thirdPartyOK === 0 && !okSupa){
@@ -8799,7 +8801,7 @@ async function runFullDiagnostics(){
     // live write test — this is what actually breaks chat
     try{
       const probe = "__klyp_selftest_"+Date.now();
-      const { error } = await supabase.from("messages").insert({ channel:"__selftest", thread:"__selftest", author:probe, text:"self-test", created_at:new Date().toISOString() });
+      const { error } = await supabase.from("messages").insert({ channel:"__selftest", thread:"__selftest", author:probe, username:probe, text:"self-test", created_at:new Date().toISOString() });
       if(error){
         const m=(error.message||"").toLowerCase();
         push(false, "CHAT WRITE TEST (this is why messages fail)",
@@ -9468,7 +9470,7 @@ async function adminAction(kind){
     }
     if(kind==="broadcast"){
       const msg = prompt("Message to broadcast to everyone online:");
-      if(msg) await supabase.from("messages").insert({ channel:"public", thread:"public", author:"📢 ADMIN", text: msg, created_at: new Date().toISOString() });
+      if(msg) await supabase.from("messages").insert({ channel:"public", thread:"public", author:"📢 ADMIN", username:"📢 ADMIN", text: msg, created_at: new Date().toISOString() });
     }
     if(kind==="stats"){
       const { count: users } = await supabase.from("users").select("*",{count:"exact",head:true});
@@ -9592,7 +9594,7 @@ document.getElementById("messagingForm").addEventListener("submit", async e=>{
     try{ const res = await supabase.from("moderation").select("*").eq("username", profile.username).maybeSingle(); mod=res.data; }catch(e){}
     if(mod && mod.banned){ toast("Your account is banned from chat."); return; }
     if(mod && mod.muted){ toast("You're currently muted."); return; }
-    const { error } = await supabase.from("messages").insert({ channel: currentChannel, thread: currentChannel, author: profile.username, text: text, created_at: new Date().toISOString() });
+    const { error } = await supabase.from("messages").insert({ channel: currentChannel, thread: currentChannel, author: profile.username, username: profile.username, text: text, created_at: new Date().toISOString() });
     if(error){ console.error("chat insert error:", error); toast("Couldn't send: "+(error.message||error.hint||"database rejected it")); return; }
     input.value = "";
     profile.messagesSent = (profile.messagesSent||0)+1;
@@ -10304,7 +10306,17 @@ window.loadAvaturnIntoScene = function(container, glbUrl, opts){
   let disposed = false, raf = null, mixer = null, userDragged = false;
   const clock = new THREE.Clock();
 
-  new THREE.GLTFLoader().load(glbUrl,
+  const __loader = new THREE.GLTFLoader();
+  // Many modern .glb exports use Draco mesh compression. Without a decoder the
+  // loader throws "couldn't be parsed" on otherwise-valid files. Attach one.
+  try{
+    if(THREE.DRACOLoader){
+      const draco = new THREE.DRACOLoader();
+      draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
+      __loader.setDRACOLoader(draco);
+    }
+  }catch(e){ console.warn("Draco setup skipped:", e); }
+  __loader.load(glbUrl,
     gltf=>{
       if(disposed) return;
       const model = gltf.scene || gltf.scenes[0];
@@ -10334,13 +10346,10 @@ window.loadAvaturnIntoScene = function(container, glbUrl, opts){
       // If this model is broken, try the next avatar that actually works so the
       // user is never left staring at an empty stage.
       const tryFallback = ()=>{
-        if(opts && opts.__noFallback) return false;
-        const cat = window.KLYP_AVATAR_CATALOG || [];
-        const alt = cat.find(a=>a.file !== glbUrl && a.file !== (glbUrl||"").replace(location.origin+"/",""));
-        if(!alt) return false;
-        console.warn("[klyp] falling back to avatar:", alt.file);
-        window.loadAvaturnIntoScene(container, alt.file, Object.assign({}, opts, {__noFallback:true}));
-        return true;
+        // Do NOT silently load a different avatar's model here — that made
+        // several broken avatars all render as the same character. Show the
+        // real error for this specific file instead.
+        return false;
       };
       if(location.protocol === "file:"){
         showMsg("Blocked by the browser","This page was opened from disk (file://). 3D models only load from a server — use VS Code Live Server or <code>python -m http.server</code>.");
@@ -10360,7 +10369,7 @@ window.loadAvaturnIntoScene = function(container, glbUrl, opts){
               if(len === 0 || head.length === 0){
                 if(!tryFallback()) showMsg("That avatar file is empty (0 KB)","<b>"+glbUrl+"</b> uploaded as a 0-byte file. Delete it and re-upload the real model.");
               } else if(!tryFallback()){
-                showMsg("File loaded but couldn't be parsed","The .glb may be corrupted or truncated (GitHub warns above 50 MB, blocks 100 MB+). Re-export / re-upload it.");
+                showMsg("This model can't be displayed","The .glb uses a feature this viewer can't read (often Draco/Meshopt compression or a newer glTF extension). Re-export it from Blender as glTF <b>without</b> Draco compression, or with lower complexity.");
               }
             } else {
               showMsg("Couldn't load (HTTP "+r.status+")","Check that <b>"+glbUrl+"</b> is committed to the repo at this exact path, next to the page.");
