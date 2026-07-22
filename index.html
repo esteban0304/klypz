@@ -1346,6 +1346,7 @@ html[data-theme="light"] .hero{
       <li data-cat="puzzle">🧩 Puzzle</li>
       <li data-cat="arcade">👾 Arcade</li>
       <li data-cat="strategy">♟ Strategy</li>
+      <li data-cat="rpg">🗡 RPG</li>
     </ul>
     <p class="sidebar__label">Library</p>
     <ul class="sidebar__list">
@@ -7860,6 +7861,27 @@ const ENGINES = {
     return ()=>{cancelAnimationFrame(raf);window.removeEventListener("keydown",kd);};
   },
   /* ================= BEATBLADE — FNF-style rhythm game with synced music (D/F/J/K) ================= */
+  /* ============ VOXEL WORLD — full Minecraft-style survival (loads from voxel-world.html next to this page) ============ */
+  voxelworld(stage){
+    const wrap=document.createElement("div"); wrap.style.cssText="width:100%;height:100%;min-height:520px;position:relative;background:#0a1020;display:flex;flex-direction:column;"; stage.appendChild(wrap);
+    // The voxel game is a large standalone build; it lives in its own file so it
+    // keeps its pointer-lock, crafting UI and chunk streaming intact. Load it in
+    // an iframe from the same folder as this page.
+    const url = new URL("voxel-world.html", location.href).href;
+    const frame=document.createElement("iframe"); frame.src=url;
+    frame.style.cssText="flex:1;width:100%;height:100%;border:none;display:block;background:#8fc6ee;"; frame.allow="fullscreen; pointer-lock; autoplay";
+    frame.setAttribute("allowfullscreen","");
+    let failed=false;
+    const errBox=document.createElement("div"); errBox.style.cssText="display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;padding:30px;color:#e7ecfb;font-family:Inter,sans-serif;flex-direction:column;gap:10px;background:#0a1020;";
+    errBox.innerHTML='<div style="font-size:40px;">🧊</div><div style="font-size:18px;font-weight:700;">Voxel World needs its game file</div>'+
+      '<div style="font-size:13px;color:#9fb0da;max-width:360px;line-height:1.6;">Upload <b>voxel-world.html</b> into the same folder as this page (next to index.html) on GitHub, then reopen this game. It\'s a big standalone world, so it ships as its own file.</div>';
+    frame.addEventListener("error",()=>{ failed=true; frame.style.display="none"; errBox.style.display="flex"; });
+    // If the file 404s, the iframe still "loads" an error page; probe with fetch to detect that.
+    fetch(url,{method:"HEAD"}).then(r=>{ if(!r.ok){ frame.style.display="none"; errBox.style.display="flex"; } }).catch(()=>{});
+    wrap.appendChild(frame); wrap.appendChild(errBox);
+    return ()=>{ try{ frame.src="about:blank"; }catch(e){} wrap.remove(); };
+  },
+
   beatblade(stage){
     const W=560,H=560;
     const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c);
@@ -8679,6 +8701,1034 @@ const ENGINES = {
     reset(); c.addEventListener("mousemove",mm); c.addEventListener("click",click); loop();
     return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("mousemove",mm); c.removeEventListener("click",click); };
   },
+  /* ============ 1. DUNGEONDIVE — roguelike with persistent gold & upgrades ============ */
+  dungeondive(stage){
+    const W=560,H=520,TS=40,GW=13,GH=11; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP; const keys={};
+    let save=K?K.load("dungeondive",{gold:0,hpLvl:0,atkLvl:0,depth:0}):{gold:0,hpLvl:0,atkLvl:0,depth:0};
+    let map,px,py,enemies,items,hp,maxHp,atk,depth,over,msg,msgT,gold,inShop,coins;
+    function persist(){ if(K)K.save("dungeondive",save); }
+    function start(){ maxHp=20+save.hpLvl*8; atk=4+save.atkLvl*2; hp=maxHp; depth=1; gold=0; over=false; inShop=false; gen(); }
+    function gen(){ map=Array.from({length:GH},()=>Array.from({length:GW},()=>Math.random()<0.18?1:0)); for(let i=0;i<GW;i++){map[0][i]=1;map[GH-1][i]=1;} for(let i=0;i<GH;i++){map[i][0]=1;map[i][GW-1]=1;}
+      px=1;py=1;map[1][1]=0; enemies=[]; items=[]; const n=2+depth; for(let i=0;i<n;i++){ let x,y;do{x=Math.random()*GW|0;y=Math.random()*GH|0;}while(map[y][x]||(x<3&&y<3)); enemies.push({x,y,hp:6+depth*2,atk:2+depth}); }
+      for(let i=0;i<2;i++){ let x,y;do{x=Math.random()*GW|0;y=Math.random()*GH|0;}while(map[y][x]);items.push({x,y,type:Math.random()<0.5?"potion":"gold"});}
+      let x,y;do{x=Math.random()*GW|0;y=Math.random()*GH|0;}while(map[y][x]||(x<3&&y<3)); items.push({x,y,type:"stairs"}); }
+    function move(dx,dy){ if(over){ if(save.gold>0||true){start();} return; } if(inShop)return; const nx=px+dx,ny=py+dy; if(nx<0||ny<0||nx>=GW||ny>=GH||map[ny][nx])return;
+      const en=enemies.find(e=>e.x===nx&&e.y===ny); if(en){ en.hp-=atk; flash("You hit for "+atk); if(en.hp<=0){ enemies=enemies.filter(e=>e!==en); gold+=5+depth; flash("Enemy slain! +"+(5+depth)+"g"); } else { hp-=en.atk; if(hp<=0)die(); } return; }
+      px=nx;py=ny; const it=items.find(i=>i.x===px&&i.y===py); if(it){ if(it.type==="potion"){hp=Math.min(maxHp,hp+10);flash("+10 HP");} else if(it.type==="gold"){gold+=15;flash("+15 gold");} else if(it.type==="stairs"){depth++;flash("Descend to depth "+depth);save.depth=Math.max(save.depth,depth);gen();return;} items=items.filter(i=>i!==it); }
+      // enemies act
+      enemies.forEach(e=>{ const d=Math.abs(e.x-px)+Math.abs(e.y-py); if(d===1){hp-=e.atk;if(hp<=0)die();} else if(d<5){ const sx=Math.sign(px-e.x),sy=Math.sign(py-e.y); if(Math.random()<0.5&&!map[e.y][e.x+sx]&&!enemies.find(o=>o.x===e.x+sx&&o.y===e.y))e.x+=sx; else if(!map[e.y+sy]||!map[e.y+sy][e.x]){if(!enemies.find(o=>o.x===e.x&&o.y===e.y+sy))e.y+=sy;} } }); }
+    function die(){ over=true; save.gold+=gold; persist(); flash("You died at depth "+depth); }
+    function flash(m){ msg=m; msgT=90; }
+    function buy(what){ if(what==="hp"&&save.gold>=50){save.gold-=50;save.hpLvl++;persist();} if(what==="atk"&&save.gold>=60){save.gold-=60;save.atkLvl++;persist();} }
+    function kd(e){ const k=e.key.toLowerCase();
+      if(over){ if(k==="s")inShop=!inShop; if(inShop){ if(k==="1")buy("hp"); if(k==="2")buy("atk"); } if(k===" "||k==="enter")start(); return; }
+      if(k==="arrowleft"||k==="a")move(-1,0); else if(k==="arrowright"||k==="d")move(1,0); else if(k==="arrowup"||k==="w")move(0,-1); else if(k==="arrowdown"||k==="s")move(0,1); if(e.key.startsWith("Arrow"))e.preventDefault(); }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop); if(msgT>0)msgT--;
+      ctx.fillStyle="#0a0a12"; ctx.fillRect(0,0,W,H);
+      for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){ const X=x*TS+20,Y=y*TS+20; if(map[y][x]){ctx.fillStyle="#2a2438";ctx.fillRect(X,Y,TS-2,TS-2);ctx.fillStyle="#1a1626";ctx.fillRect(X,Y,TS-2,4);}else{ctx.fillStyle="#14141f";ctx.fillRect(X,Y,TS-2,TS-2);} }
+      items.forEach(it=>{ const X=it.x*TS+20,Y=it.y*TS+20; ctx.font="24px serif"; ctx.textAlign="center"; ctx.fillText(it.type==="potion"?"🧪":it.type==="gold"?"💰":"🔽",X+TS/2,Y+TS/2+8); ctx.textAlign="left"; });
+      enemies.forEach(e=>{ const X=e.x*TS+20,Y=e.y*TS+20; ctx.font="24px serif"; ctx.textAlign="center"; ctx.fillText("👹",X+TS/2,Y+TS/2+8); ctx.fillStyle="#ff3d77"; ctx.fillRect(X+4,Y+TS-8,(TS-10)*(e.hp/(6+depth*2)),3); ctx.textAlign="left"; });
+      ctx.font="26px serif"; ctx.textAlign="center"; ctx.fillText("🧝",px*TS+20+TS/2,py*TS+20+TS/2+9); ctx.textAlign="left";
+      // HUD
+      ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillRect(0,H-40,W,40);
+      ctx.fillStyle="#ff3d77"; ctx.fillRect(14,H-28,120*(hp/maxHp),12); ctx.strokeStyle="#555"; ctx.strokeRect(14,H-28,120,12);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 13px Rajdhani"; ctx.fillText("HP "+Math.max(0,hp)+"/"+maxHp+"   ⚔"+atk+"   Depth "+depth+"   💰"+gold+"  (bank "+save.gold+")",145,H-18);
+      if(msgT>0){ ctx.fillStyle="#ffd93d"; ctx.font="600 13px Inter"; ctx.textAlign="center"; ctx.fillText(msg,W/2,16); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.85)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center";
+        ctx.fillStyle="#ff3d77"; ctx.font="700 28px Rajdhani"; ctx.fillText("YOU DIED",W/2,120); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Reached depth "+depth+" · banked "+gold+"g (total "+save.gold+")",W/2,150);
+        if(!inShop){ ctx.fillStyle="#ffd93d"; ctx.font="700 16px Rajdhani"; ctx.fillText("[S] Upgrade Shop     [SPACE] Dive again",W/2,200); }
+        else { ctx.fillStyle="#00e0ff"; ctx.font="700 18px Rajdhani"; ctx.fillText("UPGRADE SHOP · you have "+save.gold+"g",W/2,190);
+          ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("[1] +8 Max HP  (50g)   ·   current HP Lv "+save.hpLvl,W/2,230);
+          ctx.fillText("[2] +2 Attack  (60g)   ·   current ATK Lv "+save.atkLvl,W/2,258);
+          ctx.fillStyle="#9fb0da"; ctx.fillText("[S] back    [SPACE] dive again",W/2,300); }
+        ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); loop(); return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); persist(); };
+  },
+
+  /* ============ 2. TOWERDEFENSE — waves, tower upgrades, persistent stars ============ */
+  towerdef(stage){
+    const W=560,H=520,TS=40; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    const PATH=[[0,3],[4,3],[4,7],[9,7],[9,2],[13,2]].map(([x,y])=>[x*TS,y*TS+TS/2]);
+    let save=K?K.load("towerdef",{stars:0,dmgLvl:0}):{stars:0,dmgLvl:0};
+    let towers,enemies,bullets,money,lives,wave,over,spawnT,toSpawn,building,win;
+    function pathPts(){ const pts=[]; for(let i=0;i<PATH.length-1;i++){ const [x1,y1]=PATH[i],[x2,y2]=PATH[i+1]; const steps=Math.hypot(x2-x1,y2-y1)/2; for(let s=0;s<steps;s++)pts.push([x1+(x2-x1)*s/steps,y1+(y2-y1)*s/steps]); } return pts; }
+    const PATHPTS=pathPts();
+    function start(){ towers=[]; enemies=[]; bullets=[]; money=120; lives=20; wave=0; over=false; win=false; building=true; nextWave(); }
+    function nextWave(){ wave++; toSpawn=5+wave*2; spawnT=0; }
+    function onPath(x,y){ return PATHPTS.some(p=>Math.hypot(p[0]-x,p[1]-y)<28); }
+    function click(e){ const r=c.getBoundingClientRect(); const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+      if(over){ start(); return; }
+      const gx=Math.floor(mx/TS)*TS+TS/2,gy=Math.floor(my/TS)*TS+TS/2;
+      // upgrade existing?
+      const ex=towers.find(t=>Math.hypot(t.x-mx,t.y-my)<20); if(ex){ if(money>=50){money-=50;ex.lvl++;ex.range+=15;ex.dmg+=4;} return; }
+      if(onPath(gx,gy)||my>H-40)return; if(money>=40){ money-=40; towers.push({x:gx,y:gy,range:80,dmg:6+save.dmgLvl*2,cd:0,lvl:1}); } }
+    let raf; function loop(){ raf=requestAnimationFrame(loop);
+      if(!over){ // spawn
+        if(toSpawn>0){ spawnT--; if(spawnT<=0){ spawnT=40; toSpawn--; enemies.push({t:0,hp:8+wave*4,max:8+wave*4,spd:0.4+wave*0.03,slow:0}); } }
+        enemies.forEach(en=>{ en.t+=en.spd*(en.slow>0?0.5:1); if(en.slow>0)en.slow--; const i=Math.min(PATHPTS.length-1,Math.floor(en.t)); en.x=PATHPTS[i][0]; en.y=PATHPTS[i][1]; if(en.t>=PATHPTS.length-1){en.done=true;lives--;if(lives<=0)over=true;} });
+        enemies=enemies.filter(e=>!e.done&&e.hp>0);
+        towers.forEach(t=>{ t.cd--; if(t.cd<=0){ const tgt=enemies.find(e=>Math.hypot(e.x-t.x,e.y-t.y)<t.range); if(tgt){ bullets.push({x:t.x,y:t.y,tgt,dmg:t.dmg}); t.cd=30; } } });
+        bullets.forEach(b=>{ if(!b.tgt||b.tgt.hp<=0){b.dead=true;return;} const dx=b.tgt.x-b.x,dy=b.tgt.y-b.y,d=Math.hypot(dx,dy); if(d<8){b.tgt.hp-=b.dmg;if(b.tgt.hp<=0){money+=5;}b.dead=true;}else{b.x+=dx/d*7;b.y+=dy/d*7;} });
+        bullets=bullets.filter(b=>!b.dead);
+        if(toSpawn<=0&&!enemies.length){ if(wave>=10){ win=true; over=true; save.stars+=3; if(K)K.save("towerdef",save); } else { money+=30+wave*5; nextWave(); } }
+      }
+      ctx.fillStyle="#132a1a"; ctx.fillRect(0,0,W,H);
+      // path
+      ctx.strokeStyle="#3a2a1a"; ctx.lineWidth=30; ctx.lineJoin="round"; ctx.beginPath(); PATH.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.stroke(); ctx.lineWidth=1;
+      towers.forEach(t=>{ ctx.fillStyle="#00e0ff"; ctx.beginPath(); ctx.arc(t.x,t.y,14,0,7); ctx.fill(); ctx.fillStyle="#04070f"; ctx.font="700 11px Rajdhani"; ctx.textAlign="center"; ctx.fillText(t.lvl,t.x,t.y+4); ctx.textAlign="left"; });
+      enemies.forEach(en=>{ ctx.fillStyle="#ff3d77"; ctx.beginPath(); ctx.arc(en.x,en.y,11,0,7); ctx.fill(); ctx.fillStyle="#000"; ctx.fillRect(en.x-10,en.y-16,20,3); ctx.fillStyle="#2fbf6a"; ctx.fillRect(en.x-10,en.y-16,20*(en.hp/en.max),3); });
+      bullets.forEach(b=>{ ctx.fillStyle="#ffd93d"; ctx.beginPath(); ctx.arc(b.x,b.y,4,0,7); ctx.fill(); });
+      ctx.fillStyle="rgba(0,0,0,.55)"; ctx.fillRect(0,H-40,W,40); ctx.fillStyle="#e7ecfb"; ctx.font="700 14px Rajdhani"; ctx.fillText("💰"+money+"   ❤"+lives+"   Wave "+wave+"/10   ⭐"+save.stars,12,H-16);
+      ctx.fillStyle="#9fb0da"; ctx.font="500 11px Inter"; ctx.textAlign="right"; ctx.fillText("Click empty tile: build (40) · click tower: upgrade (50)",W-10,H-16); ctx.textAlign="left";
+      if(over){ ctx.fillStyle="rgba(4,7,15,.85)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle=win?"#2fbf6a":"#ff3d77"; ctx.font="700 28px Rajdhani"; ctx.fillText(win?"VICTORY! +3⭐":"OVERRUN",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Reached wave "+wave+" — click to play again",W/2,H/2+16); ctx.textAlign="left"; } }
+    start(); c.addEventListener("click",click); loop(); return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("click",click); if(K)K.save("towerdef",save); };
+  },
+
+  /* ============ 3. RPGQUEST — turn-based battler with XP levels ============ */
+  rpgquest(stage){
+    const W=520,H=480; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("rpgquest",{lvl:1,xp:0,wins:0}):{lvl:1,xp:0,wins:0};
+    let hp,maxHp,mp,enemy,ehp,emax,log,turn,over,win,sel,anim;
+    function pstats(){ maxHp=30+save.lvl*10; return {atk:6+save.lvl*3,def:save.lvl*2}; }
+    function start(){ const ps=pstats(); hp=maxHp; mp=10+save.lvl*2; const tier=save.lvl; enemy={name:["Slime","Goblin","Orc","Wraith","Dragon"][Math.min(4,tier-1)]||"Beast",atk:5+tier*3}; emax=20+tier*12; ehp=emax; log=["A wild "+enemy.name+" appears!"]; turn="player"; over=false; win=false; sel=0; anim=0; }
+    function addLog(m){ log.push(m); if(log.length>4)log.shift(); }
+    function playerAct(a){ if(turn!=="player"||over)return; const ps=pstats();
+      if(a==="attack"){ const dmg=ps.atk+Math.floor(Math.random()*5); ehp-=dmg; addLog("You strike for "+dmg+"!"); anim=10; }
+      else if(a==="magic"){ if(mp<5){addLog("Not enough MP!");return;} mp-=5; const dmg=ps.atk*2; ehp-=dmg; addLog("🔥 Fireball hits for "+dmg+"!"); anim=10; }
+      else if(a==="heal"){ if(mp<4){addLog("Not enough MP!");return;} mp-=4; const h=15+save.lvl*3; hp=Math.min(maxHp,hp+h); addLog("💚 Healed "+h+" HP"); }
+      if(ehp<=0){ win=true; over=true; const xp=enemy.name==="Dragon"?50:15+save.lvl*5; save.xp+=xp; save.wins++; addLog("Victory! +"+xp+" XP"); while(save.xp>=save.lvl*50){save.xp-=save.lvl*50;save.lvl++;addLog("⬆ LEVEL UP! Now "+save.lvl);} if(K)K.save("rpgquest",save); return; }
+      turn="enemy"; setTimeout(()=>{ if(over)return; const dmg=Math.max(1,enemy.atk-pstats().def+Math.floor(Math.random()*4)); hp-=dmg; addLog(enemy.name+" hits for "+dmg); if(hp<=0){over=true;win=false;addLog("You were defeated...");if(K)K.save("rpgquest",save);} turn="player"; },600); }
+    function kd(e){ const k=e.key.toLowerCase(); if(over){ if(k===" "||k==="enter")start(); return; }
+      const acts=["attack","magic","heal"]; if(k==="arrowup"||k==="w")sel=(sel+2)%3; if(k==="arrowdown"||k==="s")sel=(sel+1)%3; if(k==="enter"||k===" ")playerAct(acts[sel]);
+      if(k==="1")playerAct("attack"); if(k==="2")playerAct("magic"); if(k==="3")playerAct("heal"); if(e.key.startsWith("Arrow"))e.preventDefault(); }
+    function click(e){ if(over){start();return;} const r=c.getBoundingClientRect(); const my=(e.clientY-r.top)*(H/r.height); const acts=["attack","magic","heal"]; const i=Math.floor((my-360)/38); if(i>=0&&i<3){sel=i;playerAct(acts[i]);} }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop); if(anim>0)anim--;
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#2a1a3e"); g.addColorStop(1,"#0e0a1a"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      // enemy
+      ctx.font="70px serif"; ctx.textAlign="center"; const shake=anim>0?Math.sin(anim)*4:0; ctx.fillText(["🟢","👺","👹","👻","🐉"][Math.min(4,save.lvl-1)]||"👾",W/2+shake,130);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 18px Rajdhani"; ctx.fillText(enemy.name,W/2,165);
+      ctx.fillStyle="#000"; ctx.fillRect(W/2-90,175,180,12); ctx.fillStyle="#ff3d77"; ctx.fillRect(W/2-90,175,180*Math.max(0,ehp/emax),12); ctx.strokeStyle="#555"; ctx.strokeRect(W/2-90,175,180,12); ctx.textAlign="left";
+      // player stats
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 15px Rajdhani"; ctx.fillText("Hero Lv "+save.lvl,20,230); ctx.fillStyle="#000"; ctx.fillRect(20,238,180,14); ctx.fillStyle="#2fbf6a"; ctx.fillRect(20,238,180*Math.max(0,hp/maxHp),14); ctx.strokeStyle="#555"; ctx.strokeRect(20,238,180,14); ctx.fillStyle="#e7ecfb"; ctx.font="600 11px Inter"; ctx.fillText("HP "+Math.max(0,hp)+"/"+maxHp,24,249);
+      ctx.fillStyle="#000"; ctx.fillRect(20,258,180,10); ctx.fillStyle="#2f7bff"; ctx.fillRect(20,258,180*(mp/(10+save.lvl*2)),10); ctx.fillStyle="#e7ecfb"; ctx.fillText("MP "+mp,24,267);
+      ctx.fillStyle="#8ea0c8"; ctx.font="500 11px Inter"; ctx.fillText("XP "+save.xp+"/"+(save.lvl*50)+"  ·  Wins "+save.wins,20,285);
+      // log
+      ctx.fillStyle="rgba(0,0,0,.4)"; ctx.fillRect(20,300,W-40,50); ctx.fillStyle="#cfd8e8"; ctx.font="500 12px Inter"; log.forEach((l,i)=>ctx.fillText(l,28,318+i*12));
+      // menu
+      const acts=[["⚔ Attack","#ff3d77"],["🔥 Magic (5MP)","#ff8a3d"],["💚 Heal (4MP)","#2fbf6a"]];
+      acts.forEach((a,i)=>{ const y=360+i*38; ctx.fillStyle=sel===i&&!over?"#1e3560":"#141d33"; ctx.fillRect(20,y,W-40,32); ctx.fillStyle=a[1]; ctx.font="700 15px Rajdhani"; ctx.fillText(a[0],32,y+21); if(sel===i&&!over){ctx.fillStyle="#00e0ff";ctx.fillText("▶",W-44,y+21);} });
+      if(over){ ctx.fillStyle="rgba(4,7,15,.85)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle=win?"#2fbf6a":"#ff3d77"; ctx.font="700 28px Rajdhani"; ctx.fillText(win?"VICTORY!":"DEFEATED",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Hero Lv "+save.lvl+" · "+save.wins+" wins — SPACE for next battle",W/2,H/2+18); ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); c.addEventListener("click",click); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); c.removeEventListener("click",click); if(K)K.save("rpgquest",save); };
+  },
+
+  /* ============ 4. SPACETRADER — economy sim with ship upgrades ============ */
+  spacetrader(stage){
+    const W=540,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    const GOODS=["Ore","Fuel","Food","Tech"]; const PLANETS=["Terra","Mars","Ceres","Europa"];
+    let save=K?K.load("spacetrader",{credits:500,cargo:10,best:0}):{credits:500,cargo:10,best:0};
+    let credits,hold,prices,planet,day,over,sel,msg,msgT;
+    function start(){ credits=save.credits; hold={Ore:0,Fuel:0,Food:0,Tech:0}; planet=0; day=1; over=false; sel=0; roll(); }
+    function roll(){ prices=PLANETS.map(()=>GOODS.map(()=>20+Math.floor(Math.random()*80))); }
+    function held(){ return Object.values(hold).reduce((a,b)=>a+b,0); }
+    function flash(m){msg=m;msgT=80;}
+    function buy(g){ const p=prices[planet][g]; if(credits>=p&&held()<save.cargo){credits-=p;hold[GOODS[g]]++;flash("Bought "+GOODS[g]);} else flash(held()>=save.cargo?"Hold full!":"Too poor"); }
+    function sell(g){ if(hold[GOODS[g]]>0){credits+=prices[planet][g];hold[GOODS[g]]--;flash("Sold "+GOODS[g]);} }
+    function travel(p){ if(p===planet)return; planet=p; day++; roll(); flash("Traveled to "+PLANETS[p]); if(day>20){ over=true; save.credits=credits; save.best=Math.max(save.best,credits); if(credits>=1000){save.cargo+=5;} if(K)K.save("spacetrader",save); } }
+    function click(e){ const r=c.getBoundingClientRect(); const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+      if(over){start();return;}
+      // planets row
+      if(my<70){ const p=Math.floor(mx/(W/4)); travel(p); return; }
+      // goods rows: buy/sell buttons
+      const i=Math.floor((my-120)/70); if(i>=0&&i<4){ if(mx>W-180&&mx<W-100)buy(i); else if(mx>W-90&&mx<W-10)sell(i); } }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop); if(msgT>0)msgT--;
+      ctx.fillStyle="#0a0a1e"; ctx.fillRect(0,0,W,H);
+      for(let i=0;i<40;i++){ ctx.fillStyle="rgba(255,255,255,"+(0.1+Math.random()*0.1)+")"; ctx.fillRect((i*97)%W,(i*61)%H,1,1); }
+      // planets
+      PLANETS.forEach((p,i)=>{ ctx.fillStyle=i===planet?"#1e3560":"#141d33"; ctx.fillRect(i*(W/4)+4,8,W/4-8,54); ctx.fillStyle=i===planet?"#00e0ff":"#8ea0c8"; ctx.font="700 15px Rajdhani"; ctx.textAlign="center"; ctx.fillText(["🌍","🔴","🪨","🧊"][i]+" "+p,i*(W/4)+W/8,32); if(i===planet){ctx.font="500 10px Inter";ctx.fillText("● here",i*(W/4)+W/8,48);} ctx.textAlign="left"; });
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 15px Rajdhani"; ctx.fillText("💳 "+credits+"c    📦 "+held()+"/"+save.cargo+"    Day "+day+"/20",14,90);
+      ctx.fillStyle="#9fb0da"; ctx.font="500 11px Inter"; ctx.fillText("Buy low here, travel, sell high. Reach 1000c to upgrade your hold.",14,108);
+      GOODS.forEach((g,i)=>{ const y=120+i*70; ctx.fillStyle="#101a30"; ctx.fillRect(10,y,W-20,62); ctx.fillStyle="#e7ecfb"; ctx.font="700 16px Rajdhani"; ctx.fillText(["⛏","⛽","🍎","💾"][i]+" "+g,22,y+26); ctx.fillStyle="#ffd93d"; ctx.font="600 13px Inter"; ctx.fillText("Price: "+prices[planet][i]+"c",22,y+46); ctx.fillStyle="#8ea0c8"; ctx.fillText("Hold: "+hold[g],140,y+46);
+        ctx.fillStyle="#2fbf6a"; ctx.fillRect(W-180,y+16,72,30); ctx.fillStyle="#04070f"; ctx.font="700 13px Rajdhani"; ctx.textAlign="center"; ctx.fillText("BUY",W-144,y+35); ctx.fillStyle="#ff3d77"; ctx.fillRect(W-90,y+16,72,30); ctx.fillStyle="#fff"; ctx.fillText("SELL",W-54,y+35); ctx.textAlign="left"; });
+      if(msgT>0){ ctx.fillStyle="#ffd93d"; ctx.font="600 13px Inter"; ctx.textAlign="center"; ctx.fillText(msg,W/2,H-8); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.88)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle="#ffd93d"; ctx.font="700 26px Rajdhani"; ctx.fillText("Route complete!",W/2,H/2-30); ctx.fillStyle="#e7ecfb"; ctx.font="600 15px Inter"; ctx.fillText("Final: "+credits+"c   ·   Best: "+save.best+"c",W/2,H/2); ctx.fillText("Hold size now "+save.cargo,W/2,H/2+24); ctx.fillStyle="#00e0ff"; ctx.font="700 15px Rajdhani"; ctx.fillText("Click for a new run",W/2,H/2+56); ctx.textAlign="left"; } }
+    c.addEventListener("click",click); loop(); return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("click",click); if(K){save.credits=credits;K.save("spacetrader",save);} };
+  },
+
+  /* ============ 5. FARMSIM — plant, harvest, expand plots ============ */
+  farmsim(stage){
+    const W=520,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("farmsim",{coins:20,plots:4,seedLvl:1}):{coins:20,plots:4,seedLvl:1};
+    const CROPS=[{n:"Wheat",cost:3,sell:6,time:400,e:"🌾"},{n:"Carrot",cost:5,sell:11,time:600,e:"🥕"},{n:"Pumpkin",cost:10,sell:25,time:1000,e:"🎃"}];
+    let plots,coins,cropSel,msg,msgT;
+    function start(){ plots=Array.from({length:save.plots},()=>({state:"empty",crop:0,t:0})); coins=save.coins; cropSel=0; }
+    function flash(m){msg=m;msgT=70;}
+    function persist(){ save.coins=coins; if(K)K.save("farmsim",save); }
+    function click(e){ const r=c.getBoundingClientRect(); const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+      // crop selector
+      if(my>H-70){ const i=Math.floor(mx/(W/4)); if(i<3)cropSel=i; else if(i===3){ if(coins>=100){coins-=100;save.plots++;plots.push({state:"empty",crop:0,t:0});persist();flash("New plot!");}else flash("Need 100c for a plot"); } return; }
+      const cols=Math.ceil(Math.sqrt(save.plots)); const cw=W/cols, ch=(H-90)/Math.ceil(save.plots/cols);
+      const gx=Math.floor(mx/cw),gy=Math.floor((my-10)/ch); const idx=gy*cols+gx; if(idx<0||idx>=plots.length)return;
+      const pl=plots[idx];
+      if(pl.state==="empty"){ const cr=CROPS[cropSel]; if(coins>=cr.cost){coins-=cr.cost;pl.state="growing";pl.crop=cropSel;pl.t=0;persist();}else flash("Can't afford seed"); }
+      else if(pl.state==="ready"){ const cr=CROPS[pl.crop]; coins+=cr.sell; pl.state="empty"; if(K)K.addCoins(1); persist(); flash("+"+cr.sell+"c"); } }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop); if(msgT>0)msgT--;
+      plots.forEach(pl=>{ if(pl.state==="growing"){ pl.t++; if(pl.t>=CROPS[pl.crop].time)pl.state="ready"; } });
+      ctx.fillStyle="#3a2a1a"; ctx.fillRect(0,0,W,H);
+      const cols=Math.ceil(Math.sqrt(save.plots)); const cw=W/cols, ch=(H-90)/Math.ceil(save.plots/cols);
+      plots.forEach((pl,i)=>{ const x=(i%cols)*cw,y=(i/cols|0)*ch+10; ctx.fillStyle="#4a3420"; ctx.fillRect(x+4,y+4,cw-8,ch-8); ctx.fillStyle="#2e2012"; ctx.fillRect(x+4,y+4,cw-8,6);
+        if(pl.state==="growing"){ const p=pl.t/CROPS[pl.crop].time; ctx.font=(14+p*20)+"px serif"; ctx.textAlign="center"; ctx.globalAlpha=0.4+p*0.6; ctx.fillText(CROPS[pl.crop].e,x+cw/2,y+ch/2+8); ctx.globalAlpha=1; ctx.fillStyle="#000"; ctx.fillRect(x+8,y+ch-14,cw-16,4); ctx.fillStyle="#2fbf6a"; ctx.fillRect(x+8,y+ch-14,(cw-16)*p,4); }
+        else if(pl.state==="ready"){ ctx.font="30px serif"; ctx.textAlign="center"; ctx.fillText(CROPS[pl.crop].e,x+cw/2,y+ch/2+10); ctx.fillStyle="#ffd93d"; ctx.font="700 10px Rajdhani"; ctx.fillText("READY",x+cw/2,y+ch-8); }
+        else { ctx.fillStyle="rgba(255,255,255,.15)"; ctx.font="20px serif"; ctx.textAlign="center"; ctx.fillText("·",x+cw/2,y+ch/2); } ctx.textAlign="left"; });
+      // hud
+      ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillRect(0,H-70,W,70);
+      CROPS.forEach((cr,i)=>{ ctx.fillStyle=cropSel===i?"#1e3560":"#141d33"; ctx.fillRect(i*(W/4)+4,H-66,W/4-8,62); ctx.font="24px serif"; ctx.textAlign="center"; ctx.fillText(cr.e,i*(W/4)+W/8,H-40); ctx.fillStyle="#e7ecfb"; ctx.font="600 10px Inter"; ctx.fillText(cr.cost+"c → "+cr.sell+"c",i*(W/4)+W/8,H-20); ctx.textAlign="left"; });
+      ctx.fillStyle="#2a4a2a"; ctx.fillRect(3*(W/4)+4,H-66,W/4-8,62); ctx.fillStyle="#2fbf6a"; ctx.font="700 13px Rajdhani"; ctx.textAlign="center"; ctx.fillText("+ Plot",3*(W/4)+W/8,H-38); ctx.fillStyle="#9fb0da"; ctx.font="500 10px Inter"; ctx.fillText("100c",3*(W/4)+W/8,H-22); ctx.textAlign="left";
+      ctx.fillStyle="#ffd93d"; ctx.font="700 16px Rajdhani"; ctx.fillText("🪙 "+coins,12,26); if(msgT>0){ctx.fillStyle="#fff";ctx.font="600 12px Inter";ctx.textAlign="right";ctx.fillText(msg,W-12,26);ctx.textAlign="left";} }
+    c.addEventListener("click",click); loop(); return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("click",click); persist(); };
+  },
+
+  /* ============ 6. NINJACLIMB — vertical platformer, height records ============ */
+  ninjaclimb(stage){
+    const W=400,H=520; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const keys={}; const K=window.KLYP;
+    let save=K?K.load("ninjaclimb",{best:0,coins:0}):{best:0,coins:0};
+    let px,py,vx,vy,onWall,walls,cam,height,over,started,coinsC,gems;
+    function start(){ px=W/2;py=H-60;vx=0;vy=0;onWall=0;cam=0;height=0;over=false;started=false;coinsC=0; walls=[]; gems=[]; for(let i=0;i<20;i++)addWall(H-100-i*70); }
+    function addWall(y){ const side=Math.random()<0.5; const w=60+Math.random()*60; const x=side?0:W-w; walls.push({x,y,w,h:16}); if(Math.random()<0.4)gems.push({x:x+w/2,y:y-30,got:false}); }
+    function kd(e){ keys[e.key.toLowerCase()]=true; started=true; if(over&&e.key===" ")start(); }
+    function ku(e){ keys[e.key.toLowerCase()]=false; }
+    function jump(){ if(onWall){ vy=-11; vx=onWall*6; onWall=0; } }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop);
+      if(started&&!over){ vy+=0.5; if(keys["arrowleft"]||keys["a"])vx-=0.5; if(keys["arrowright"]||keys["d"])vx+=0.5; if((keys[" "]||keys["arrowup"]||keys["w"])&&onWall){jump();keys[" "]=false;keys["w"]=false;keys["arrowup"]=false;}
+        vx*=0.9; px+=vx; py+=vy;
+        onWall=0; if(px<10){px=10;vx=0;onWall=1;} if(px>W-10){px=W-10;vx=0;onWall=-1;}
+        walls.forEach(w=>{ if(px+10>w.x&&px-10<w.x+w.w&&py+14>w.y&&py+14<w.y+w.h+10&&vy>0){py=w.y-14;vy=0;onWall=px<w.x+w.w/2?1:-1;} });
+        gems.forEach(g=>{ if(!g.got&&Math.hypot(g.x-px,g.y-py)<20){g.got=true;coinsC++;if(K)K.addCoins(1);} });
+        if(py<cam+H*0.4){ cam=py-H*0.4; } height=Math.max(height,Math.floor((H-60-py)/10));
+        while(walls[walls.length-1].y>cam-100)addWall(walls[walls.length-1].y-70);
+        walls=walls.filter(w=>w.y<cam+H+50); gems=gems.filter(g=>g.y<cam+H+50);
+        if(py>cam+H+30){over=true;save.best=Math.max(save.best,height);save.coins+=coinsC;if(K)K.save("ninjaclimb",save);} }
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0a1a2e"); g.addColorStop(1,"#1a0a2e"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.save(); ctx.translate(0,-cam);
+      ctx.fillStyle="#2a3450"; ctx.fillRect(0,cam,10,H); ctx.fillRect(W-10,cam,10,H);
+      walls.forEach(w=>{ ctx.fillStyle="#4a5570"; ctx.fillRect(w.x,w.y,w.w,w.h); ctx.fillStyle="#5a6580"; ctx.fillRect(w.x,w.y,w.w,3); });
+      gems.forEach(gm=>{ if(gm.got)return; ctx.fillStyle="#ffd93d"; ctx.shadowBlur=8; ctx.shadowColor="#ffd93d"; ctx.beginPath(); ctx.moveTo(gm.x,gm.y-8); ctx.lineTo(gm.x+6,gm.y); ctx.lineTo(gm.x,gm.y+8); ctx.lineTo(gm.x-6,gm.y); ctx.closePath(); ctx.fill(); ctx.shadowBlur=0; });
+      ctx.fillStyle="#ff3d77"; ctx.beginPath(); ctx.arc(px,py,11,0,7); ctx.fill(); ctx.fillStyle="#fff"; ctx.fillRect(px-5,py-4,3,3); ctx.fillRect(px+2,py-4,3,3);
+      ctx.restore();
+      ctx.fillStyle="#e7ecfb"; ctx.font="800 22px Rajdhani"; ctx.fillText(height+"m",12,32); ctx.font="600 13px Rajdhani"; ctx.fillStyle="#ffd93d"; ctx.fillText("💎 "+coinsC,12,54); ctx.fillStyle="#8ea0c8"; ctx.font="500 12px Inter"; ctx.fillText("best "+save.best+"m",12,72);
+      if(!started){ ctx.fillStyle="#9fb0da"; ctx.font="600 13px Inter"; ctx.textAlign="center"; ctx.fillText("Wall-jump upward · "+"SPACE/↑ to leap off a wall",W/2,H/2); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.85)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle="#ff3d77"; ctx.font="700 26px Rajdhani"; ctx.fillText("FELL!",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText(height+"m · best "+save.best+"m — SPACE",W/2,H/2+16); ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); window.addEventListener("keyup",ku); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); window.removeEventListener("keyup",ku); if(K)K.save("ninjaclimb",save); };
+  },
+
+  /* ============ 7. ALCHEMYLAB — merge/combine discovery game ============ */
+  alchemylab(stage){
+    const W=540,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    const BASE=["💧","🔥","🌍","💨"]; const COMBOS={"💧🔥":"💨","🔥🌍":"🌋","💧🌍":"🌱","💨🔥":"⚡","💧💨":"☁","🌍💨":"🌫","🌱🔥":"🪵","🌋💧":"🪨","☁💧":"🌧","⚡☁":"⛈","🌱💧":"🌳","🪵🔥":"🔥","🌳🌍":"🌲"};
+    let save=K?K.load("alchemylab",{discovered:["💧","🔥","🌍","💨"]}):{discovered:["💧","🔥","🌍","💨"]};
+    let board,dragging,msg,msgT;
+    function start(){ board=[]; save.discovered.forEach((e,i)=>{ board.push({e,x:60+(i%6)*75,y:80+(Math.floor(i/6))*70,base:true}); }); dragging=null; }
+    function flash(m){msg=m;msgT=100;}
+    function down(e){ const r=c.getBoundingClientRect(); const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+      // palette click spawns a copy
+      for(let i=board.length-1;i>=0;i--){ const b=board[i]; if(Math.hypot(b.x-mx,b.y-my)<28){ if(b.base){ const nb={e:b.e,x:mx,y:my,base:false}; board.push(nb); dragging=nb; } else dragging=b; return; } } }
+    function moveE(e){ if(!dragging)return; const r=c.getBoundingClientRect(); dragging.x=(e.clientX-r.left)*(W/r.width); dragging.y=(e.clientY-r.top)*(H/r.height); }
+    function up(){ if(!dragging)return; const d=dragging;
+      const other=board.find(b=>b!==d&&!b.base&&Math.hypot(b.x-d.x,b.y-d.y)<40); if(other){ const key1=d.e+other.e,key2=other.e+d.e; const res=COMBOS[key1]||COMBOS[key2];
+        if(res){ board=board.filter(b=>b!==d&&b!==other); board.push({e:res,x:(d.x+other.x)/2,y:(d.y+other.y)/2,base:false}); if(!save.discovered.includes(res)){save.discovered.push(res);if(K){K.addCoins(5);K.save("alchemylab",save);}flash("Discovered "+res+"! ("+save.discovered.length+" total)");start2(res,(d.x+other.x)/2,(d.y+other.y)/2);}else flash("Made "+res); }
+      }
+      dragging=null; }
+    function start2(res,x,y){ /* keep result on board after re-init palette */ const keep=board.filter(b=>!b.base); start(); board=board.concat(keep.filter(k=>!board.find(b=>b.x===k.x&&b.y===k.y))); }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop); if(msgT>0)msgT--;
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#1a1030"); g.addColorStop(1,"#0a0618"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 18px Rajdhani"; ctx.fillText("⚗ Alchemy Lab",16,32); ctx.fillStyle="#9fb0da"; ctx.font="500 12px Inter"; ctx.fillText("Drag elements together to combine · "+save.discovered.length+" discovered",16,52);
+      // palette bg
+      ctx.fillStyle="rgba(255,255,255,.04)"; ctx.fillRect(20,64,W-40,save.discovered.length>6?150:80);
+      board.forEach(b=>{ if(b.base){ ctx.fillStyle="rgba(0,224,255,.1)"; ctx.beginPath(); ctx.arc(b.x,b.y,26,0,7); ctx.fill(); } else { ctx.fillStyle="rgba(255,217,61,.12)"; ctx.beginPath(); ctx.arc(b.x,b.y,28,0,7); ctx.fill(); } ctx.font="30px serif"; ctx.textAlign="center"; ctx.fillText(b.e,b.x,b.y+11); ctx.textAlign="left"; });
+      if(msgT>0){ ctx.fillStyle="#ffd93d"; ctx.font="600 14px Inter"; ctx.textAlign="center"; ctx.fillText(msg,W/2,H-16); ctx.textAlign="left"; }
+      ctx.fillStyle="#8ea0c8"; ctx.font="500 11px Inter"; ctx.fillText("Try: water+fire, fire+earth, water+earth, air+fire…",16,H-30); }
+    c.addEventListener("mousedown",down); c.addEventListener("mousemove",moveE); c.addEventListener("mouseup",up); loop();
+    return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("mousedown",down); c.removeEventListener("mousemove",moveE); c.removeEventListener("mouseup",up); if(K)K.save("alchemylab",save); };
+  },
+
+  /* ============ 8. GALAXYDEFENDER — shmup with permanent ship upgrades ============ */
+  galaxydef(stage){
+    const W=480,H=520; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const keys={}; const K=window.KLYP;
+    let save=K?K.load("galaxydef",{scrap:0,gunLvl:0,hpLvl:0,best:0}):{scrap:0,gunLvl:0,hpLvl:0,best:0};
+    let px,hp,maxHp,bullets,foes,fbul,parts,score,over,started,spawnT,menu,scrapC;
+    function start(){ px=W/2; maxHp=3+save.hpLvl; hp=maxHp; bullets=[]; foes=[]; fbul=[]; parts=[]; score=0; over=false; started=false; spawnT=0; scrapC=0; menu=false; }
+    function kd(e){ const k=e.key.toLowerCase(); keys[k]=true;
+      if(over){ if(menu){ if(k==="1"&&save.scrap>=20){save.scrap-=20;save.gunLvl++;persist();} if(k==="2"&&save.scrap>=30){save.scrap-=30;save.hpLvl++;persist();} if(k==="u")menu=false; } else { if(k==="u")menu=true; if(k===" "||k==="enter")start(); } return; }
+      if(k===" ")e.preventDefault(); if(e.key.startsWith("Arrow"))e.preventDefault(); }
+    function ku(e){ keys[e.key.toLowerCase()]=false; }
+    function persist(){ if(K)K.save("galaxydef",save); }
+    let raf,tick=0; function loop(){ raf=requestAnimationFrame(loop); tick++;
+      if(!over){ started=started||keys["arrowleft"]||keys["arrowright"]||keys["a"]||keys["d"]||keys[" "];
+        if(started){ if(keys["arrowleft"]||keys["a"])px=Math.max(20,px-5); if(keys["arrowright"]||keys["d"])px=Math.min(W-20,px+5);
+          if(keys[" "]&&tick%Math.max(4,10-save.gunLvl)===0){ bullets.push({x:px,y:H-50}); if(save.gunLvl>=3){bullets.push({x:px-12,y:H-46});bullets.push({x:px+12,y:H-46});} }
+          spawnT--; if(spawnT<=0){ spawnT=Math.max(20,50-score*0.1); foes.push({x:30+Math.random()*(W-60),y:-20,hp:1+Math.floor(score/200),vx:(Math.random()-.5)*2,vy:1+Math.random()+score*0.002}); }
+          bullets.forEach(b=>b.y-=9); bullets=bullets.filter(b=>b.y>-10);
+          foes.forEach(f=>{ f.x+=f.vx; f.y+=f.vy; if(f.x<20||f.x>W-20)f.vx*=-1; if(Math.random()<0.008)fbul.push({x:f.x,y:f.y,vy:3+score*0.002}); if(f.y>H){f.dead=true;} });
+          fbul.forEach(b=>b.y+=b.vy); fbul=fbul.filter(b=>b.y<H+10);
+          bullets.forEach(b=>foes.forEach(f=>{ if(!f.dead&&Math.abs(f.x-b.x)<16&&Math.abs(f.y-b.y)<16){ f.hp--; b.y=-99; if(f.hp<=0){f.dead=true;score+=20;scrapC++;for(let i=0;i<6;i++)parts.push({x:f.x,y:f.y,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,t:0});} } }));
+          foes=foes.filter(f=>!f.dead);
+          fbul.forEach(b=>{ if(Math.abs(b.x-px)<14&&b.y>H-56&&b.y<H-30){b.y=H+99;hp--;if(hp<=0)die();} });
+          foes.forEach(f=>{ if(!f.dead&&Math.hypot(f.x-px,f.y-(H-44))<20){f.dead=true;hp--;if(hp<=0)die();} });
+          parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.t+=0.04;}); parts=parts.filter(p=>p.t<1); } }
+      function die(){ over=true; save.scrap+=scrapC; save.best=Math.max(save.best,score); persist(); }
+      ctx.fillStyle="#05060f"; ctx.fillRect(0,0,W,H);
+      for(let i=0;i<30;i++){ ctx.fillStyle="rgba(255,255,255,.3)"; ctx.fillRect((i*89)%W,((i*133+tick*2)%H),1,2); }
+      foes.forEach(f=>{ ctx.fillStyle="#ff3d77"; ctx.beginPath(); ctx.moveTo(f.x,f.y+12); ctx.lineTo(f.x-14,f.y-8); ctx.lineTo(f.x+14,f.y-8); ctx.closePath(); ctx.fill(); });
+      bullets.forEach(b=>{ ctx.fillStyle="#00e0ff"; ctx.fillRect(b.x-2,b.y-8,4,10); }); fbul.forEach(b=>{ ctx.fillStyle="#ffd93d"; ctx.fillRect(b.x-2,b.y,4,8); });
+      parts.forEach(p=>{ ctx.globalAlpha=1-p.t; ctx.fillStyle="#ff8a3d"; ctx.fillRect(p.x-1.5,p.y-1.5,3,3); ctx.globalAlpha=1; });
+      if(!over){ ctx.fillStyle="#00e0ff"; ctx.beginPath(); ctx.moveTo(px,H-56); ctx.lineTo(px-14,H-32); ctx.lineTo(px+14,H-32); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 16px Rajdhani"; ctx.fillText("Score "+score+"   "+"❤".repeat(Math.max(0,hp)),12,26); ctx.textAlign="right"; ctx.fillStyle="#ffd93d"; ctx.fillText("🔩"+scrapC,W-12,26); ctx.textAlign="left";
+      if(!started&&!over){ ctx.fillStyle="#9fb0da"; ctx.font="600 13px Inter"; ctx.textAlign="center"; ctx.fillText("← → move · SPACE fire · [U] upgrades",W/2,H/2); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center";
+        if(!menu){ ctx.fillStyle="#ff3d77"; ctx.font="700 26px Rajdhani"; ctx.fillText("SHIP LOST",W/2,150); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Score "+score+" · best "+save.best+" · 🔩"+save.scrap+" scrap",W/2,180); ctx.fillStyle="#ffd93d"; ctx.font="700 16px Rajdhani"; ctx.fillText("[U] Upgrades    [SPACE] Fly again",W/2,220); }
+        else { ctx.fillStyle="#00e0ff"; ctx.font="700 20px Rajdhani"; ctx.fillText("UPGRADES · 🔩"+save.scrap,W/2,140); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("[1] Gun Lv "+save.gunLvl+" → "+(save.gunLvl+1)+"  (20)",W/2,185); ctx.fillText("[2] Hull Lv "+save.hpLvl+" → "+(save.hpLvl+1)+"  (30)",W/2,215); ctx.fillStyle="#9fb0da"; ctx.fillText("[U] back · [SPACE] fly",W/2,255); }
+        ctx.textAlign="left"; } }
+    start(); window.addEventListener("keydown",kd); window.addEventListener("keyup",ku); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); window.removeEventListener("keyup",ku); persist(); };
+  },
+
+  /* ============ 9. KINGDOMBUILDER — build & manage resources over turns ============ */
+  kingdombuild(stage){
+    const W=540,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("kingdombuild",{best:0}):{best:0};
+    const BUILDINGS=[{n:"Farm",e:"🌾",cost:{g:20,w:0},food:3},{n:"Mine",e:"⛏",cost:{g:30,w:10},gold:4},{n:"Lumber",e:"🪵",cost:{g:15,w:0},wood:3},{n:"House",e:"🏠",cost:{g:25,w:15},pop:3}];
+    let grid,gold,wood,food,pop,turn,over,sel,msg,msgT;
+    function start(){ grid=Array(20).fill(null); gold=100; wood=30; food=20; pop=5; turn=1; over=false; sel=0; }
+    function flash(m){msg=m;msgT=70;}
+    function endTurn(){ let dg=0,dw=0,df=0,dp=0; grid.forEach(b=>{ if(!b)return; const bd=BUILDINGS[b]; dg+=bd.gold||0; dw+=bd.wood||0; df+=bd.food||0; }); gold+=dg+pop; wood+=dw; food+=df-pop; turn++;
+      if(food<0){ pop=Math.max(0,pop+food); food=0; flash("Famine! Lost population"); } else { const houses=grid.filter(b=>b===3).length; pop=Math.min(5+houses*3,pop+1); }
+      if(turn>25||pop<=0){ over=true; const score=gold+pop*10+grid.filter(b=>b!==null).length*5; save.best=Math.max(save.best,score); if(K){K.addCoins(Math.floor(score/50));K.save("kingdombuild",save);} } }
+    function click(e){ const r=c.getBoundingClientRect(); const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+      if(over){start();return;}
+      if(my>H-110&&my<H-50){ const i=Math.floor(mx/(W/4)); if(i<4)sel=i; return; }
+      if(my>H-45){ endTurn(); return; }
+      const cols=5,cw=W/cols,ch=(H-120)/4; const gx=Math.floor(mx/cw),gy=Math.floor((my-10)/ch); const idx=gy*cols+gx; if(idx<0||idx>=20)return;
+      if(grid[idx]===null){ const b=BUILDINGS[sel]; if(gold>=b.cost.g&&wood>=b.cost.w){ gold-=b.cost.g; wood-=b.cost.w; grid[idx]=sel; if(b.pop)pop+=0; flash("Built "+b.n); } else flash("Not enough resources"); } }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop); if(msgT>0)msgT--;
+      ctx.fillStyle="#1a2a1a"; ctx.fillRect(0,0,W,H);
+      const cols=5,cw=W/cols,ch=(H-120)/4;
+      for(let i=0;i<20;i++){ const x=(i%cols)*cw,y=(i/cols|0)*ch+10; ctx.fillStyle="#2a3a24"; ctx.fillRect(x+3,y+3,cw-6,ch-6); if(grid[i]!==null){ ctx.font="30px serif"; ctx.textAlign="center"; ctx.fillText(BUILDINGS[grid[i]].e,x+cw/2,y+ch/2+10); ctx.textAlign="left"; } }
+      // resource bar
+      ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillRect(0,0,W,10); ctx.fillStyle="rgba(0,0,0,.6)"; ctx.fillRect(0,H-120,W,120);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 14px Rajdhani"; ctx.fillText("🪙"+gold+"  🪵"+wood+"  🍞"+food+"  👤"+pop+"  ·  Turn "+turn+"/25",12,H-96);
+      BUILDINGS.forEach((b,i)=>{ ctx.fillStyle=sel===i?"#1e3560":"#141d33"; ctx.fillRect(i*(W/4)+4,H-88,W/4-8,38); ctx.font="20px serif"; ctx.textAlign="center"; ctx.fillText(b.e,i*(W/4)+W/8,H-64); ctx.fillStyle="#9fb0da"; ctx.font="500 9px Inter"; ctx.fillText("🪙"+b.cost.g+(b.cost.w?" 🪵"+b.cost.w:""),i*(W/4)+W/8,H-52); ctx.textAlign="left"; });
+      ctx.fillStyle="#2fbf6a"; ctx.fillRect(4,H-45,W-8,40); ctx.fillStyle="#04070f"; ctx.font="700 16px Rajdhani"; ctx.textAlign="center"; ctx.fillText("▶ END TURN",W/2,H-20); ctx.textAlign="left";
+      if(msgT>0){ ctx.fillStyle="#ffd93d"; ctx.font="600 13px Inter"; ctx.textAlign="center"; ctx.fillText(msg,W/2,H-100); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle="#ffd93d"; ctx.font="700 24px Rajdhani"; ctx.fillText("Reign ended",W/2,H/2-20); const score=gold+pop*10+grid.filter(b=>b!==null).length*5; ctx.fillStyle="#e7ecfb"; ctx.font="600 15px Inter"; ctx.fillText("Score "+score+" · best "+save.best,W/2,H/2+8); ctx.fillStyle="#00e0ff"; ctx.font="700 15px Rajdhani"; ctx.fillText("Click to rule again",W/2,H/2+38); ctx.textAlign="left"; } }
+    c.addEventListener("click",click); loop(); return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("click",click); if(K)K.save("kingdombuild",save); };
+  },
+
+  /* ============ 10. MONSTERTAMER — collect & battle creatures ============ */
+  monstertamer(stage){
+    const W=520,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    const SPECIES=[{n:"Emberling",e:"🔥",hp:24,atk:7},{n:"Aqualing",e:"💧",hp:28,atk:6},{n:"Leafling",e:"🌿",hp:26,atk:6},{n:"Sparkling",e:"⚡",hp:22,atk:8},{n:"Rockling",e:"🪨",hp:32,atk:5}];
+    let save=K?K.load("monstertamer",{team:[0],caught:[0],wins:0}):{team:[0],caught:[0],wins:0};
+    let myMon,myHp,foe,foeHp,log,over,turn,canCatch,phase,result;
+    function start(){ const s=save.team[0]; myMon=s; myHp=SPECIES[s].hp+save.wins*2; const f=Math.random()*SPECIES.length|0; foe=f; foeHp=SPECIES[f].hp; log=["A wild "+SPECIES[f].n+" appeared!"]; over=false; turn="me"; canCatch=false; phase="battle"; result=""; }
+    function addLog(m){log.push(m);if(log.length>3)log.shift();}
+    function act(a){ if(turn!=="me"||over)return;
+      if(a==="fight"){ const dmg=SPECIES[myMon].atk+save.wins+Math.floor(Math.random()*4); foeHp-=dmg; addLog("Your "+SPECIES[myMon].n+" hits for "+dmg); if(foeHp<=0){win();return;} if(foeHp<SPECIES[foe].hp*0.4)canCatch=true; }
+      else if(a==="catch"){ if(!canCatch){addLog("Weaken it first!");return;} if(Math.random()<0.6){ if(!save.caught.includes(foe)){save.caught.push(foe);} addLog("Caught "+SPECIES[foe].n+"! 🎉"); over=true;result="caught"; if(K){K.addCoins(10);K.save("monstertamer",save);} return; } else addLog("It broke free!"); }
+      turn="foe"; setTimeout(()=>{ if(over)return; const dmg=SPECIES[foe].atk+Math.floor(Math.random()*3); myHp-=dmg; addLog("Wild "+SPECIES[foe].n+" hits for "+dmg); if(myHp<=0){over=true;result="lost";addLog("Your monster fainted...");} turn="me"; },600); }
+    function win(){ over=true; result="won"; save.wins++; addLog("Defeated it! +XP"); if(K){K.addCoins(5);K.save("monstertamer",save);} }
+    function swap(){ save.team.push(save.team.shift()); }
+    function kd(e){ const k=e.key.toLowerCase(); if(over){ if(k===" "||k==="enter")start(); return; } if(k==="1")act("fight"); if(k==="2")act("catch"); if(k==="3"&&save.caught.length>1){myMon=save.caught[(save.caught.indexOf(myMon)+1)%save.caught.length];myHp=SPECIES[myMon].hp+save.wins*2;addLog("Switched to "+SPECIES[myMon].n);} }
+    function click(e){ if(over){start();return;} const r=c.getBoundingClientRect(); const my=(e.clientY-r.top)*(H/r.height),mx=(e.clientX-r.left)*(W/r.width); if(my>H-90){ const i=Math.floor(mx/(W/3)); if(i===0)act("fight"); else if(i===1)act("catch"); else if(i===2&&save.caught.length>1){myMon=save.caught[(save.caught.indexOf(myMon)+1)%save.caught.length];myHp=SPECIES[myMon].hp+save.wins*2;addLog("Switched!");} } }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop);
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#1a3a2a"); g.addColorStop(1,"#0a1a14"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      // foe
+      ctx.font="64px serif"; ctx.textAlign="center"; ctx.fillText(SPECIES[foe].e,W-120,110); ctx.fillStyle="#e7ecfb"; ctx.font="700 15px Rajdhani"; ctx.fillText("Wild "+SPECIES[foe].n,W-120,140);
+      ctx.fillStyle="#000"; ctx.fillRect(W-200,150,160,12); ctx.fillStyle="#ff3d77"; ctx.fillRect(W-200,150,160*Math.max(0,foeHp/SPECIES[foe].hp),12); ctx.strokeStyle="#555"; ctx.strokeRect(W-200,150,160,12);
+      // mine
+      ctx.font="64px serif"; ctx.fillText(SPECIES[myMon].e,120,290); ctx.fillStyle="#e7ecfb"; ctx.font="700 15px Rajdhani"; ctx.fillText("Your "+SPECIES[myMon].n,120,320);
+      const mmax=SPECIES[myMon].hp+save.wins*2; ctx.fillStyle="#000"; ctx.fillRect(40,330,160,12); ctx.fillStyle="#2fbf6a"; ctx.fillRect(40,330,160*Math.max(0,myHp/mmax),12); ctx.strokeStyle="#555"; ctx.strokeRect(40,330,160,12); ctx.textAlign="left";
+      ctx.fillStyle="#8ea0c8"; ctx.font="500 11px Inter"; ctx.fillText("Caught "+save.caught.length+"/"+SPECIES.length+" · Wins "+save.wins,40,360);
+      // log
+      ctx.fillStyle="rgba(0,0,0,.4)"; ctx.fillRect(20,375,W-40,44); ctx.fillStyle="#cfd8e8"; ctx.font="500 12px Inter"; log.forEach((l,i)=>ctx.fillText(l,28,392+i*13));
+      // menu
+      const btns=[["⚔ Fight","#ff3d77"],[canCatch?"🎯 Catch!":"🎯 Catch","#ffd93d"],["🔄 Switch","#00e0ff"]];
+      btns.forEach((b,i)=>{ ctx.fillStyle="#141d33"; ctx.fillRect(i*(W/3)+4,H-86,W/3-8,80); ctx.fillStyle=b[1]; ctx.font="700 15px Rajdhani"; ctx.textAlign="center"; ctx.fillText(b[0],i*(W/3)+W/6,H-42); ctx.textAlign="left"; });
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; const col=result==="caught"?"#ffd93d":result==="won"?"#2fbf6a":"#ff3d77"; ctx.fillStyle=col; ctx.font="700 26px Rajdhani"; ctx.fillText(result==="caught"?"CAUGHT! 🎉":result==="won"?"VICTORY!":"FAINTED",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Caught "+save.caught.length+"/"+SPECIES.length+" species — SPACE",W/2,H/2+18); ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); c.addEventListener("click",click); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); c.removeEventListener("click",click); if(K)K.save("monstertamer",save); };
+  },
+  /* ============ 11. RUNEMAGE — spell-casting survival with unlockable spells ============ */
+  runemage(stage){
+    const W=540,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const keys={}; const K=window.KLYP; let mx=W/2,my=H/2;
+    let save=K?K.load("runemage",{crystals:0,fireLvl:1,iceUnlock:0,boltUnlock:0}):{crystals:0,fireLvl:1,iceUnlock:0,boltUnlock:0};
+    let px,py,hp,foes,spells,orbs,score,over,started,spawnT,spell,cd,crystalC,menu;
+    function start(){ px=W/2;py=H/2;hp=100;foes=[];spells=[];orbs=[];score=0;over=false;started=false;spawnT=0;spell=0;cd=0;crystalC=0;menu=false; }
+    function persist(){ if(K)K.save("runemage",save); }
+    function kd(e){ const k=e.key.toLowerCase(); keys[k]=true;
+      if(over){ if(menu){ if(k==="1"&&save.crystals>=15){save.crystals-=15;save.fireLvl++;persist();} if(k==="2"&&save.crystals>=25&&!save.iceUnlock){save.iceUnlock=1;save.crystals-=25;persist();} if(k==="3"&&save.crystals>=40&&!save.boltUnlock){save.boltUnlock=1;save.crystals-=40;persist();} if(k==="u")menu=false; } else { if(k==="u")menu=true; if(k===" "||k==="enter")start(); } return; }
+      if(k==="1")spell=0; if(k==="2"&&save.iceUnlock)spell=1; if(k==="3"&&save.boltUnlock)spell=2; }
+    function ku(e){ keys[e.key.toLowerCase()]=false; }
+    function mm(e){ const r=c.getBoundingClientRect(); mx=(e.clientX-r.left)*(W/r.width); my=(e.clientY-r.top)*(H/r.height); started=true; }
+    function cast(){ if(cd>0)return; const ang=Math.atan2(my-py,mx-px);
+      if(spell===0){ spells.push({x:px,y:py,vx:Math.cos(ang)*7,vy:Math.sin(ang)*7,dmg:8+save.fireLvl*3,type:0,life:60}); cd=15; }
+      else if(spell===1){ for(let a=-0.3;a<=0.3;a+=0.15)spells.push({x:px,y:py,vx:Math.cos(ang+a)*5,vy:Math.sin(ang+a)*5,dmg:5,type:1,life:50,slow:1}); cd=30; }
+      else if(spell===2){ foes.slice(0,3).forEach(f=>{ spells.push({x:px,y:py,tx:f.x,ty:f.y,type:2,dmg:15,life:10,chain:true}); }); cd=45; } }
+    start(); let raf,tick=0; function loop(){ raf=requestAnimationFrame(loop); tick++;
+      if(started&&!over){ if(cd>0)cd--; const sp=3; if(keys["w"]||keys["arrowup"])py-=sp; if(keys["s"]||keys["arrowdown"])py+=sp; if(keys["a"]||keys["arrowleft"])px-=sp; if(keys["d"]||keys["arrowright"])px+=sp; px=Math.max(14,Math.min(W-14,px)); py=Math.max(14,Math.min(H-14,py));
+        if(keys[" "]||true)cast();
+        spawnT--; if(spawnT<=0){ spawnT=Math.max(20,60-score*0.05); const edge=Math.random()*4|0; let x,y; if(edge===0){x=0;y=Math.random()*H;}else if(edge===1){x=W;y=Math.random()*H;}else if(edge===2){x=Math.random()*W;y=0;}else{x=Math.random()*W;y=H;} foes.push({x,y,hp:10+score*0.1,max:10+score*0.1,slow:0}); }
+        foes.forEach(f=>{ const ang=Math.atan2(py-f.y,px-f.x); const s=(f.slow>0?0.6:1.3); if(f.slow>0)f.slow--; f.x+=Math.cos(ang)*s; f.y+=Math.sin(ang)*s; if(Math.hypot(f.x-px,f.y-py)<20){hp-=0.4;} });
+        if(hp<=0){over=true;save.crystals+=crystalC;persist();}
+        spells.forEach(s=>{ if(s.type===2){ s.life--; foes.forEach(f=>{ if(Math.hypot(f.x-s.tx,f.y-s.ty)<30){f.hp-=s.dmg;} }); } else { s.x+=s.vx;s.y+=s.vy;s.life--; foes.forEach(f=>{ if(!f.dead&&Math.hypot(f.x-s.x,f.y-s.y)<16){f.hp-=s.dmg;if(s.slow)f.slow=60;s.life=0;} }); } });
+        spells=spells.filter(s=>s.life>0);
+        foes.forEach(f=>{ if(f.hp<=0&&!f.dead){f.dead=true;score+=10;if(Math.random()<0.4)orbs.push({x:f.x,y:f.y});} }); foes=foes.filter(f=>!f.dead);
+        orbs.forEach(o=>{ if(Math.hypot(o.x-px,o.y-py)<24){o.got=true;crystalC++;} }); orbs=orbs.filter(o=>!o.got); }
+      ctx.fillStyle="#0a0818"; ctx.fillRect(0,0,W,H);
+      orbs.forEach(o=>{ ctx.fillStyle="#9a5cf0"; ctx.shadowBlur=8; ctx.shadowColor="#9a5cf0"; ctx.beginPath(); ctx.arc(o.x,o.y,6,0,7); ctx.fill(); ctx.shadowBlur=0; });
+      foes.forEach(f=>{ ctx.fillStyle=f.slow>0?"#7fd0ff":"#ff3d77"; ctx.beginPath(); ctx.arc(f.x,f.y,12,0,7); ctx.fill(); ctx.fillStyle="#000"; ctx.fillRect(f.x-10,f.y-18,20,3); ctx.fillStyle="#2fbf6a"; ctx.fillRect(f.x-10,f.y-18,20*Math.max(0,f.hp/f.max),3); });
+      spells.forEach(s=>{ if(s.type===2){ ctx.strokeStyle="#ffd93d"; ctx.lineWidth=3; ctx.globalAlpha=s.life/10; ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(s.tx,s.ty); ctx.stroke(); ctx.globalAlpha=1; ctx.lineWidth=1; } else { ctx.fillStyle=s.type===1?"#00e0ff":"#ff8a3d"; ctx.shadowBlur=8; ctx.shadowColor=ctx.fillStyle; ctx.beginPath(); ctx.arc(s.x,s.y,6,0,7); ctx.fill(); ctx.shadowBlur=0; } });
+      ctx.fillStyle="#c24bff"; ctx.beginPath(); ctx.arc(px,py,13,0,7); ctx.fill(); ctx.fillStyle="#fff"; ctx.font="16px serif"; ctx.textAlign="center"; ctx.fillText("🧙",px,py+6); ctx.textAlign="left";
+      ctx.fillStyle="#000"; ctx.fillRect(12,12,150,12); ctx.fillStyle="#2fbf6a"; ctx.fillRect(12,12,150*Math.max(0,hp/100),12);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 14px Rajdhani"; ctx.fillText("Score "+score+"   💎"+crystalC,12,40);
+      const spName=["🔥Fire"+(save.iceUnlock?"":""),save.iceUnlock?"❄Ice":"❄🔒",save.boltUnlock?"⚡Bolt":"⚡🔒"]; ctx.font="600 12px Rajdhani"; spName.forEach((s,i)=>{ ctx.fillStyle=spell===i?"#ffd93d":"#8ea0c8"; ctx.fillText((i+1)+":"+s,W-160+i*55,26); });
+      if(!started&&!over){ ctx.fillStyle="#9fb0da"; ctx.font="600 13px Inter"; ctx.textAlign="center"; ctx.fillText("WASD move · aim with mouse · auto-cast · [U] upgrades",W/2,H-16); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center";
+        if(!menu){ ctx.fillStyle="#ff3d77"; ctx.font="700 26px Rajdhani"; ctx.fillText("SLAIN",W/2,150); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Score "+score+" · 💎"+save.crystals+" crystals",W/2,180); ctx.fillStyle="#ffd93d"; ctx.font="700 16px Rajdhani"; ctx.fillText("[U] Spellbook   [SPACE] Cast again",W/2,220); }
+        else { ctx.fillStyle="#c24bff"; ctx.font="700 20px Rajdhani"; ctx.fillText("SPELLBOOK · 💎"+save.crystals,W/2,130); ctx.fillStyle="#e7ecfb"; ctx.font="600 13px Inter"; ctx.fillText("[1] Fire power Lv "+save.fireLvl+" (15)",W/2,170); ctx.fillText("[2] Unlock ❄ Ice Nova (25) "+(save.iceUnlock?"✓":""),W/2,198); ctx.fillText("[3] Unlock ⚡ Chain Bolt (40) "+(save.boltUnlock?"✓":""),W/2,226); ctx.fillStyle="#9fb0da"; ctx.fillText("[U] back · [SPACE] play",W/2,262); }
+        ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); window.addEventListener("keyup",ku); c.addEventListener("mousemove",mm); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); window.removeEventListener("keyup",ku); c.removeEventListener("mousemove",mm); persist(); };
+  },
+
+  /* ============ 12. DEEPMINER — dig deep, sell ore, buy drills ============ */
+  deepminer(stage){
+    const W=480,H=520,TS=32,COLS=15; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const keys={}; const K=window.KLYP;
+    let save=K?K.load("deepminer",{cash:0,drillLvl:1,bagLvl:1,best:0}):{cash:0,drillLvl:1,bagLvl:1,best:0};
+    let world,px,py,vy,onGround,bag,cash,depth,over,started,menu;
+    const ORES=[{c:"#6a5540",v:0,name:"dirt"},{c:"#8a8a8a",v:2,name:"stone"},{c:"#c9a05a",v:8,name:"gold"},{c:"#5ad0ff",v:20,name:"diamond"},{c:"#ff3d77",v:50,name:"ruby"}];
+    function tileAt(depthRow){ if(depthRow<3)return 0; const r=Math.random(); if(depthRow<8)return r<0.1?2:1; if(depthRow<20)return r<0.05?3:r<0.2?2:1; return r<0.03?4:r<0.1?3:r<0.2?2:1; }
+    function start(){ world=[]; for(let i=0;i<COLS;i++)world.push([]); px=W/2;py=40;vy=0;onGround=false; bag=0; cash=save.cash; depth=0; over=false; started=false; menu=false; ensureRows(30); }
+    function ensureRows(n){ const rows=world[0].length; for(let r=rows;r<rows+n;r++){ for(let cc=0;cc<COLS;cc++){ world[cc][r]=r<2?-1:tileAt(r); } } }
+    function bagMax(){ return 10+save.bagLvl*10; }
+    function persist(){ save.cash=cash; if(K)K.save("deepminer",save); }
+    function kd(e){ const k=e.key.toLowerCase(); keys[k]=true; started=true;
+      if(over){ if(menu){ if(k==="1"&&cash>=save.drillLvl*30){cash-=save.drillLvl*30;save.drillLvl++;persist();} if(k==="2"&&cash>=save.bagLvl*25){cash-=save.bagLvl*25;save.bagLvl++;persist();} if(k==="u")menu=false; } else { if(k==="u")menu=true; if(k===" ")start(); } } }
+    function ku(e){ keys[e.key.toLowerCase()]=false; }
+    function dig(cx,cy){ if(cx<0||cx>=COLS||cy<0)return false; const t=world[cx][cy]; if(t>0){ world[cx][cy]=0; if(ORES[t].v>0){ if(bag<bagMax()){bag++;cash+=ORES[t].v;} } return true; } return false; }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop);
+      if(started&&!over){ const gx=Math.floor(px/TS); vy+=0.4; if(vy>6)vy=6;
+        // horizontal
+        if(keys["a"]||keys["arrowleft"])px-=3; if(keys["d"]||keys["arrowright"])px+=3; px=Math.max(14,Math.min(W-14,px));
+        // dig down when pressing down
+        const cy=Math.floor((py+16)/TS); if((keys["s"]||keys["arrowdown"])&&world[gx]&&world[gx][cy]>0){ dig(gx,cy); }
+        if((keys["a"])&&world[gx-1]&&world[gx-1][Math.floor(py/TS)]>0)dig(gx-1,Math.floor(py/TS));
+        if((keys["d"])&&world[gx+1]&&world[gx+1][Math.floor(py/TS)]>0)dig(gx+1,Math.floor(py/TS));
+        py+=vy;
+        // land on solid
+        const below=Math.floor((py+16)/TS); if(world[gx]&&world[gx][below]>0){ py=below*TS-16; vy=0; onGround=true; } else onGround=false;
+        depth=Math.max(depth,Math.floor(py/TS)-2);
+        if(py/TS>world[0].length-15)ensureRows(20);
+        // return to surface to sell handled automatically (cash updates live); "over" when bag full at depth? No—endless. End on request only.
+        save.best=Math.max(save.best,depth);
+      }
+      const camY=Math.max(0,py-H*0.4);
+      ctx.fillStyle="#1a1420"; ctx.fillRect(0,0,W,H);
+      ctx.save(); ctx.translate(0,-camY);
+      for(let cc=0;cc<COLS;cc++)for(let r=0;r<world[cc].length;r++){ const y=r*TS; if(y-camY<-TS||y-camY>H)continue; const t=world[cc][r]; if(t===-1){ctx.fillStyle="#5a8a4a";ctx.fillRect(cc*TS,y,TS,TS);} else if(t>0){ ctx.fillStyle=ORES[t].c; ctx.fillRect(cc*TS,y,TS-1,TS-1); if(t>=2){ctx.fillStyle="rgba(255,255,255,.3)";ctx.beginPath();ctx.arc(cc*TS+TS/2,y+TS/2,4,0,7);ctx.fill();} } }
+      ctx.fillStyle="#ffd93d"; ctx.fillRect(px-10,py-16,20,28); ctx.fillStyle="#000"; ctx.fillRect(px-6,py-10,12,6);
+      ctx.restore();
+      ctx.fillStyle="rgba(0,0,0,.6)"; ctx.fillRect(0,0,W,34); ctx.fillStyle="#e7ecfb"; ctx.font="700 14px Rajdhani"; ctx.fillText("💰"+cash+"   🎒"+bag+"/"+bagMax()+"   ⬇"+depth+"m",12,23);
+      ctx.fillStyle="#9fb0da"; ctx.font="500 10px Inter"; ctx.textAlign="right"; ctx.fillText("[U] shop when stopped",W-10,22); ctx.textAlign="left";
+      if(!started){ ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillRect(0,H/2-40,W,80); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.textAlign="center"; ctx.fillText("A/D move · S dig down · dig into ore to sell it",W/2,H/2); ctx.fillText("Press [U] to open the upgrade shop anytime",W/2,H/2+22); ctx.textAlign="left"; }
+      if(menu){ ctx.fillStyle="rgba(4,7,15,.9)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle="#00e0ff"; ctx.font="700 22px Rajdhani"; ctx.fillText("MINER SHOP · 💰"+cash,W/2,150); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("[1] Drill Lv "+save.drillLvl+" → "+(save.drillLvl+1)+"  ("+save.drillLvl*30+")",W/2,200); ctx.fillText("[2] Bag Lv "+save.bagLvl+" (holds "+bagMax()+") → +10  ("+save.bagLvl*25+")",W/2,230); ctx.fillStyle="#9fb0da"; ctx.font="600 13px Inter"; ctx.fillText("[U] back to digging",W/2,270); ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); window.addEventListener("keyup",ku); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); window.removeEventListener("keyup",ku); persist(); };
+  },
+
+  /* ============ 13. ARENACHAMP — fighting game vs escalating AI ============ */
+  arenachamp(stage){
+    const W=560,H=420; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const keys={}; const K=window.KLYP;
+    let save=K?K.load("arenachamp",{wins:0,pwr:0}):{wins:0,pwr:0};
+    let p,e,round,over,result,msg;
+    function fighter(x,face){ return {x,y:H-90,vy:0,hp:100,face,atk:0,block:0,hurt:0,ground:true}; }
+    function start(){ p=fighter(120,1); e=fighter(W-120,-1); round=save.wins+1; over=false; result=""; msg="ROUND "+round; }
+    function kd(e2){ const k=e2.key.toLowerCase(); keys[k]=true; if(over&&(k===" "||k==="enter"))start();
+      if(!over){ if(k==="w"&&p.ground){p.vy=-11;p.ground=false;} if(k==="j")punch(p,e); if(k==="k")p.block=15; } if([" "].includes(k))e2.preventDefault(); }
+    function ku(e2){ keys[e2.key.toLowerCase()]=false; }
+    function punch(a,b){ if(a.atk>0)return; a.atk=14; }
+    let raf,tick=0; function loop(){ raf=requestAnimationFrame(loop); tick++;
+      if(!over){ // player move
+        if(keys["a"])p.x-=4; if(keys["d"])p.x+=4; p.x=Math.max(30,Math.min(W-30,p.x)); p.vy+=0.6; p.y+=p.vy; if(p.y>=H-90){p.y=H-90;p.vy=0;p.ground=true;} if(p.atk>0)p.atk--; if(p.block>0)p.block--; if(p.hurt>0)p.hurt--;
+        p.face=e.x>p.x?1:-1;
+        // player hit
+        if(p.atk===7&&Math.abs(p.x-e.x)<70&&e.hurt<=0){ const dmg=e.block>0?3:8+save.pwr*2; e.hp-=dmg; e.hurt=12; e.x+=p.face*20; }
+        // AI
+        const dist=Math.abs(p.x-e.x); e.face=p.x>e.x?1:-1; if(e.atk>0)e.atk--; if(e.block>0)e.block--; if(e.hurt>0)e.hurt--; e.vy+=0.6; e.y+=e.vy; if(e.y>=H-90){e.y=H-90;e.vy=0;e.ground=true;}
+        if(e.hurt<=0){ const aggro=0.5+round*0.05; if(dist>75){ e.x+=e.face*(2+round*0.1); } else { if(Math.random()<aggro*0.1&&e.atk<=0)e.atk=14; if(Math.random()<0.02)e.block=15; } if(e.atk===7&&dist<70&&p.hurt<=0){ const dmg=p.block>0?3:6+round; p.hp-=dmg; p.hurt=12; p.x+=e.face*18; } }
+        if(p.hp<=0||e.hp<=0){ over=true; if(e.hp<=0&&p.hp>0){result="win";save.wins++;if(save.wins%3===0)save.pwr++;if(K){K.addCoins(10);K.save("arenachamp",save);}} else result="lose"; } }
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#3a2050"); g.addColorStop(1,"#1a1020"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle="#2a1a3a"; ctx.fillRect(0,H-40,W,40);
+      function draw(f,col){ ctx.save(); ctx.translate(f.x,f.y); ctx.fillStyle=f.hurt>0?"#fff":col; ctx.fillRect(-12,-40,24,50); ctx.fillStyle=col; ctx.beginPath(); ctx.arc(0,-48,10,0,7); ctx.fill(); if(f.atk>4&&f.atk<11){ctx.fillStyle="#ffd93d";ctx.fillRect(f.face*14,-30,f.face*24,8);} if(f.block>0){ctx.strokeStyle="#00e0ff";ctx.lineWidth=3;ctx.strokeRect(-16,-44,32,58);ctx.lineWidth=1;} ctx.restore(); }
+      draw(p,"#00e0ff"); draw(e,"#ff3d77");
+      // health bars
+      ctx.fillStyle="#000"; ctx.fillRect(20,20,200,18); ctx.fillStyle="#2fbf6a"; ctx.fillRect(20,20,200*Math.max(0,p.hp/100),18); ctx.strokeStyle="#555"; ctx.strokeRect(20,20,200,18);
+      ctx.fillStyle="#000"; ctx.fillRect(W-220,20,200,18); ctx.fillStyle="#ff3d77"; ctx.fillRect(W-220,20,200*Math.max(0,e.hp/100),18); ctx.strokeStyle="#555"; ctx.strokeRect(W-220,20,200,18);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 13px Rajdhani"; ctx.textAlign="center"; ctx.fillText("YOU (Lv "+(save.pwr+1)+")",120,52); ctx.fillText("CHAMPION "+round,W-120,52); ctx.fillText("Wins: "+save.wins,W/2,20); ctx.textAlign="left";
+      if(tick<90&&!over){ ctx.fillStyle="#ffd93d"; ctx.font="800 30px Rajdhani"; ctx.textAlign="center"; ctx.fillText(msg,W/2,H/2); ctx.textAlign="left"; }
+      if(!over&&tick<150){ ctx.fillStyle="#9fb0da"; ctx.font="500 12px Inter"; ctx.textAlign="center"; ctx.fillText("A/D move · W jump · J punch · K block",W/2,H-14); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.85)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle=result==="win"?"#2fbf6a":"#ff3d77"; ctx.font="700 30px Rajdhani"; ctx.fillText(result==="win"?"K.O.! YOU WIN":"DEFEATED",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText(save.wins+" total wins — SPACE to fight on",W/2,H/2+18); ctx.textAlign="left"; } }
+    start(); window.addEventListener("keydown",kd); window.addEventListener("keyup",ku); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); window.removeEventListener("keyup",ku); if(K)K.save("arenachamp",save); };
+  },
+
+  /* ============ 14. POTIONBREW — match-3 with recipe progression ============ */
+  potionbrew(stage){
+    const N=7,CS=60,W=N*CS,H=N*CS+70; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    const GEMS=["🔴","🔵","🟢","🟡","🟣","🟠"]; let save=K?K.load("potionbrew",{brewed:0,goalLvl:1}):{brewed:0,goalLvl:1};
+    let grid,sel,score,moves,goal,goalColor,collected,over,anim;
+    function start(){ grid=Array.from({length:N},()=>Array.from({length:N},()=>Math.random()*GEMS.length|0)); sel=null; score=0; moves=20; goalColor=Math.random()*GEMS.length|0; goal=15+save.goalLvl*5; collected=0; over=false; resolveMatches(); }
+    function swap(a,b){ const t=grid[a[1]][a[0]]; grid[a[1]][a[0]]=grid[b[1]][b[0]]; grid[b[1]][b[0]]=t; }
+    function findMatches(){ const m=new Set(); for(let y=0;y<N;y++)for(let x=0;x<N-2;x++){ if(grid[y][x]===grid[y][x+1]&&grid[y][x]===grid[y][x+2]){m.add(x+","+y);m.add((x+1)+","+y);m.add((x+2)+","+y);} } for(let x=0;x<N;x++)for(let y=0;y<N-2;y++){ if(grid[y][x]===grid[y+1][x]&&grid[y][x]===grid[y+2][x]){m.add(x+","+y);m.add(x+","+(y+1));m.add(x+","+(y+2));} } return m; }
+    function resolveMatches(){ let m=findMatches(); while(m.size){ m.forEach(k=>{ const [x,y]=k.split(",").map(Number); if(grid[y][x]===goalColor)collected++; score+=10; grid[y][x]=-1; }); for(let x=0;x<N;x++){ let col=[]; for(let y=N-1;y>=0;y--)if(grid[y][x]>=0)col.push(grid[y][x]); for(let y=N-1;y>=0;y--)grid[y][x]=col[N-1-y]!==undefined?col[N-1-y]:(Math.random()*GEMS.length|0); } m=findMatches(); } if(collected>=goal){ over=true; save.brewed++; save.goalLvl++; if(K){K.addCoins(15);K.save("potionbrew",save);} } }
+    function click(e){ if(over){start();return;} const r=c.getBoundingClientRect(); const x=Math.floor((e.clientX-r.left)*(W/r.width)/CS),y=Math.floor(((e.clientY-r.top)*(H/r.height)-70)/CS); if(x<0||y<0||x>=N||y>=N)return;
+      if(!sel){sel=[x,y];} else { const dx=Math.abs(sel[0]-x),dy=Math.abs(sel[1]-y); if(dx+dy===1){ swap(sel,[x,y]); if(findMatches().size){moves--;resolveMatches();if(moves<=0&&collected<goal)over=true;}else swap(sel,[x,y]); sel=null; } else sel=[x,y]; } }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop); ctx.fillStyle="#1a1030"; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 16px Rajdhani"; ctx.fillText("Brew "+GEMS[goalColor]+" potion  "+collected+"/"+goal,12,26); ctx.fillText("Moves: "+moves,12,48); ctx.textAlign="right"; ctx.fillStyle="#ffd93d"; ctx.fillText("Brewed: "+save.brewed,W-12,26); ctx.textAlign="left";
+      for(let y=0;y<N;y++)for(let x=0;x<N;x++){ const X=x*CS,Y=y*CS+70; const isSel=sel&&sel[0]===x&&sel[1]===y; ctx.fillStyle=isSel?"#2f7bff":"#0e1836"; ctx.fillRect(X+2,Y+2,CS-4,CS-4); ctx.font="34px serif"; ctx.textAlign="center"; ctx.fillText(GEMS[grid[y][x]]||"",X+CS/2,Y+CS/2+12); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.85)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; const won=collected>=goal; ctx.fillStyle=won?"#2fbf6a":"#ff3d77"; ctx.font="700 24px Rajdhani"; ctx.fillText(won?"POTION BREWED! 🧪":"OUT OF MOVES",W/2,H/2-6); ctx.fillStyle="#e7ecfb"; ctx.font="600 13px Inter"; ctx.fillText(save.brewed+" potions brewed — click to continue",W/2,H/2+18); ctx.textAlign="left"; } }
+    c.addEventListener("click",click); loop(); return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("click",click); if(K)K.save("potionbrew",save); };
+  },
+
+  /* ============ 15. ROBOFACTORY — automation/incremental ============ */
+  robofactory(stage){
+    const W=520,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("robofactory",{parts:0,miners:0,forges:0,assemblers:0,mult:1}):{parts:0,miners:0,forges:0,assemblers:0,mult:1};
+    let ore,metal,parts,tick2;
+    function start(){ ore=0; metal=0; parts=save.parts; tick2=0; }
+    const ITEMS=[{n:"Miner",e:"⛏",k:"miners",cost:()=>10+save.miners*8,desc:"+1 ore/s"},{n:"Forge",e:"🔥",k:"forges",cost:()=>25+save.forges*15,desc:"ore→metal"},{n:"Assembler",e:"🤖",k:"assemblers",cost:()=>60+save.assemblers*40,desc:"metal→parts"},{n:"Overclock",e:"⚡",k:"mult",cost:()=>100*save.mult,desc:"×2 all speed"}];
+    function buy(i){ const it=ITEMS[i]; const cost=it.cost(); if(parts>=cost){ parts-=cost; if(it.k==="mult")save.mult*=2; else save[it.k]++; save.parts=parts; if(K)K.save("robofactory",save); } }
+    function click(e){ const r=c.getBoundingClientRect(); const my=(e.clientY-r.top)*(H/r.height),mx=(e.clientX-r.left)*(W/r.width);
+      if(my<140&&Math.hypot(mx-W/2,my-70)<50){ ore+=save.mult; return; }
+      const i=Math.floor((my-160)/78); if(i>=0&&i<4)buy(i); }
+    function fmt(n){ n=Math.floor(n); if(n<10000)return n; const u=["","K","M","B"];let k=0;while(n>=1000&&k<3){n/=1000;k++;}return n.toFixed(1)+u[k]; }
+    start(); let raf,acc=0; function loop(){ raf=requestAnimationFrame(loop); acc++;
+      if(acc%6===0){ ore+=save.miners*save.mult; const smelt=Math.min(ore,save.forges*save.mult); ore-=smelt; metal+=smelt; const asm=Math.min(metal,save.assemblers*save.mult); metal-=asm; parts+=asm; save.parts=parts; if(acc%60===0&&K)K.save("robofactory",save); }
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#1a2030"); g.addColorStop(1,"#0a0e18"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      // big ore button
+      ctx.fillStyle="#3a4a6a"; ctx.beginPath(); ctx.arc(W/2,70,50,0,7); ctx.fill(); ctx.font="44px serif"; ctx.textAlign="center"; ctx.fillText("⛏",W/2,86);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 15px Rajdhani"; ctx.fillText("Click to mine ore",W/2,140); ctx.textAlign="left";
+      ctx.fillStyle="#8ea0c8"; ctx.font="600 13px Rajdhani"; ctx.fillText("Ore "+fmt(ore),20,30); ctx.fillText("Metal "+fmt(metal),150,30); ctx.fillStyle="#ffd93d"; ctx.fillText("⚙ Parts "+fmt(parts),290,30);
+      ITEMS.forEach((it,i)=>{ const y=160+i*78,cost=it.cost(),ok=parts>=cost; ctx.fillStyle=ok?"#14203f":"#0e1730"; ctx.fillRect(16,y,W-32,68); ctx.font="30px serif"; ctx.fillText(it.e,34,y+44); ctx.fillStyle="#e7ecfb"; ctx.font="700 16px Rajdhani"; ctx.fillText(it.n+"  "+(it.k==="mult"?"×"+save.mult:"("+save[it.k]+")"),80,y+28); ctx.fillStyle="#8ea0c8"; ctx.font="500 12px Inter"; ctx.fillText(it.desc,80,y+48); ctx.fillStyle=ok?"#ffd93d":"#66707f"; ctx.font="700 15px Rajdhani"; ctx.textAlign="right"; ctx.fillText("⚙"+fmt(cost),W-30,y+40); ctx.textAlign="left"; }); }
+    c.addEventListener("click",click); loop(); return ()=>{ cancelAnimationFrame(raf); save.parts=parts; if(K)K.save("robofactory",save); c.removeEventListener("click",click); };
+  },
+
+  /* ============ 16. SURVIVALIST — day/night resource survival ============ */
+  survivalist(stage){
+    const W=540,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const keys={}; const K=window.KLYP;
+    let save=K?K.load("survivalist",{bestDay:0}):{bestDay:0};
+    let px,py,hp,hunger,wood,food,trees,berries,enemies,day,night,dayT,over,hasFire,started;
+    function start(){ px=W/2;py=H/2;hp=100;hunger=100;wood=0;food=0;day=1;night=false;dayT=0;over=false;hasFire=false;started=false; trees=[];berries=[];enemies=[]; for(let i=0;i<8;i++)trees.push({x:40+Math.random()*(W-80),y:40+Math.random()*(H-120),hp:3}); for(let i=0;i<5;i++)berries.push({x:40+Math.random()*(W-80),y:40+Math.random()*(H-120)}); }
+    function kd(e){ keys[e.key.toLowerCase()]=true; started=true; if(over&&e.key===" ")start(); if(e.key.toLowerCase()==="f"&&wood>=5&&!hasFire){wood-=5;hasFire=true;} }
+    function ku(e){ keys[e.key.toLowerCase()]=false; }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop);
+      if(started&&!over){ const sp=3; if(keys["w"]||keys["arrowup"])py-=sp; if(keys["s"]||keys["arrowdown"])py+=sp; if(keys["a"]||keys["arrowleft"])px-=sp; if(keys["d"]||keys["arrowright"])px+=sp; px=Math.max(14,Math.min(W-14,px)); py=Math.max(14,Math.min(H-14,py));
+        trees.forEach(t=>{ if(t.hp>0&&Math.hypot(t.x-px,t.y-py)<28){ if(keys[" "]){ t.hp-=0.05; if(t.hp<=0){wood+=3;t.respawn=300;} } } if(t.respawn>0){t.respawn--;if(t.respawn<=0){t.hp=3;}} });
+        berries.forEach(b=>{ if(!b.eaten&&Math.hypot(b.x-px,b.y-py)<22){b.eaten=true;food+=2;b.respawn=400;} if(b.respawn>0){b.respawn--;if(b.respawn<=0)b.eaten=false;} });
+        dayT++; if(dayT>600){ dayT=0; night=!night; if(!night){day++;save.bestDay=Math.max(save.bestDay,day);if(K)K.save("survivalist",save);} if(night){ for(let i=0;i<day+1;i++)enemies.push({x:Math.random()<0.5?0:W,y:Math.random()*H,hp:5}); } else enemies=[]; }
+        hunger-=0.03; if(hunger<=0){hunger=0;hp-=0.1;} if(hunger>80&&hp<100)hp+=0.02;
+        if(keys["e"]&&food>0){food--;hunger=Math.min(100,hunger+20);}
+        enemies.forEach(en=>{ const near=hasFire?false:true; const ang=Math.atan2(py-en.y,px-en.x); if(!hasFire||Math.hypot(en.x-px,en.y-py)>60){en.x+=Math.cos(ang)*1.2;en.y+=Math.sin(ang)*1.2;} if(Math.hypot(en.x-px,en.y-py)<20){hp-=0.3;} if(keys[" "]&&Math.hypot(en.x-px,en.y-py)<40){en.hp-=0.1;if(en.hp<=0)en.dead=true;} }); enemies=enemies.filter(e=>!e.dead);
+        if(hp<=0){over=true;if(K)K.save("survivalist",save);} }
+      ctx.fillStyle=night?"#0a0a20":"#1a3a2a"; ctx.fillRect(0,0,W,H);
+      if(hasFire){ ctx.fillStyle="rgba(255,150,50,"+(0.15+Math.sin(Date.now()/200)*0.05)+")"; ctx.beginPath(); ctx.arc(px,py,70,0,7); ctx.fill(); }
+      trees.forEach(t=>{ if(t.hp>0){ ctx.font="30px serif"; ctx.textAlign="center"; ctx.fillText("🌳",t.x,t.y); ctx.textAlign="left"; } });
+      berries.forEach(b=>{ if(!b.eaten){ ctx.font="18px serif"; ctx.textAlign="center"; ctx.fillText("🫐",b.x,b.y); ctx.textAlign="left"; } });
+      enemies.forEach(en=>{ ctx.font="22px serif"; ctx.textAlign="center"; ctx.fillText("🧟",en.x,en.y); ctx.textAlign="left"; });
+      if(hasFire){ ctx.font="24px serif"; ctx.textAlign="center"; ctx.fillText("🔥",px+20,py-14); ctx.textAlign="left"; }
+      ctx.font="26px serif"; ctx.textAlign="center"; ctx.fillText("🧑",px,py+8); ctx.textAlign="left";
+      // hud
+      ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillRect(0,0,W,52);
+      ctx.fillStyle="#ff3d77"; ctx.fillRect(12,10,100*(hp/100),8); ctx.strokeStyle="#555"; ctx.strokeRect(12,10,100,8); ctx.fillStyle="#ffd93d"; ctx.fillRect(12,24,100*(hunger/100),8); ctx.strokeRect(12,24,100,8);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 13px Rajdhani"; ctx.fillText("🪵"+wood+" 🍖"+food+"  Day "+day+(night?" 🌙":" ☀"),130,22); ctx.fillStyle="#9fb0da"; ctx.font="500 10px Inter"; ctx.fillText("SPACE chop/attack · E eat · F build fire(5w)",130,40);
+      if(!started){ ctx.fillStyle="rgba(0,0,0,.6)"; ctx.fillRect(0,H/2-30,W,60); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.textAlign="center"; ctx.fillText("Survive the nights. WASD move, hold SPACE to gather.",W/2,H/2+5); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle="#ff3d77"; ctx.font="700 26px Rajdhani"; ctx.fillText("YOU DIED",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Survived "+day+" days · best "+save.bestDay+" — SPACE",W/2,H/2+18); ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); window.addEventListener("keyup",ku); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); window.removeEventListener("keyup",ku); if(K)K.save("survivalist",save); };
+  },
+
+  /* ============ 17. CARDBATTLE — deckbuilding lite ============ */
+  cardbattle(stage){
+    const W=560,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("cardbattle",{wins:0,deckSize:5}):{wins:0,deckSize:5};
+    const CARDS=[{n:"Strike",e:"⚔",dmg:6,cost:1},{n:"Bash",e:"🔨",dmg:10,cost:2},{n:"Guard",e:"🛡",block:8,cost:1},{n:"Heal",e:"💚",heal:6,cost:2},{n:"Fireball",e:"🔥",dmg:15,cost:3}];
+    let hp,maxHp,block,ehp,emax,energy,hand,deck,discard,eIntent,over,result,turn,msg;
+    function start(){ maxHp=50+save.wins*3; hp=maxHp; block=0; emax=30+save.wins*8; ehp=emax; deck=[]; for(let i=0;i<save.deckSize;i++)deck.push(Math.random()*CARDS.length|0); discard=[]; over=false; result=""; startTurn(); }
+    function startTurn(){ energy=3; block=0; hand=[]; for(let i=0;i<4;i++){ if(!deck.length){deck=discard;discard=[];} if(deck.length)hand.push(deck.splice(Math.random()*deck.length|0,1)[0]); } eIntent=Math.random()<0.3?"block":"attack"; turn="me"; }
+    function play(i){ if(turn!=="me"||over||i>=hand.length)return; const cd=CARDS[hand[i]]; if(energy<cd.cost)return; energy-=cd.cost; if(cd.dmg)ehp-=cd.dmg; if(cd.block)block+=cd.block; if(cd.heal)hp=Math.min(maxHp,hp+cd.heal); discard.push(hand[i]); hand.splice(i,1);
+      if(ehp<=0){ over=true;result="win";save.wins++;if(save.wins%2===0)save.deckSize++;if(K){K.addCoins(8);K.save("cardbattle",save);} } }
+    function endTurn(){ if(over)return; turn="enemy"; setTimeout(()=>{ if(eIntent==="attack"){ const dmg=Math.max(0,(8+save.wins*2)-block); hp-=dmg; } startTurn(); if(hp<=0){over=true;result="lose";if(K)K.save("cardbattle",save);} },500); }
+    function click(e){ if(over){start();return;} const r=c.getBoundingClientRect(); const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+      if(my>H-140){ const cw=W/Math.max(1,hand.length); const i=Math.floor(mx/cw); play(i); return; }
+      if(mx>W-120&&my>H-180&&my<H-150)endTurn(); }
+    function kd(e){ if(over){if(e.key===" ")start();return;} if(/[1-4]/.test(e.key))play(+e.key-1); if(e.key==="Enter")endTurn(); }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop);
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#2a1a3a"); g.addColorStop(1,"#0e0a1a"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.font="54px serif"; ctx.textAlign="center"; ctx.fillText("👹",W/2,100); ctx.fillStyle="#e7ecfb"; ctx.font="700 14px Rajdhani"; ctx.fillText("Enemy "+(eIntent==="attack"?"⚔ attacking":"🛡 blocking"),W/2,128);
+      ctx.fillStyle="#000"; ctx.fillRect(W/2-90,138,180,14); ctx.fillStyle="#ff3d77"; ctx.fillRect(W/2-90,138,180*Math.max(0,ehp/emax),14); ctx.strokeStyle="#555"; ctx.strokeRect(W/2-90,138,180,14); ctx.textAlign="left";
+      // player
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 14px Rajdhani"; ctx.fillText("You  🛡"+block+"  ⚡"+energy+"/3",20,H-200); ctx.fillStyle="#000"; ctx.fillRect(20,H-192,200,14); ctx.fillStyle="#2fbf6a"; ctx.fillRect(20,H-192,200*Math.max(0,hp/maxHp),14); ctx.strokeStyle="#555"; ctx.strokeRect(20,H-192,200,14);
+      ctx.fillStyle="#8ea0c8"; ctx.font="500 11px Inter"; ctx.fillText("HP "+Math.max(0,hp)+"/"+maxHp+" · Wins "+save.wins+" · Deck "+save.deckSize,20,H-172);
+      // end turn btn
+      ctx.fillStyle="#ff8a3d"; ctx.fillRect(W-120,H-180,100,30); ctx.fillStyle="#04070f"; ctx.font="700 14px Rajdhani"; ctx.textAlign="center"; ctx.fillText("END TURN",W-70,H-160); ctx.textAlign="left";
+      // hand
+      const cw=W/Math.max(1,hand.length); hand.forEach((ci,i)=>{ const cd=CARDS[ci]; const x=i*cw; ctx.fillStyle=energy>=cd.cost?"#1e3560":"#2a1a2a"; ctx.fillRect(x+6,H-130,cw-12,120); ctx.strokeStyle="#3a4a6a"; ctx.strokeRect(x+6,H-130,cw-12,120); ctx.font="30px serif"; ctx.textAlign="center"; ctx.fillText(cd.e,x+cw/2,H-80); ctx.fillStyle="#e7ecfb"; ctx.font="700 13px Rajdhani"; ctx.fillText(cd.n,x+cw/2,H-50); ctx.fillStyle="#ffd93d"; ctx.font="600 11px Inter"; ctx.fillText("⚡"+cd.cost+(cd.dmg?" ⚔"+cd.dmg:cd.block?" 🛡"+cd.block:" 💚"+cd.heal),x+cw/2,H-30); ctx.textAlign="left"; });
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle=result==="win"?"#2fbf6a":"#ff3d77"; ctx.font="700 28px Rajdhani"; ctx.fillText(result==="win"?"VICTORY!":"DEFEATED",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText(save.wins+" wins · deck grows each 2 wins — SPACE",W/2,H/2+18); ctx.textAlign="left"; } }
+    c.addEventListener("click",click); window.addEventListener("keydown",kd); loop();
+    return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("click",click); window.removeEventListener("keydown",kd); if(K)K.save("cardbattle",save); };
+  },
+
+  /* ============ 18. FISHINGPRO — timing minigame with rod upgrades ============ */
+  fishingpro(stage){
+    const W=460,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("fishingpro",{coins:0,rodLvl:1,best:0}):{coins:0,rodLvl:1,best:0};
+    const FISH=[{n:"Minnow",e:"🐟",v:3,spd:1},{n:"Bass",e:"🐠",v:8,spd:1.6},{n:"Puffer",e:"🐡",v:15,spd:2.3},{n:"Shark",e:"🦈",v:40,spd:3}];
+    let phase,barY,barV,catchZ,fishY,fish,progress,coins,over,msg,msgT,session;
+    function start(){ phase="wait"; coins=save.coins; over=false; session=0; nextCast(); }
+    function nextCast(){ phase="wait"; setTimeout(()=>{ if(phase!=="wait")return; startFight(); },800+Math.random()*1500); }
+    function startFight(){ const tier=Math.min(3,Math.random()*(save.rodLvl+1)|0); fish=FISH[tier]; phase="fight"; barY=200; barV=0; catchZ=100; fishY=200; progress=30; }
+    function flash(m){msg=m;msgT=70;}
+    function click(){ if(over){start();return;} if(phase==="wait"){ /* early = miss */ } }
+    let held=false; function down(){ held=true; if(phase==="wait")flash("Too early!"); }
+    function up(){ held=false; }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop); if(msgT>0)msgT--;
+      if(phase==="fight"){ barV+=(held?-0.5:0.5); barV*=0.92; barY+=barV; const zh=80+save.rodLvl*10; barY=Math.max(60,Math.min(340,barY));
+        fishY+=Math.sin(Date.now()/300*fish.spd)*fish.spd; fishY=Math.max(70,Math.min(330,fishY));
+        const inZone=Math.abs(barY-fishY)<zh/2; progress+=inZone?0.6:-0.5; progress=Math.max(0,Math.min(100,progress));
+        if(progress>=100){ coins+=fish.v; save.coins=coins; save.best=Math.max(save.best,fish.v); session+=fish.v; if(K){K.addCoins(1);K.save("fishingpro",save);} flash("Caught "+fish.n+"! +"+fish.v); phase="wait"; nextCast(); }
+        if(progress<=0){ flash("It got away!"); phase="wait"; nextCast(); } }
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#1a4a7a"); g.addColorStop(1,"#062038"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle="rgba(255,255,255,.06)"; for(let i=0;i<5;i++)ctx.fillRect(0,60+i*60+Math.sin(Date.now()/500+i)*4,W,2);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 16px Rajdhani"; ctx.fillText("🪙 "+coins+"   Rod Lv "+save.rodLvl,14,28); ctx.fillStyle="#9fb0da"; ctx.font="500 11px Inter"; ctx.fillText("Session: +"+session,14,48);
+      if(phase==="fight"){ // fight bar on right
+        ctx.fillStyle="rgba(0,0,0,.4)"; ctx.fillRect(W-70,50,40,300);
+        const zh=80+save.rodLvl*10; ctx.fillStyle="rgba(47,191,106,.4)"; ctx.fillRect(W-70,barY-zh/2,40,zh);
+        ctx.font="26px serif"; ctx.textAlign="center"; ctx.fillText(fish.e,W-50,fishY+9); ctx.textAlign="left";
+        // progress
+        ctx.fillStyle="rgba(0,0,0,.4)"; ctx.fillRect(30,50,24,300); ctx.fillStyle="#ffd93d"; ctx.fillRect(30,350-progress*3,24,progress*3);
+        ctx.fillStyle="#e7ecfb"; ctx.font="600 12px Inter"; ctx.textAlign="center"; ctx.fillText("Hold to reel · keep the fish in the green zone",W/2,H-30); ctx.textAlign="left"; }
+      else { ctx.fillStyle="#9fb0da"; ctx.font="600 15px Inter"; ctx.textAlign="center"; ctx.fillText(phase==="wait"?"Waiting for a bite…":"",W/2,H/2); ctx.textAlign="left"; }
+      // rod upgrade button
+      const cost=save.rodLvl*20; ctx.fillStyle=coins>=cost?"#2fbf6a":"#2a3a2a"; ctx.fillRect(W-150,H-44,140,34); ctx.fillStyle=coins>=cost?"#04070f":"#66707f"; ctx.font="700 13px Rajdhani"; ctx.textAlign="center"; ctx.fillText("Upgrade Rod ("+cost+")",W-80,H-22); ctx.textAlign="left";
+      if(msgT>0){ ctx.fillStyle="#ffd93d"; ctx.font="700 16px Rajdhani"; ctx.textAlign="center"; ctx.fillText(msg,W/2,90); ctx.textAlign="left"; } }
+    function click2(e){ const r=c.getBoundingClientRect(); const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height); if(mx>W-150&&my>H-44){ const cost=save.rodLvl*20; if(coins>=cost){coins-=cost;save.rodLvl++;save.coins=coins;if(K)K.save("fishingpro",save);} } }
+    c.addEventListener("mousedown",down); c.addEventListener("mouseup",up); c.addEventListener("click",click2);
+    function kd(e){ if(e.key===" "){down();e.preventDefault();} } function ku(e){ if(e.key===" ")up(); }
+    window.addEventListener("keydown",kd); window.addEventListener("keyup",ku); loop();
+    return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("mousedown",down); c.removeEventListener("mouseup",up); c.removeEventListener("click",click2); window.removeEventListener("keydown",kd); window.removeEventListener("keyup",ku); if(K)K.save("fishingpro",save); };
+  },
+
+  /* ============ 19. BOSSRUSH — endless boss fight with gear ============ */
+  bossrush(stage){
+    const W=520,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const keys={}; const K=window.KLYP; let mx=W/2,my=H-60;
+    let save=K?K.load("bossrush",{gearLvl:0,bestBoss:0}):{gearLvl:0,bestBoss:0};
+    let px,py,hp,bossHp,bossMax,bossN,bullets,ebul,over,phase,attackT,pattern,started,dmgC;
+    function start(){ px=W/2;py=H-60;hp=100+save.gearLvl*10;bullets=[];ebul=[];over=false;started=false;bossN=1;spawnBoss();dmgC=0; }
+    function spawnBoss(){ bossMax=120+bossN*60; bossHp=bossMax; phase=0; attackT=0; pattern=0; }
+    function mm(e){ const r=c.getBoundingClientRect(); mx=(e.clientX-r.left)*(W/r.width); my=(e.clientY-r.top)*(H/r.height); started=true; }
+    function kd(e){ keys[e.key.toLowerCase()]=true; started=true; if(over&&e.key===" ")start(); }
+    function ku(e){ keys[e.key.toLowerCase()]=false; }
+    start(); let raf,tick=0; function loop(){ raf=requestAnimationFrame(loop); tick++;
+      if(started&&!over){ px+=(mx-px)*0.3; py+=(my-py)*0.3; px=Math.max(12,Math.min(W-12,px)); py=Math.max(160,Math.min(H-12,py));
+        if(tick%Math.max(3,8-save.gearLvl)===0)bullets.push({x:px,y:py-10});
+        bullets.forEach(b=>b.y-=10); bullets=bullets.filter(b=>b.y>150);
+        const bx=W/2+Math.sin(tick/40)*120, by=90;
+        bullets.forEach(b=>{ if(Math.abs(b.x-bx)<40&&Math.abs(b.y-by)<30){bossHp-=3+save.gearLvl;b.y=-99;} });
+        attackT--; if(attackT<=0){ attackT=40-Math.min(25,bossN*2); pattern=(pattern+1)%3;
+          if(pattern===0){ for(let a=0;a<Math.PI*2;a+=Math.PI/6)ebul.push({x:bx,y:by,vx:Math.cos(a)*2.5,vy:Math.sin(a)*2.5}); }
+          else if(pattern===1){ const ang=Math.atan2(py-by,px-bx); for(let i=-2;i<=2;i++)ebul.push({x:bx,y:by,vx:Math.cos(ang+i*0.2)*4,vy:Math.sin(ang+i*0.2)*4}); }
+          else { for(let i=0;i<3;i++)ebul.push({x:Math.random()*W,y:by,vx:0,vy:3+bossN*0.2}); } }
+        ebul.forEach(b=>{b.x+=b.vx;b.y+=b.vy;}); ebul=ebul.filter(b=>b.x>-10&&b.x<W+10&&b.y>-10&&b.y<H+10);
+        ebul.forEach(b=>{ if(Math.hypot(b.x-px,b.y-py)<12){b.hit=true;hp-=6;} }); ebul=ebul.filter(b=>!b.hit);
+        if(hp<=0){over=true;save.bestBoss=Math.max(save.bestBoss,bossN);if(K)K.save("bossrush",save);}
+        if(bossHp<=0){ bossN++; save.bestBoss=Math.max(save.bestBoss,bossN); if(bossN%2===0)save.gearLvl++; if(K){K.addCoins(10);K.save("bossrush",save);} hp=Math.min(100+save.gearLvl*10,hp+30); ebul=[]; spawnBoss(); } }
+      ctx.fillStyle="#0a0618"; ctx.fillRect(0,0,W,H);
+      const bx=W/2+Math.sin(tick/40)*120;
+      ctx.font="54px serif"; ctx.textAlign="center"; ctx.fillText(["👾","👹","🐉","👻","🤖"][bossN%5],bx,105); ctx.textAlign="left";
+      ctx.fillStyle="#000"; ctx.fillRect(W/2-140,30,280,16); ctx.fillStyle="#ff3d77"; ctx.fillRect(W/2-140,30,280*Math.max(0,bossHp/bossMax),16); ctx.strokeStyle="#555"; ctx.strokeRect(W/2-140,30,280,16);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 13px Rajdhani"; ctx.textAlign="center"; ctx.fillText("BOSS "+bossN+" · Gear Lv "+save.gearLvl,W/2,60); ctx.textAlign="left";
+      bullets.forEach(b=>{ ctx.fillStyle="#00e0ff"; ctx.fillRect(b.x-2,b.y-8,4,10); });
+      ebul.forEach(b=>{ ctx.fillStyle="#ffd93d"; ctx.beginPath(); ctx.arc(b.x,b.y,5,0,7); ctx.fill(); });
+      if(!over){ ctx.fillStyle="#c24bff"; ctx.beginPath(); ctx.moveTo(px,py-12); ctx.lineTo(px-10,py+10); ctx.lineTo(px+10,py+10); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle="#000"; ctx.fillRect(12,H-24,150,12); ctx.fillStyle="#2fbf6a"; ctx.fillRect(12,H-24,150*Math.max(0,hp/(100+save.gearLvl*10)),12);
+      if(!started&&!over){ ctx.fillStyle="#9fb0da"; ctx.font="600 13px Inter"; ctx.textAlign="center"; ctx.fillText("Move with the mouse · auto-fire · dodge the bullets",W/2,H/2); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle="#ff3d77"; ctx.font="700 26px Rajdhani"; ctx.fillText("DEFEATED",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Reached boss "+bossN+" · best "+save.bestBoss+" — SPACE",W/2,H/2+18); ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); window.addEventListener("keyup",ku); c.addEventListener("mousemove",mm); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); window.removeEventListener("keyup",ku); c.removeEventListener("mousemove",mm); if(K)K.save("bossrush",save); };
+  },
+
+  /* ============ 20. PETRAISER — virtual pet with stats & growth ============ */
+  petraiser(stage){
+    const W=460,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("petraiser",{stage:0,xp:0,hunger:80,happy:80,energy:80,lastT:Date.now(),coins:20}):{stage:0,xp:0,hunger:80,happy:80,energy:80,lastT:Date.now(),coins:20};
+    const STAGES=["🥚","🐣","🐤","🐔","🦅"]; let msg,msgT,anim;
+    function flash(m){msg=m;msgT=80;}
+    function tickStats(){ const now=Date.now(); const dt=(now-save.lastT)/1000; save.lastT=now; save.hunger=Math.max(0,save.hunger-dt*0.3); save.happy=Math.max(0,save.happy-dt*0.2); save.energy=Math.min(100,save.energy+dt*0.1); if(K)K.save("petraiser",save); }
+    function feed(){ if(save.coins>=5){save.coins-=5;save.hunger=Math.min(100,save.hunger+25);gainXp(3);flash("Yum! +25 hunger");anim=15;} else flash("Need 5 coins"); }
+    function play(){ if(save.energy>=15){save.energy-=15;save.happy=Math.min(100,save.happy+20);gainXp(4);flash("Fun! +20 happy");anim=15;} else flash("Too tired"); }
+    function sleep(){ save.energy=100; flash("Zzz… energy full"); anim=15; }
+    function gainXp(n){ save.xp+=n; const need=(save.stage+1)*50; if(save.xp>=need&&save.stage<STAGES.length-1){save.xp-=need;save.stage++;flash("EVOLVED to "+STAGES[save.stage]+"!");if(K)K.addCoins(10);} save.coins+=1; if(K)K.save("petraiser",save); }
+    function click(e){ const r=c.getBoundingClientRect(); const my=(e.clientY-r.top)*(H/r.height),mx=(e.clientX-r.left)*(W/r.width); if(my>H-70){ const i=Math.floor(mx/(W/3)); if(i===0)feed(); else if(i===1)play(); else sleep(); } }
+    let raf,tick=0; function loop(){ raf=requestAnimationFrame(loop); tick++; if(msgT>0)msgT--; if(anim>0)anim--; if(tick%30===0)tickStats();
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#2a3a5a"); g.addColorStop(1,"#1a2438"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle="rgba(255,255,255,.06)"; ctx.beginPath(); ctx.ellipse(W/2,H-140,120,30,0,0,7); ctx.fill();
+      const bounce=Math.sin(tick/20)*6+(anim>0?Math.sin(anim)*8:0); ctx.font="90px serif"; ctx.textAlign="center"; ctx.fillText(STAGES[save.stage],W/2,H/2-30+bounce);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 20px Rajdhani"; ctx.fillText("Level "+(save.stage+1)+" Pet",W/2,H/2+40); ctx.textAlign="left";
+      // stat bars
+      const bars=[["🍖 Hunger",save.hunger,"#ff8a3d"],["😊 Happy",save.happy,"#ffd93d"],["⚡ Energy",save.energy,"#00e0ff"]];
+      bars.forEach((b,i)=>{ const y=40+i*30; ctx.fillStyle="#e7ecfb"; ctx.font="600 12px Inter"; ctx.fillText(b[0],16,y+11); ctx.fillStyle="#000"; ctx.fillRect(110,y,W-160,14); ctx.fillStyle=b[2]; ctx.fillRect(110,y,(W-160)*(b[1]/100),14); ctx.strokeStyle="#555"; ctx.strokeRect(110,y,W-160,14); });
+      ctx.fillStyle="#ffd93d"; ctx.font="700 14px Rajdhani"; ctx.textAlign="right"; ctx.fillText("🪙"+save.coins,W-16,H/2+40); ctx.fillStyle="#8ea0c8"; ctx.font="500 11px Inter"; ctx.fillText("XP "+save.xp+"/"+((save.stage+1)*50),W-16,H/2+58); ctx.textAlign="left";
+      // buttons
+      const btns=[["🍖 Feed","#ff8a3d","-5🪙"],["🎾 Play","#ffd93d","-15⚡"],["💤 Sleep","#00e0ff","free"]];
+      btns.forEach((b,i)=>{ ctx.fillStyle="#141d33"; ctx.fillRect(i*(W/3)+4,H-64,W/3-8,58); ctx.fillStyle=b[1]; ctx.font="700 15px Rajdhani"; ctx.textAlign="center"; ctx.fillText(b[0],i*(W/3)+W/6,H-36); ctx.fillStyle="#8ea0c8"; ctx.font="500 10px Inter"; ctx.fillText(b[2],i*(W/3)+W/6,H-18); ctx.textAlign="left"; });
+      if(msgT>0){ ctx.fillStyle="#2fbf6a"; ctx.font="600 14px Inter"; ctx.textAlign="center"; ctx.fillText(msg,W/2,H-80); ctx.textAlign="left"; } }
+    c.addEventListener("click",click); loop(); return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("click",click); tickStats(); };
+  },
+  /* ============ 21. IDLEEMPIRE — prestige incremental ============ */
+  idleempire(stage){
+    const W=500,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("idleempire",{money:0,biz:[0,0,0,0,0],prestige:0}):{money:0,biz:[0,0,0,0,0],prestige:0};
+    const BIZ=[{n:"Lemonade",e:"🍋",base:1,cost:15},{n:"Newspaper",e:"📰",base:5,cost:100},{n:"Pizzeria",e:"🍕",base:25,cost:1200},{n:"Factory",e:"🏭",base:120,cost:15000},{n:"Bank",e:"🏦",base:600,cost:200000}];
+    let money;
+    function start(){ money=save.money; }
+    function mult(){ return 1+save.prestige*0.5; }
+    function income(){ return BIZ.reduce((a,b,i)=>a+b.base*save.biz[i],0)*mult(); }
+    function cost(i){ return Math.floor(BIZ[i].cost*Math.pow(1.15,save.biz[i])); }
+    function fmt(n){ n=Math.floor(n); if(n<10000)return n.toLocaleString(); const u=["","K","M","B","T"];let k=0;while(n>=1000&&k<4){n/=1000;k++;}return n.toFixed(2)+u[k]; }
+    function buy(i){ const ct=cost(i); if(money>=ct){money-=ct;save.biz[i]++;save.money=money;if(K)K.save("idleempire",save);} }
+    function prestige(){ if(money>=1000000){ save.prestige++; save.money=0; save.biz=[0,0,0,0,0]; money=0; if(K){K.addCoins(20);K.save("idleempire",save);} } }
+    function click(e){ const r=c.getBoundingClientRect(); const my=(e.clientY-r.top)*(H/r.height),mx=(e.clientX-r.left)*(W/r.width);
+      if(my>H-46){ prestige(); return; } const i=Math.floor((my-70)/80); if(i>=0&&i<5)buy(i); }
+    start(); let raf,acc=0; function loop(){ raf=requestAnimationFrame(loop); acc++; if(acc%6===0){ money+=income()/10; save.money=money; if(acc%120===0&&K)K.save("idleempire",save); }
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#12203a"); g.addColorStop(1,"#0a0e18"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle="#ffd93d"; ctx.font="800 26px Rajdhani"; ctx.textAlign="center"; ctx.fillText("$"+fmt(money),W/2,38); ctx.fillStyle="#8ea0c8"; ctx.font="600 13px Inter"; ctx.fillText("$"+fmt(income())+"/s  ·  Prestige ×"+mult().toFixed(1),W/2,58); ctx.textAlign="left";
+      BIZ.forEach((b,i)=>{ const y=70+i*80,ct=cost(i),ok=money>=ct; ctx.fillStyle="#101a30"; ctx.fillRect(16,y,W-32,72); ctx.font="34px serif"; ctx.fillText(b.e,30,y+48); ctx.fillStyle="#e7ecfb"; ctx.font="700 17px Rajdhani"; ctx.fillText(b.n+"  ×"+save.biz[i],80,y+30); ctx.fillStyle="#8ea0c8"; ctx.font="500 12px Inter"; ctx.fillText("$"+fmt(b.base*mult())+"/s each",80,y+50); ctx.fillStyle=ok?"#2fbf6a":"#2a3a2a"; ctx.fillRect(W-130,y+18,104,36); ctx.fillStyle=ok?"#04070f":"#66707f"; ctx.font="700 13px Rajdhani"; ctx.textAlign="center"; ctx.fillText("$"+fmt(ct),W-78,y+40); ctx.textAlign="left"; });
+      const canP=money>=1000000; ctx.fillStyle=canP?"#c24bff":"#2a2438"; ctx.fillRect(4,H-42,W-8,38); ctx.fillStyle=canP?"#fff":"#66707f"; ctx.font="700 15px Rajdhani"; ctx.textAlign="center"; ctx.fillText(canP?"⭐ PRESTIGE (+50% forever)":"Prestige at $1M (×"+mult().toFixed(1)+" now)",W/2,H-17); ctx.textAlign="left"; }
+    c.addEventListener("click",click); loop(); return ()=>{ cancelAnimationFrame(raf); save.money=money; if(K)K.save("idleempire",save); c.removeEventListener("click",click); };
+  },
+
+  /* ============ 22. HEROTOWER — climb floors, level up ============ */
+  herotower(stage){
+    const W=480,H=520; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("herotower",{floor:1,gold:0,atkLvl:0,hpLvl:0,best:1}):{floor:1,gold:0,atkLvl:0,hpLvl:0,best:1};
+    let hp,maxHp,atk,floor,enemy,ehp,emax,over,log,gold,inShop,rolling,rollT,choice;
+    function start(){ maxHp=40+save.hpLvl*15; atk=8+save.atkLvl*4; hp=maxHp; floor=1; gold=0; over=false; log=["Enter the tower!"]; inShop=false; nextFloor(); }
+    function nextFloor(){ const isBoss=floor%5===0; emax=(isBoss?40:20)+floor*8; ehp=emax; enemy={name:isBoss?"Floor Boss":["Rat","Bat","Skeleton","Spider","Imp"][floor%5],atk:(isBoss?6:3)+floor*1.5,boss:isBoss}; addLog("Floor "+floor+": "+enemy.name); }
+    function addLog(m){log.push(m);if(log.length>5)log.shift();}
+    function fight(){ if(over)return; const dmg=atk+Math.floor(Math.random()*6); ehp-=dmg; addLog("You deal "+dmg);
+      if(ehp<=0){ const g=enemy.boss?floor*8:floor*3; gold+=g; addLog(enemy.name+" defeated! +"+g+"g"); save.best=Math.max(save.best,floor); floor++; if(floor%3===0){inShop=true;} else nextFloor(); return; }
+      const edmg=Math.max(1,Math.floor(enemy.atk)+Math.floor(Math.random()*3)); hp-=edmg; addLog(enemy.name+" hits "+edmg); if(hp<=0){over=true;save.gold+=gold;if(K){K.addCoins(Math.floor(gold/5));K.save("herotower",save);}addLog("You fell at floor "+floor);} }
+    function buy(w){ if(w==="atk"&&gold>=30){gold-=30;save.atkLvl++;atk+=4;} if(w==="hp"&&gold>=30){gold-=30;save.hpLvl++;maxHp+=15;hp+=15;} if(w==="heal"&&gold>=15){gold-=15;hp=Math.min(maxHp,hp+30);} if(K)K.save("herotower",save); }
+    function kd(e){ const k=e.key.toLowerCase(); if(over){ if(k===" "||k==="enter")start(); return; } if(inShop){ if(k==="1")buy("atk"); if(k==="2")buy("hp"); if(k==="3")buy("heal"); if(k===" "||k==="enter"){inShop=false;nextFloor();} return; } if(k===" "||k==="enter"||k==="f")fight(); }
+    function click(e){ if(over){start();return;} const r=c.getBoundingClientRect(); const my=(e.clientY-r.top)*(H/r.height),mx=(e.clientX-r.left)*(W/r.width);
+      if(inShop){ if(my>320&&my<360)buy("atk"); else if(my>365&&my<405)buy("hp"); else if(my>410&&my<450)buy("heal"); else if(my>460){inShop=false;nextFloor();} return; } fight(); }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop);
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#241a3a"); g.addColorStop(1,"#0e0a1a"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle="#e7ecfb"; ctx.font="800 22px Rajdhani"; ctx.textAlign="center"; ctx.fillText("🗼 Floor "+floor,W/2,40); ctx.textAlign="left";
+      if(!inShop&&!over){ ctx.font="60px serif"; ctx.textAlign="center"; ctx.fillText(enemy.boss?"👹":["🐀","🦇","💀","🕷","👺"][floor%5],W/2,130); ctx.fillStyle="#e7ecfb"; ctx.font="700 16px Rajdhani"; ctx.fillText(enemy.name,W/2,160);
+        ctx.fillStyle="#000"; ctx.fillRect(W/2-100,172,200,14); ctx.fillStyle="#ff3d77"; ctx.fillRect(W/2-100,172,200*Math.max(0,ehp/emax),14); ctx.strokeStyle="#555"; ctx.strokeRect(W/2-100,172,200,14); ctx.textAlign="left"; }
+      // player stats
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 14px Rajdhani"; ctx.fillText("Hero ⚔"+atk,20,220); ctx.fillStyle="#000"; ctx.fillRect(20,228,200,14); ctx.fillStyle="#2fbf6a"; ctx.fillRect(20,228,200*Math.max(0,hp/maxHp),14); ctx.strokeStyle="#555"; ctx.strokeRect(20,228,200,14); ctx.fillStyle="#fff"; ctx.font="600 10px Inter"; ctx.fillText("HP "+Math.max(0,hp)+"/"+maxHp,24,239);
+      ctx.fillStyle="#ffd93d"; ctx.font="700 14px Rajdhani"; ctx.textAlign="right"; ctx.fillText("💰"+gold,W-20,220); ctx.textAlign="left";
+      // log
+      ctx.fillStyle="rgba(0,0,0,.4)"; ctx.fillRect(20,255,W-40,58); ctx.fillStyle="#cfd8e8"; ctx.font="500 11px Inter"; log.forEach((l,i)=>ctx.fillText(l,28,270+i*11));
+      if(inShop){ ctx.fillStyle="#00e0ff"; ctx.font="700 17px Rajdhani"; ctx.textAlign="center"; ctx.fillText("REST STOP · 💰"+gold,W/2,340); ctx.textAlign="left";
+        const opts=[["[1] +4 Attack (30g)",320],["[2] +15 Max HP (30g)",365],["[3] Heal 30 HP (15g)",410]];
+        opts.forEach(o=>{ ctx.fillStyle="#141d33"; ctx.fillRect(60,o[1]+5,W-120,36); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.textAlign="center"; ctx.fillText(o[0],W/2,o[1]+28); ctx.textAlign="left"; });
+        ctx.fillStyle="#2fbf6a"; ctx.fillRect(60,460,W-120,34); ctx.fillStyle="#04070f"; ctx.font="700 14px Rajdhani"; ctx.textAlign="center"; ctx.fillText("▶ CONTINUE CLIMBING",W/2,482); ctx.textAlign="left"; }
+      else if(!over){ ctx.fillStyle="#ff3d77"; ctx.fillRect(60,H-70,W-120,44); ctx.fillStyle="#fff"; ctx.font="700 18px Rajdhani"; ctx.textAlign="center"; ctx.fillText("⚔ ATTACK  (SPACE)",W/2,H-42); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle="#ff3d77"; ctx.font="700 26px Rajdhani"; ctx.fillText("DEFEATED",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Floor "+floor+" · best "+save.best+" — SPACE",W/2,H/2+18); ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); c.addEventListener("click",click); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); c.removeEventListener("click",click); if(K)K.save("herotower",save); };
+  },
+
+  /* ============ 23. SNAKEQUEST — snake with persistent skins/length records ============ */
+  snakequest(stage){
+    const N=20,CS=24,W=N*CS,H=N*CS+40; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("snakequest",{best:0,apples:0,skin:0}):{best:0,apples:0,skin:0};
+    const SKINS=[["#2fbf6a","#1a7a45"],["#00e0ff","#0a7a9a"],["#ff3d77","#9a1a45"],["#ffd93d","#9a7a0a"],["#c24bff","#6a1a9a"]];
+    let snake,dir,ndir,food,over,started,grow,speed,moveT,special;
+    function start(){ snake=[[10,10],[9,10],[8,10]]; dir=[1,0]; ndir=[1,0]; food=rndFood(); over=false; started=false; speed=8; moveT=0; special=null; }
+    function rndFood(){ let f; do{f=[Math.random()*N|0,Math.random()*N|0];}while(snake&&snake.some(s=>s[0]===f[0]&&s[1]===f[1])); return f; }
+    function kd(e){ const k=e.key.toLowerCase(); if(over){if(k===" ")start();return;} started=true;
+      if((k==="arrowup"||k==="w")&&dir[1]===0)ndir=[0,-1]; else if((k==="arrowdown"||k==="s")&&dir[1]===0)ndir=[0,1]; else if((k==="arrowleft"||k==="a")&&dir[0]===0)ndir=[-1,0]; else if((k==="arrowright"||k==="d")&&dir[0]===0)ndir=[1,0]; if(e.key.startsWith("Arrow"))e.preventDefault(); }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop);
+      if(started&&!over){ moveT++; if(moveT>=speed){ moveT=0; dir=ndir; const head=[(snake[0][0]+dir[0]+N)%N,(snake[0][1]+dir[1]+N)%N];
+        if(snake.some(s=>s[0]===head[0]&&s[1]===head[1])){over=true;save.best=Math.max(save.best,snake.length);save.apples+=Math.floor(snake.length/3);if(K){K.addCoins(Math.floor(snake.length/3));K.save("snakequest",save);}}
+        else { snake.unshift(head); if(head[0]===food[0]&&head[1]===food[1]){ food=rndFood(); if(snake.length%5===0&&speed>3)speed--; if(Math.random()<0.2)special=[rndFood(),200]; } else snake.pop();
+          if(special){ special[1]--; if(head[0]===special[0][0]&&head[1]===special[0][1]){ for(let i=0;i<3;i++)snake.push(snake[snake.length-1].slice()); special=null; } if(special&&special[1]<=0)special=null; } } } }
+      ctx.fillStyle="#0a0f1e"; ctx.fillRect(0,0,W,H);
+      for(let i=0;i<N;i++)for(let j=0;j<N;j++){ if((i+j)%2){ctx.fillStyle="#0c1428";ctx.fillRect(i*CS,j*CS+40,CS,CS);} }
+      const sk=SKINS[save.skin]; snake.forEach((s,i)=>{ ctx.fillStyle=i===0?sk[0]:sk[1]; ctx.fillRect(s[0]*CS+1,s[1]*CS+41,CS-2,CS-2); });
+      ctx.font="18px serif"; ctx.textAlign="center"; ctx.fillText("🍎",food[0]*CS+CS/2,food[1]*CS+40+CS/2+6);
+      if(special){ ctx.fillText("⭐",special[0][0]*CS+CS/2,special[0][1]*CS+40+CS/2+6); } ctx.textAlign="left";
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 15px Rajdhani"; ctx.fillText("Length "+snake.length+"  ·  best "+save.best,10,26); ctx.textAlign="right"; ctx.fillStyle="#ffd93d"; ctx.fillText("🍎"+save.apples,W-10,26); ctx.textAlign="left";
+      if(!started&&!over){ ctx.fillStyle="rgba(0,0,0,.55)"; ctx.fillRect(0,H/2-30,W,60); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.textAlign="center"; ctx.fillText("Arrows/WASD · grab ⭐ for +3 · apples buy skins below",W/2,H/2+5); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.85)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle="#ff3d77"; ctx.font="700 26px Rajdhani"; ctx.fillText("GAME OVER",W/2,H/2-20); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Length "+snake.length+" · best "+save.best,W/2,H/2+6);
+        ctx.fillStyle="#9fb0da"; ctx.font="500 12px Inter"; ctx.fillText("Press 1-5 to change skin ("+save.apples+" apples) · SPACE to play",W/2,H/2+30); ctx.textAlign="left"; } }
+    function skinKey(e){ if(over&&/[1-5]/.test(e.key)){ save.skin=(+e.key-1)%SKINS.length; if(K)K.save("snakequest",save); } }
+    window.addEventListener("keydown",kd); window.addEventListener("keydown",skinKey); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); window.removeEventListener("keydown",skinKey); if(K)K.save("snakequest",save); };
+  },
+
+  /* ============ 24. GEMMINER — dig grid, upgrade pickaxe ============ */
+  gemtycoon(stage){
+    const N=8,CS=54,W=N*CS,H=N*CS+80; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("gemtycoon",{cash:0,power:1,depth:1}):{cash:0,power:1,depth:1};
+    let grid,cash,round,over,msg,msgT;
+    const GEMS=[{c:"#6a5a4a",hp:1,v:1},{c:"#8a8a8a",hp:2,v:3},{c:"#c9a05a",hp:3,v:8},{c:"#5ad0ff",hp:5,v:20},{c:"#ff3d77",hp:8,v:50}];
+    function start(){ round=save.depth; cash=save.cash; gen(); over=false; }
+    function gen(){ grid=Array.from({length:N},()=>Array.from({length:N},()=>{ const tier=Math.min(4,Math.floor(Math.random()*(1+round*0.4))); return {t:tier,hp:GEMS[tier].hp}; })); }
+    function flash(m){msg=m;msgT=60;}
+    function click(e){ const r=c.getBoundingClientRect(); const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+      if(my>H-70){ if(mx<W/2){ const cost=save.power*40; if(cash>=cost){cash-=cost;save.power++;save.cash=cash;if(K)K.save("gemtycoon",save);flash("Pickaxe Lv "+save.power);}else flash("Need "+cost);} else { save.depth++;round=save.depth;gen();flash("Deeper! Round "+round);save.cash=cash;if(K)K.save("gemtycoon",save);} return; }
+      const x=Math.floor(mx/CS),y=Math.floor(my/CS); if(x<0||y<0||x>=N||y>=N)return; const cell=grid[y][x]; if(cell.t<0)return;
+      cell.hp-=save.power; if(cell.hp<=0){ cash+=GEMS[cell.t].v*round; save.cash=cash; if(K)K.addCoins(1); cell.t=-1; if(grid.every(r=>r.every(c=>c.t<0))){flash("Cleared! Auto-refill");gen();} } }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop); if(msgT>0)msgT--;
+      ctx.fillStyle="#1a1420"; ctx.fillRect(0,0,W,H);
+      for(let y=0;y<N;y++)for(let x=0;x<N;x++){ const cell=grid[y][x]; const X=x*CS,Y=y*CS; if(cell.t<0){ctx.fillStyle="#0e0a14";ctx.fillRect(X+1,Y+1,CS-2,CS-2);} else { ctx.fillStyle=GEMS[cell.t].c; ctx.fillRect(X+2,Y+2,CS-4,CS-4); if(cell.t>=2){ctx.fillStyle="rgba(255,255,255,.4)";ctx.beginPath();ctx.arc(X+CS/2,Y+CS/2,6,0,7);ctx.fill();} const full=GEMS[cell.t].hp; if(cell.hp<full){ctx.fillStyle="#000";ctx.fillRect(X+6,Y+CS-9,CS-12,4);ctx.fillStyle="#2fbf6a";ctx.fillRect(X+6,Y+CS-9,(CS-12)*(cell.hp/full),4);} } }
+      ctx.fillStyle="rgba(0,0,0,.6)"; ctx.fillRect(0,H-72,W,72);
+      ctx.fillStyle="#ffd93d"; ctx.font="700 16px Rajdhani"; ctx.fillText("💰"+cash+"   ⛏ Lv"+save.power+"   ⬇ Round "+round,12,H-48);
+      ctx.fillStyle="#2f7bff"; ctx.fillRect(8,H-40,W/2-12,32); ctx.fillStyle="#fff"; ctx.font="700 13px Rajdhani"; ctx.textAlign="center"; ctx.fillText("Upgrade Pickaxe ("+save.power*40+")",W/4,H-19);
+      ctx.fillStyle="#c24bff"; ctx.fillRect(W/2+4,H-40,W/2-12,32); ctx.fillText("Go Deeper ▼",W*3/4,H-19); ctx.textAlign="left";
+      if(msgT>0){ ctx.fillStyle="#fff"; ctx.font="600 12px Inter"; ctx.textAlign="right"; ctx.fillText(msg,W-12,H-48); ctx.textAlign="left"; } }
+    c.addEventListener("click",click); loop(); return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("click",click); save.cash=cash; if(K)K.save("gemtycoon",save); };
+  },
+
+  /* ============ 25. WIZARDDUEL — spell rock-paper-scissors with mana growth ============ */
+  wizardduel(stage){
+    const W=520,H=460; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("wizardduel",{wins:0,maxMana:3}):{wins:0,maxMana:3};
+    const SPELLS=[{n:"Fire",e:"🔥",beats:"Nature",cost:2},{n:"Water",e:"💧",beats:"Fire",cost:2},{n:"Nature",e:"🌿",beats:"Water",cost:2},{n:"Shield",e:"🛡",cost:1},{n:"Charge",e:"⚡",cost:0}];
+    let hp,ehp,mana,emana,round,over,result,log,turn;
+    function start(){ hp=100;ehp=100;mana=save.maxMana;emana=3;round=save.wins+1;over=false;result="";log=["Duel begins!"];turn="me"; }
+    function addLog(m){log.push(m);if(log.length>4)log.shift();}
+    function resolve(mine,ai){ // both cast simultaneously
+      let dmgE=0,dmgP=0,pShield=mine===3,eShield=ai===3;
+      if(mine<3){ if(ai<3&&SPELLS[mine].beats===SPELLS[ai].n){dmgE=20;} else if(ai<3&&SPELLS[ai].beats===SPELLS[mine].n){dmgP=20;} else {dmgE=12;} }
+      if(ai<3){ if(mine<3&&SPELLS[ai].beats===SPELLS[mine].n){dmgP=Math.max(dmgP,20);} else if(!(mine<3&&SPELLS[mine].beats===SPELLS[ai].n)){dmgP=Math.max(dmgP,12);} }
+      if(mine===4)mana+=2; if(ai===4)emana+=2;
+      if(eShield)dmgE=Math.floor(dmgE/3); if(pShield)dmgP=Math.floor(dmgP/3);
+      ehp-=dmgE; hp-=dmgP; addLog("You "+SPELLS[mine].e+" vs "+SPELLS[ai].e+" — you -"+dmgP+", foe -"+dmgE);
+      mana=Math.min(save.maxMana+2,mana+1); emana=Math.min(5,emana+1);
+      if(ehp<=0||hp<=0){ over=true; if(ehp<=0&&hp>0){result="win";save.wins++;if(save.wins%2===0)save.maxMana++;if(K){K.addCoins(6);K.save("wizardduel",save);}} else result="lose"; } }
+    function cast(i){ if(over||mana<SPELLS[i].cost)return; mana-=SPELLS[i].cost;
+      // AI picks
+      let ai; const opts=[0,1,2,3,4].filter(j=>emana>=SPELLS[j].cost); ai=opts[Math.random()*opts.length|0]; emana-=SPELLS[ai].cost;
+      resolve(i,ai); }
+    function kd(e){ if(over){if(e.key===" ")start();return;} if(/[1-5]/.test(e.key))cast(+e.key-1); }
+    function click(e){ if(over){start();return;} const r=c.getBoundingClientRect(); const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height); if(my>H-90){ const i=Math.floor(mx/(W/5)); if(i>=0&&i<5)cast(i); } }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop);
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#2a1a4a"); g.addColorStop(1,"#0e0a1a"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.font="50px serif"; ctx.textAlign="center"; ctx.fillText("🧙",100,90); ctx.fillText("🧙‍♂️",W-100,90); ctx.textAlign="left";
+      // hp bars
+      ctx.fillStyle="#000"; ctx.fillRect(30,110,160,14); ctx.fillStyle="#2fbf6a"; ctx.fillRect(30,110,160*Math.max(0,hp/100),14); ctx.strokeStyle="#555"; ctx.strokeRect(30,110,160,14);
+      ctx.fillStyle="#000"; ctx.fillRect(W-190,110,160,14); ctx.fillStyle="#ff3d77"; ctx.fillRect(W-190,110,160*Math.max(0,ehp/100),14); ctx.strokeStyle="#555"; ctx.strokeRect(W-190,110,160,14);
+      ctx.fillStyle="#00e0ff"; ctx.font="700 13px Rajdhani"; ctx.fillText("You  💧"+mana+"/"+(save.maxMana+2),30,140); ctx.textAlign="right"; ctx.fillText("Rival  💧"+emana,W-30,140); ctx.textAlign="left";
+      ctx.fillStyle="#8ea0c8"; ctx.font="600 12px Inter"; ctx.textAlign="center"; ctx.fillText("Wins: "+save.wins+"  ·  Fire>Nature>Water>Fire",W/2,90); ctx.textAlign="left";
+      ctx.fillStyle="rgba(0,0,0,.4)"; ctx.fillRect(30,160,W-60,56); ctx.fillStyle="#cfd8e8"; ctx.font="500 12px Inter"; log.forEach((l,i)=>ctx.fillText(l,38,178+i*13));
+      SPELLS.forEach((s,i)=>{ const x=i*(W/5); const ok=mana>=s.cost; ctx.fillStyle=ok?"#1e3560":"#2a1a2a"; ctx.fillRect(x+4,H-84,W/5-8,78); ctx.font="28px serif"; ctx.textAlign="center"; ctx.fillText(s.e,x+W/10,H-48); ctx.fillStyle="#e7ecfb"; ctx.font="700 12px Rajdhani"; ctx.fillText(s.n,x+W/10,H-26); ctx.fillStyle="#ffd93d"; ctx.font="500 10px Inter"; ctx.fillText("💧"+s.cost+" ["+(i+1)+"]",x+W/10,H-12); ctx.textAlign="left"; });
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle=result==="win"?"#2fbf6a":"#ff3d77"; ctx.font="700 28px Rajdhani"; ctx.fillText(result==="win"?"YOU WIN!":"DEFEATED",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText(save.wins+" wins · mana grows each 2 wins — SPACE",W/2,H/2+18); ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); c.addEventListener("click",click); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); c.removeEventListener("click",click); if(K)K.save("wizardduel",save); };
+  },
+
+  /* ============ 26. BLACKSMITH — forge & sell, upgrade forge ============ */
+  blacksmith(stage){
+    const W=500,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("blacksmith",{gold:20,forgeLvl:1,items:0}):{gold:20,forgeLvl:1,items:0};
+    const RECIPES=[{n:"Dagger",e:"🗡",ore:2,heat:30,sell:8},{n:"Sword",e:"⚔",ore:5,heat:60,sell:22},{n:"Armor",e:"🛡",ore:8,heat:90,sell:45},{n:"Crown",e:"👑",ore:15,heat:140,sell:100}];
+    let gold,ore,heat,forging,recipe,progress,phase,msg,msgT;
+    function start(){ gold=save.gold; ore=10; heat=0; forging=false; recipe=0; progress=0; phase="idle"; }
+    function flash(m){msg=m;msgT=70;}
+    function persist(){ save.gold=gold; if(K)K.save("blacksmith",save); }
+    let pumping=false;
+    function click(e){ const r=c.getBoundingClientRect(); const mx=(e.clientX-r.left)*(W/r.width),my=(e.clientY-r.top)*(H/r.height);
+      if(my<180){ // recipe select
+        const i=Math.floor(mx/(W/4)); if(i>=0&&i<4&&!forging)recipe=i; return; }
+      if(my>H-120&&my<H-70){ // mine ore
+        ore+=save.forgeLvl; return; }
+      if(my>H-64){ // forge button / upgrade
+        if(mx<W/2){ const rc=RECIPES[recipe]; if(!forging){ if(ore>=rc.ore){ ore-=rc.ore; forging=true; heat=0; progress=0; flash("Heating…"); } else flash("Need "+rc.ore+" ore"); } }
+        else { const cost=save.forgeLvl*40; if(gold>=cost){gold-=cost;save.forgeLvl++;persist();flash("Forge Lv "+save.forgeLvl);}else flash("Need "+cost+"g"); }
+      } }
+    function down(e){ const r=c.getBoundingClientRect(); const my=(e.clientY-r.top)*(H/r.height); if(my>200&&my<H-130)pumping=true; }
+    function up(){ pumping=false; }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop); if(msgT>0)msgT--;
+      if(forging){ const rc=RECIPES[recipe]; if(pumping)heat+=1.5*save.forgeLvl; else heat=Math.max(0,heat-0.5); heat=Math.min(rc.heat+20,heat);
+        if(heat>=rc.heat){ progress+=1; if(progress>=60){ forging=false; gold+=rc.sell; save.items++; persist(); flash("Forged "+rc.n+"! +"+rc.sell+"g"); if(K)K.addCoins(2); } } else progress=Math.max(0,progress-0.5); }
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#2a1810"); g.addColorStop(1,"#0e0806"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle="#ffd93d"; ctx.font="700 18px Rajdhani"; ctx.fillText("🔨 Blacksmith",16,30); ctx.textAlign="right"; ctx.fillText("💰"+gold+"  ⛏"+ore,W-16,30); ctx.textAlign="left";
+      // recipes
+      RECIPES.forEach((rc,i)=>{ const x=i*(W/4); ctx.fillStyle=recipe===i?"#3a2818":"#1a1208"; ctx.fillRect(x+4,44,W/4-8,130); ctx.font="40px serif"; ctx.textAlign="center"; ctx.fillText(rc.e,x+W/8,110); ctx.fillStyle="#e7ecfb"; ctx.font="700 14px Rajdhani"; ctx.fillText(rc.n,x+W/8,135); ctx.fillStyle="#9fb0da"; ctx.font="500 10px Inter"; ctx.fillText("⛏"+rc.ore+" → 💰"+rc.sell,x+W/8,155); ctx.textAlign="left"; });
+      // forge / heat
+      const rc=RECIPES[recipe];
+      ctx.fillStyle="#e7ecfb"; ctx.font="600 13px Inter"; ctx.fillText(forging?"Pump the bellows! (hold mouse in this area)":"Select item, mine ore, then Forge",16,205);
+      // heat bar
+      ctx.fillStyle="#000"; ctx.fillRect(40,220,W-80,26); const heatPct=forging?heat/(rc.heat+20):0; ctx.fillStyle=heat>=rc.heat?"#ff3d77":"#ff8a3d"; ctx.fillRect(40,220,(W-80)*heatPct,26); ctx.strokeStyle="#5a4a3a"; ctx.strokeRect(40,220,W-80,26);
+      ctx.fillStyle="#fff"; ctx.font="600 11px Inter"; ctx.fillText("🌡 target: "+(forging?rc.heat:"—"),46,238);
+      // forge glow
+      if(forging){ ctx.fillStyle="rgba(255,120,40,"+(0.2+heatPct*0.4)+")"; ctx.beginPath(); ctx.arc(W/2,340,60+heatPct*30,0,7); ctx.fill(); ctx.font="50px serif"; ctx.textAlign="center"; ctx.fillText(rc.e,W/2,358); ctx.textAlign="left";
+        ctx.fillStyle="#000"; ctx.fillRect(140,400,W-280,14); ctx.fillStyle="#2fbf6a"; ctx.fillRect(140,400,(W-280)*(progress/60),14); ctx.fillStyle="#e7ecfb"; ctx.font="600 11px Inter"; ctx.textAlign="center"; ctx.fillText("Forging progress",W/2,394); ctx.textAlign="left"; }
+      else { ctx.fillStyle="#3a2818"; ctx.beginPath(); ctx.arc(W/2,340,60,0,7); ctx.fill(); ctx.font="40px serif"; ctx.textAlign="center"; ctx.fillText("🔥",W/2,354); ctx.textAlign="left"; }
+      // buttons
+      ctx.fillStyle="#8a5a2a"; ctx.fillRect(20,H-120,W-40,44); ctx.fillStyle="#fff"; ctx.font="700 15px Rajdhani"; ctx.textAlign="center"; ctx.fillText("⛏ MINE ORE (+"+save.forgeLvl+")",W/2,H-92); ctx.textAlign="left";
+      ctx.fillStyle=forging?"#3a3a3a":"#ff3d77"; ctx.fillRect(20,H-64,W/2-30,54); ctx.fillStyle="#fff"; ctx.font="700 15px Rajdhani"; ctx.textAlign="center"; ctx.fillText(forging?"FORGING…":"🔨 FORGE",W/4,H-32);
+      ctx.fillStyle="#2f7bff"; ctx.fillRect(W/2+10,H-64,W/2-30,54); ctx.fillStyle="#fff"; ctx.fillText("Upgrade ("+save.forgeLvl*40+")",W*3/4,H-40); ctx.font="500 10px Inter"; ctx.fillText("Forge Lv "+save.forgeLvl,W*3/4,H-22); ctx.textAlign="left";
+      if(msgT>0){ ctx.fillStyle="#ffd93d"; ctx.font="700 15px Rajdhani"; ctx.textAlign="center"; ctx.fillText(msg,W/2,200); ctx.textAlign="left"; } }
+    c.addEventListener("click",click); c.addEventListener("mousedown",down); c.addEventListener("mouseup",up); loop();
+    return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("click",click); c.removeEventListener("mousedown",down); c.removeEventListener("mouseup",up); persist(); };
+  },
+
+  /* ============ 27. TANKWAR — tank battles with unlockable upgrades ============ */
+  tankwar(stage){
+    const W=560,H=460; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const keys={}; const K=window.KLYP; let mx=0,my=0;
+    let save=K?K.load("tankwar",{scrap:0,dmgLvl:0,armorLvl:0,wave:0}):{scrap:0,dmgLvl:0,armorLvl:0,wave:0};
+    let px,py,pa,hp,maxHp,bullets,ebul,foes,wave,over,started,menu,scrapC,spawnT;
+    function start(){ px=W/2;py=H-60;pa=-Math.PI/2;maxHp=100+save.armorLvl*25;hp=maxHp;bullets=[];ebul=[];foes=[];wave=1;over=false;started=false;menu=false;scrapC=0;spawnWave(); }
+    function spawnWave(){ foes=[]; for(let i=0;i<2+wave;i++)foes.push({x:40+Math.random()*(W-80),y:30+Math.random()*120,hp:20+wave*8,max:20+wave*8,cd:Math.random()*60}); spawnT=0; }
+    function mm(e){ const r=c.getBoundingClientRect(); mx=(e.clientX-r.left)*(W/r.width); my=(e.clientY-r.top)*(H/r.height); started=true; }
+    function kd(e){ keys[e.key.toLowerCase()]=true; started=true; if(over){ if(menu){ if(e.key==="1"&&save.scrap>=20){save.scrap-=20;save.dmgLvl++;persist();} if(e.key==="2"&&save.scrap>=25){save.scrap-=25;save.armorLvl++;persist();} if(e.key.toLowerCase()==="u")menu=false; } else { if(e.key.toLowerCase()==="u")menu=true; if(e.key===" ")start(); } } }
+    function ku(e){ keys[e.key.toLowerCase()]=false; }
+    function persist(){ if(K)K.save("tankwar",save); }
+    function shoot(){ bullets.push({x:px+Math.cos(pa)*24,y:py+Math.sin(pa)*24,vx:Math.cos(pa)*8,vy:Math.sin(pa)*8}); }
+    let shootCD=0;
+    function click(){ if(over){if(!menu)start();return;} if(shootCD<=0){shoot();shootCD=12;} }
+    start(); let raf,tick=0; function loop(){ raf=requestAnimationFrame(loop); tick++; if(shootCD>0)shootCD--;
+      if(started&&!over){ if(keys["a"]||keys["arrowleft"])px-=3; if(keys["d"]||keys["arrowright"])px+=3; if(keys["w"]||keys["arrowup"])py-=3; if(keys["s"]||keys["arrowdown"])py+=3; px=Math.max(20,Math.min(W-20,px)); py=Math.max(20,Math.min(H-20,py)); pa=Math.atan2(my-py,mx-px);
+        if(keys[" "]&&shootCD<=0){shoot();shootCD=12;}
+        bullets.forEach(b=>{b.x+=b.vx;b.y+=b.vy;}); bullets=bullets.filter(b=>b.x>0&&b.x<W&&b.y>0&&b.y<H);
+        foes.forEach(f=>{ f.cd--; if(f.cd<=0){ f.cd=60-wave*2; const a=Math.atan2(py-f.y,px-f.x); ebul.push({x:f.x,y:f.y,vx:Math.cos(a)*3,vy:Math.sin(a)*3}); } const a=Math.atan2(py-f.y,px-f.x); f.x+=Math.cos(a)*0.4; f.y+=Math.sin(a)*0.4; });
+        ebul.forEach(b=>{b.x+=b.vx;b.y+=b.vy;}); ebul=ebul.filter(b=>b.x>0&&b.x<W&&b.y>0&&b.y<H);
+        bullets.forEach(b=>foes.forEach(f=>{ if(!f.dead&&Math.hypot(f.x-b.x,f.y-b.y)<18){f.hp-=20+save.dmgLvl*8;b.dead=true;if(f.hp<=0){f.dead=true;scrapC++;}} })); bullets=bullets.filter(b=>!b.dead); foes=foes.filter(f=>!f.dead);
+        ebul.forEach(b=>{ if(Math.hypot(b.x-px,b.y-py)<18){b.hit=true;hp-=8;} }); ebul=ebul.filter(b=>!b.hit);
+        if(hp<=0){over=true;save.scrap+=scrapC;save.wave=Math.max(save.wave,wave);persist();}
+        if(!foes.length){ wave++; hp=Math.min(maxHp,hp+20); spawnWave(); } }
+      ctx.fillStyle="#2a2818"; ctx.fillRect(0,0,W,H); for(let i=0;i<20;i++){ctx.fillStyle="rgba(0,0,0,.1)";ctx.fillRect((i*127)%W,(i*89)%H,30,30);}
+      foes.forEach(f=>{ ctx.fillStyle="#8a3a2a"; ctx.fillRect(f.x-14,f.y-14,28,28); ctx.fillStyle="#5a2418"; const a=Math.atan2(py-f.y,px-f.x); ctx.save(); ctx.translate(f.x,f.y); ctx.rotate(a); ctx.fillRect(0,-3,20,6); ctx.restore(); ctx.fillStyle="#000"; ctx.fillRect(f.x-14,f.y-20,28,3); ctx.fillStyle="#ff3d77"; ctx.fillRect(f.x-14,f.y-20,28*(f.hp/f.max),3); });
+      bullets.forEach(b=>{ ctx.fillStyle="#00e0ff"; ctx.beginPath(); ctx.arc(b.x,b.y,4,0,7); ctx.fill(); }); ebul.forEach(b=>{ ctx.fillStyle="#ffd93d"; ctx.beginPath(); ctx.arc(b.x,b.y,4,0,7); ctx.fill(); });
+      if(!over){ ctx.fillStyle="#2fbf6a"; ctx.fillRect(px-16,py-16,32,32); ctx.fillStyle="#1a6a3a"; ctx.save(); ctx.translate(px,py); ctx.rotate(pa); ctx.fillRect(0,-4,26,8); ctx.restore(); }
+      ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillRect(0,0,W,26); ctx.fillStyle="#e7ecfb"; ctx.font="700 13px Rajdhani"; ctx.fillText("Wave "+wave+"   🔩"+scrapC,10,18); ctx.fillStyle="#000"; ctx.fillRect(W-160,7,150,12); ctx.fillStyle="#2fbf6a"; ctx.fillRect(W-160,7,150*Math.max(0,hp/maxHp),12);
+      if(!started&&!over){ ctx.fillStyle="#9fb0da"; ctx.font="600 13px Inter"; ctx.textAlign="center"; ctx.fillText("WASD move · aim & fire with mouse/SPACE · [U] upgrades",W/2,H/2); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center";
+        if(!menu){ ctx.fillStyle="#ff3d77"; ctx.font="700 26px Rajdhani"; ctx.fillText("TANK DESTROYED",W/2,150); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Wave "+wave+" · best "+save.wave+" · 🔩"+save.scrap,W/2,180); ctx.fillStyle="#ffd93d"; ctx.font="700 15px Rajdhani"; ctx.fillText("[U] Upgrades   [SPACE] Redeploy",W/2,220); }
+        else { ctx.fillStyle="#00e0ff"; ctx.font="700 18px Rajdhani"; ctx.fillText("UPGRADES · 🔩"+save.scrap,W/2,140); ctx.fillStyle="#e7ecfb"; ctx.font="600 13px Inter"; ctx.fillText("[1] Cannon Lv "+save.dmgLvl+" (20 scrap)",W/2,180); ctx.fillText("[2] Armor Lv "+save.armorLvl+" (25 scrap)",W/2,208); ctx.fillStyle="#9fb0da"; ctx.fillText("[U] back · [SPACE] redeploy",W/2,244); }
+        ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); window.addEventListener("keyup",ku); c.addEventListener("mousemove",mm); c.addEventListener("click",click); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); window.removeEventListener("keyup",ku); c.removeEventListener("mousemove",mm); c.removeEventListener("click",click); persist(); };
+  },
+
+  /* ============ 28. ROGUEARCHER — auto-battler with relic picks ============ */
+  roguearcher(stage){
+    const W=520,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const keys={}; const K=window.KLYP; let mx=W/2,my=H/2;
+    let save=K?K.load("roguearcher",{bestWave:0,runs:0}):{bestWave:0,runs:0};
+    let px,py,hp,foes,arrows,wave,over,started,relics,choosing,relicOpts,spawnT,shootCD;
+    const RELICS=[{n:"Double Shot",e:"🏹",k:"multi"},{n:"Piercing",e:"➹",k:"pierce"},{n:"Swift",e:"💨",k:"speed"},{n:"Vigor",e:"❤",k:"hp"},{n:"Rapid",e:"⚡",k:"rapid"}];
+    function start(){ px=W/2;py=H/2;hp=100;foes=[];arrows=[];wave=1;over=false;started=false;relics={};choosing=false;shootCD=0;spawnWave(); save.runs++; }
+    function spawnWave(){ foes=[]; const n=3+wave; for(let i=0;i<n;i++){ const a=Math.random()*7,d=250; foes.push({x:W/2+Math.cos(a)*d,y:H/2+Math.sin(a)*d,hp:8+wave*4,max:8+wave*4}); } spawnT=0; }
+    function mm(e){ const r=c.getBoundingClientRect(); mx=(e.clientX-r.left)*(W/r.width); my=(e.clientY-r.top)*(H/r.height); started=true; }
+    function kd(e){ keys[e.key.toLowerCase()]=true; started=true; if(over&&e.key===" ")start(); if(choosing&&/[1-3]/.test(e.key)){ pickRelic(+e.key-1); } }
+    function ku(e){ keys[e.key.toLowerCase()]=false; }
+    function pickRelic(i){ const r=relicOpts[i]; relics[r.k]=(relics[r.k]||0)+1; if(r.k==="hp")hp=Math.min(100+((relics.hp||0)*30),hp+30); choosing=false; wave++; spawnWave(); }
+    function shoot(){ const a=Math.atan2(my-py,mx-px); const shots=1+(relics.multi||0); for(let i=0;i<shots;i++){ const spread=(i-(shots-1)/2)*0.15; arrows.push({x:px,y:py,vx:Math.cos(a+spread)*(7+(relics.speed||0)),vy:Math.sin(a+spread)*(7+(relics.speed||0)),pierce:relics.pierce||0}); } }
+    function click(e){ if(over){start();return;} if(choosing){ const r=c.getBoundingClientRect(); const mxx=(e.clientX-r.left)*(W/r.width); const i=Math.floor(mxx/(W/3)); if(i>=0&&i<3)pickRelic(i); } }
+    start(); let raf,tick=0; function loop(){ raf=requestAnimationFrame(loop); tick++; if(shootCD>0)shootCD--;
+      if(started&&!over&&!choosing){ const sp=3; if(keys["w"]||keys["arrowup"])py-=sp; if(keys["s"]||keys["arrowdown"])py+=sp; if(keys["a"]||keys["arrowleft"])px-=sp; if(keys["d"]||keys["arrowright"])px+=sp; px=Math.max(14,Math.min(W-14,px)); py=Math.max(14,Math.min(H-14,py));
+        const rate=Math.max(4,15-(relics.rapid||0)*4); if(shootCD<=0){shoot();shootCD=rate;}
+        arrows.forEach(a=>{a.x+=a.vx;a.y+=a.vy;}); arrows=arrows.filter(a=>a.x>-20&&a.x<W+20&&a.y>-20&&a.y<H+20);
+        foes.forEach(f=>{ const a=Math.atan2(py-f.y,px-f.x); f.x+=Math.cos(a)*(0.8+wave*0.05); f.y+=Math.sin(a)*(0.8+wave*0.05); if(Math.hypot(f.x-px,f.y-py)<20){hp-=0.5;} });
+        arrows.forEach(a=>foes.forEach(f=>{ if(!f.dead&&!a.hitFoes?.includes(f)&&Math.hypot(f.x-a.x,f.y-a.y)<16){ f.hp-=6; a.hitFoes=(a.hitFoes||[]).concat(f); if(a.hitFoes.length>a.pierce)a.dead=true; if(f.hp<=0)f.dead=true; } }));
+        arrows=arrows.filter(a=>!a.dead); foes=foes.filter(f=>!f.dead);
+        if(hp<=0){over=true;save.bestWave=Math.max(save.bestWave,wave);if(K){K.addCoins(wave);K.save("roguearcher",save);}}
+        if(!foes.length){ choosing=true; relicOpts=[...RELICS].sort(()=>Math.random()-0.5).slice(0,3); } }
+      ctx.fillStyle="#0a1420"; ctx.fillRect(0,0,W,H);
+      for(let i=0;i<20;i++){ctx.fillStyle="rgba(255,255,255,.03)";ctx.fillRect((i*89)%W,(i*127)%H,2,2);}
+      foes.forEach(f=>{ ctx.fillStyle="#ff3d77"; ctx.beginPath(); ctx.arc(f.x,f.y,12,0,7); ctx.fill(); ctx.fillStyle="#000"; ctx.fillRect(f.x-10,f.y-17,20,3); ctx.fillStyle="#2fbf6a"; ctx.fillRect(f.x-10,f.y-17,20*(f.hp/f.max),3); });
+      arrows.forEach(a=>{ ctx.strokeStyle="#ffd93d"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(a.x-a.vx,a.y-a.vy); ctx.stroke(); ctx.lineWidth=1; });
+      ctx.fillStyle="#00e0ff"; ctx.beginPath(); ctx.arc(px,py,12,0,7); ctx.fill(); ctx.font="16px serif"; ctx.textAlign="center"; ctx.fillText("🏹",px,py+6); ctx.textAlign="left";
+      ctx.fillStyle="#000"; ctx.fillRect(12,12,160,14); ctx.fillStyle="#2fbf6a"; ctx.fillRect(12,12,160*Math.max(0,hp/(100+((relics.hp||0)*30))),14);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 14px Rajdhani"; ctx.fillText("Wave "+wave,12,44); ctx.textAlign="right"; const rl=Object.entries(relics).map(([k,v])=>RELICS.find(r=>r.k===k).e+v).join(" "); ctx.fillText(rl,W-12,26); ctx.textAlign="left";
+      if(choosing){ ctx.fillStyle="rgba(4,7,15,.9)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle="#ffd93d"; ctx.font="700 22px Rajdhani"; ctx.fillText("CHOOSE A RELIC",W/2,120); relicOpts.forEach((r,i)=>{ const x=i*(W/3); ctx.fillStyle="#1e3560"; ctx.fillRect(x+12,160,W/3-24,140); ctx.font="40px serif"; ctx.fillText(r.e,x+W/6,220); ctx.fillStyle="#e7ecfb"; ctx.font="700 15px Rajdhani"; ctx.fillText(r.n,x+W/6,255); ctx.fillStyle="#9fb0da"; ctx.font="600 12px Inter"; ctx.fillText("["+(i+1)+"]",x+W/6,280); }); ctx.textAlign="left"; }
+      if(!started&&!over){ ctx.fillStyle="#9fb0da"; ctx.font="600 13px Inter"; ctx.textAlign="center"; ctx.fillText("WASD move · auto-fire at cursor · pick relics between waves",W/2,H/2); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle="#ff3d77"; ctx.font="700 26px Rajdhani"; ctx.fillText("FALLEN",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Wave "+wave+" · best "+save.bestWave+" — SPACE",W/2,H/2+18); ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); window.addEventListener("keyup",ku); c.addEventListener("mousemove",mm); c.addEventListener("click",click); loop();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); window.removeEventListener("keyup",ku); c.removeEventListener("mousemove",mm); c.removeEventListener("click",click); if(K)K.save("roguearcher",save); };
+  },
+
+  /* ============ 29. CITYTRAFFIC — manage lights, level up city ============ */
+  citytraffic(stage){
+    const W=520,H=500; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("citytraffic",{best:0,level:1}):{best:0,level:1};
+    let cars,lights,score,crashes,over,started,spawnT,time;
+    const ROADS=[{y:180,dir:1},{y:320,dir:-1}]; const VROADS=[{x:180,dir:1},{x:340,dir:-1}];
+    function start(){ cars=[]; lights={h:true,v:false}; score=0; crashes=0; over=false; started=false; spawnT=0; time=60; }
+    function click(){ if(over){start();return;} started=true; lights.h=!lights.h; lights.v=!lights.v; }
+    function kd(e){ if(e.key===" "){click();e.preventDefault();} }
+    start(); let raf,tick=0; function loop(){ raf=requestAnimationFrame(loop); tick++;
+      if(started&&!over){ if(tick%60===0){ time--; if(time<=0){over=true;save.best=Math.max(save.best,score);if(score>save.level*100)save.level++;if(K){K.addCoins(Math.floor(score/20));K.save("citytraffic",save);}} }
+        spawnT--; if(spawnT<=0){ spawnT=Math.max(20,50-save.level*3); if(Math.random()<0.5){ const r=ROADS[Math.random()*2|0]; cars.push({x:r.dir>0?-20:W+20,y:r.y+(r.dir>0?-14:14),vx:r.dir*(1.5+save.level*0.1),vy:0,axis:"h"}); } else { const r=VROADS[Math.random()*2|0]; cars.push({x:r.x+(r.dir>0?-14:14),y:r.dir>0?-20:H+20,vx:0,vy:r.dir*(1.5+save.level*0.1),axis:"v"}); } }
+        cars.forEach(car=>{ // stop at red light near intersection
+          const nearInt = (Math.abs(car.x-180)<60||Math.abs(car.x-340)<60)&&(Math.abs(car.y-180)<60||Math.abs(car.y-320)<60);
+          const stop = car.axis==="h"?!lights.h:!lights.v; const atLine = car.axis==="h"?(car.vx>0?car.x>120&&car.x<160:car.x<400&&car.x>360):(car.vy>0?car.y>120&&car.y<160:car.y<360&&car.y>300);
+          if(!(stop&&atLine)){ car.x+=car.vx; car.y+=car.vy; } });
+        // collisions
+        for(let i=0;i<cars.length;i++)for(let j=i+1;j<cars.length;j++){ if(cars[i].axis!==cars[j].axis&&Math.hypot(cars[i].x-cars[j].x,cars[i].y-cars[j].y)<18){ cars[i].dead=cars[j].dead=true; crashes++; if(crashes>=5)over=true; } }
+        cars=cars.filter(car=>{ if(car.dead)return false; if(car.x<-40||car.x>W+40||car.y<-40||car.y>H+40){score++;return false;} return true; });
+        if(over){save.best=Math.max(save.best,score);if(K)K.save("citytraffic",save);} }
+      ctx.fillStyle="#1a2a1a"; ctx.fillRect(0,0,W,H);
+      ROADS.forEach(r=>{ctx.fillStyle="#2a2a30";ctx.fillRect(0,r.y-18,W,36);}); VROADS.forEach(r=>{ctx.fillStyle="#2a2a30";ctx.fillRect(r.x-18,0,36,H);});
+      // lights
+      [[150,150],[370,150],[150,350],[370,350]].forEach(([x,y])=>{ ctx.fillStyle=lights.h?"#2fbf6a":"#ff3d77"; ctx.beginPath(); ctx.arc(x,y,5,0,7); ctx.fill(); ctx.fillStyle=lights.v?"#2fbf6a":"#ff3d77"; ctx.beginPath(); ctx.arc(x+12,y,5,0,7); ctx.fill(); });
+      cars.forEach(car=>{ ctx.fillStyle=car.axis==="h"?"#00e0ff":"#ffd93d"; ctx.save(); ctx.translate(car.x,car.y); ctx.fillRect(-9,-6,18,12); ctx.restore(); });
+      ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillRect(0,0,W,26); ctx.fillStyle="#e7ecfb"; ctx.font="700 14px Rajdhani"; ctx.fillText("🚗 Passed "+score+"   💥"+crashes+"/5   ⏱"+time+"   City Lv "+save.level,10,18);
+      if(!started&&!over){ ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillRect(0,H/2-30,W,60); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.textAlign="center"; ctx.fillText("Click / SPACE to toggle lights · avoid 5 crashes",W/2,H/2+5); ctx.textAlign="left"; }
+      if(over){ ctx.fillStyle="rgba(4,7,15,.85)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle=crashes>=5?"#ff3d77":"#2fbf6a"; ctx.font="700 24px Rajdhani"; ctx.fillText(crashes>=5?"GRIDLOCK!":"SHIFT OVER",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Passed "+score+" · best "+save.best+" · Lv "+save.level+" — click",W/2,H/2+18); ctx.textAlign="left"; } }
+    c.addEventListener("click",click); window.addEventListener("keydown",kd); loop();
+    return ()=>{ cancelAnimationFrame(raf); c.removeEventListener("click",click); window.removeEventListener("keydown",kd); if(K)K.save("citytraffic",save); };
+  },
+
+  /* ============ 30. SPELLWORDS — typing RPG, level up vocabulary ============ */
+  spellwords(stage){
+    const W=540,H=460; const c=document.createElement("canvas"); c.width=W; c.height=H; stage.appendChild(c); const ctx=c.getContext("2d"); const K=window.KLYP;
+    let save=K?K.load("spellwords",{lvl:1,xp:0,best:0}):{lvl:1,xp:0,best:0};
+    const WORDS="ember frost blaze storm shadow crystal thunder venom radiant arcane spectral inferno glacier tempest phantom mystic cosmic ancient".split(" ");
+    let hp,ehp,emax,typed,cur,over,combo,result,foeName,foeAtkT;
+    function start(){ hp=50+save.lvl*10; ehp=emax=30+save.lvl*15; typed=""; cur=pickWord(); over=false; combo=0; result=""; foeName=["Goblin","Wraith","Golem","Hydra","Lich"][Math.min(4,save.lvl-1)]||"Beast"; foeAtkT=Date.now()+3000; }
+    function pickWord(){ const pool=WORDS.filter(w=>w.length<=4+save.lvl); return pool[Math.random()*pool.length|0]||WORDS[0]; }
+    function kd(e){ if(over){ if(e.key===" ")start(); return; }
+      if(e.key==="Backspace"){typed=typed.slice(0,-1);return;}
+      if(e.key==="Enter"||typed+e.key===cur){ if((typed+(e.key.length===1?e.key:"")) ===cur){ const dmg=cur.length*2+combo; ehp-=dmg; combo++; save.xp+=cur.length; typed=""; cur=pickWord();
+          if(ehp<=0){over=true;result="win";save.best=Math.max(save.best,save.lvl);while(save.xp>=save.lvl*40){save.xp-=save.lvl*40;save.lvl++;}if(K){K.addCoins(8);K.save("spellwords",save);}}
+          return; } }
+      if(/^[a-z]$/.test(e.key)){ if(cur[typed.length]===e.key)typed+=e.key; else {combo=0;typed="";} } }
+    start(); let raf; function loop(){ raf=requestAnimationFrame(loop);
+      if(!over&&Date.now()>foeAtkT){ hp-=6+save.lvl; foeAtkT=Date.now()+Math.max(1500,3500-save.lvl*200); if(hp<=0){over=true;result="lose";if(K)K.save("spellwords",save);} }
+      const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#2a1a4a"); g.addColorStop(1,"#0e0a1a"); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      ctx.font="56px serif"; ctx.textAlign="center"; ctx.fillText(["👺","👻","🗿","🐉","💀"][Math.min(4,save.lvl-1)]||"👾",W/2,100);
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 16px Rajdhani"; ctx.fillText(foeName,W/2,128); ctx.fillStyle="#000"; ctx.fillRect(W/2-100,138,200,14); ctx.fillStyle="#ff3d77"; ctx.fillRect(W/2-100,138,200*Math.max(0,ehp/emax),14); ctx.strokeStyle="#555"; ctx.strokeRect(W/2-100,138,200,14);
+      // word
+      ctx.font="800 40px JetBrains Mono, monospace"; const word=cur.toUpperCase(); const wx=W/2-word.length*13;
+      for(let i=0;i<word.length;i++){ ctx.fillStyle=i<typed.length?"#2fbf6a":"#e7ecfb"; ctx.fillText(word[i],wx+i*26+13,220); }
+      ctx.fillStyle="#ffd93d"; ctx.font="600 14px Inter"; ctx.textAlign="center"; if(combo>1)ctx.fillText("🔥 "+combo+" combo",W/2,250); ctx.textAlign="left";
+      // player
+      ctx.fillStyle="#e7ecfb"; ctx.font="700 14px Rajdhani"; ctx.fillText("Mage Lv "+save.lvl,20,300); ctx.fillStyle="#000"; ctx.fillRect(20,308,200,14); ctx.fillStyle="#2fbf6a"; ctx.fillRect(20,308,200*Math.max(0,hp/(50+save.lvl*10)),14); ctx.strokeStyle="#555"; ctx.strokeRect(20,308,200,14);
+      ctx.fillStyle="#8ea0c8"; ctx.font="500 11px Inter"; ctx.fillText("XP "+save.xp+"/"+(save.lvl*40)+" · type the word to cast · enemy attacks on a timer",20,335);
+      // attack timer
+      const tleft=Math.max(0,(foeAtkT-Date.now())/1000); ctx.fillStyle="#ff8a3d"; ctx.font="600 12px Inter"; ctx.fillText("⚠ Enemy attacks in "+tleft.toFixed(1)+"s",20,358);
+      if(over){ ctx.fillStyle="rgba(4,7,15,.86)"; ctx.fillRect(0,0,W,H); ctx.textAlign="center"; ctx.fillStyle=result==="win"?"#2fbf6a":"#ff3d77"; ctx.font="700 26px Rajdhani"; ctx.fillText(result==="win"?"VANQUISHED!":"DEFEATED",W/2,H/2-10); ctx.fillStyle="#e7ecfb"; ctx.font="600 14px Inter"; ctx.fillText("Mage Lv "+save.lvl+" — SPACE for next duel",W/2,H/2+18); ctx.textAlign="left"; } }
+    window.addEventListener("keydown",kd); loop(); return ()=>{ cancelAnimationFrame(raf); window.removeEventListener("keydown",kd); if(K)K.save("spellwords",save); };
+  },
+
 };
 // Make the catalog + engines explicitly global so the app script below
 // always finds them, even if these scripts are ever split into modules.
@@ -8804,6 +9854,39 @@ GAMES.push(
   { id:"memorygrid",  title:"Memory Grid",    cat:"puzzle",   emoji:"🧠", badge:"NEW", engine:"memorygrid" },
   { id:"springjump",  title:"Spring Jump",    cat:"arcade",   emoji:"🦘", badge:"HOT", engine:"springjump" },
   { id:"coincatch",   title:"Coin Catch",     cat:"arcade",   emoji:"🪙", badge:"NEW", engine:"coincatch" }
+);
+GAMES.push(
+  { id:"voxelworld",  title:"Voxel World",    cat:"action",   emoji:"🧊", badge:"HOT", engine:"voxelworld" },
+  { id:"dungeondive", title:"Dungeon Dive",   cat:"rpg",      emoji:"🗡", badge:"HOT", engine:"dungeondive" },
+  { id:"towerdef",    title:"Tower Defense",  cat:"strategy", emoji:"🏰", badge:"HOT", engine:"towerdef" },
+  { id:"rpgquest",    title:"RPG Quest",      cat:"rpg",      emoji:"⚔", badge:"NEW", engine:"rpgquest" },
+  { id:"spacetrader", title:"Space Trader",   cat:"strategy", emoji:"🚀", badge:"NEW", engine:"spacetrader" },
+  { id:"farmsim",     title:"Farm Tycoon",    cat:"strategy", emoji:"🌾", badge:"NEW", engine:"farmsim" },
+  { id:"ninjaclimb",  title:"Ninja Climb",    cat:"arcade",   emoji:"🥷", badge:"NEW", engine:"ninjaclimb" },
+  { id:"alchemylab",  title:"Alchemy Lab",    cat:"puzzle",   emoji:"⚗", badge:"NEW", engine:"alchemylab" },
+  { id:"galaxydef",   title:"Galaxy Defender",cat:"action",   emoji:"🛸", badge:"NEW", engine:"galaxydef" },
+  { id:"kingdombuild",title:"Kingdom Builder",cat:"strategy", emoji:"👑", badge:"NEW", engine:"kingdombuild" },
+  { id:"monstertamer",title:"Monster Tamer",  cat:"rpg",      emoji:"🐲", badge:"HOT", engine:"monstertamer" },
+  { id:"runemage",    title:"Rune Mage",      cat:"action",   emoji:"🧙", badge:"NEW", engine:"runemage" },
+  { id:"deepminer",   title:"Deep Miner",     cat:"arcade",   emoji:"⛏", badge:"NEW", engine:"deepminer" },
+  { id:"arenachamp",  title:"Arena Champion", cat:"action",   emoji:"🥊", badge:"NEW", engine:"arenachamp" },
+  { id:"potionbrew",  title:"Potion Brew",    cat:"puzzle",   emoji:"🧪", badge:"NEW", engine:"potionbrew" },
+  { id:"robofactory", title:"Robo Factory",   cat:"strategy", emoji:"🤖", badge:"NEW", engine:"robofactory" },
+  { id:"survivalist", title:"Survivalist",    cat:"action",   emoji:"🏕", badge:"HOT", engine:"survivalist" },
+  { id:"cardbattle",  title:"Card Battler",   cat:"strategy", emoji:"🃏", badge:"NEW", engine:"cardbattle" },
+  { id:"fishingpro",  title:"Fishing Pro",    cat:"arcade",   emoji:"🎣", badge:"NEW", engine:"fishingpro" },
+  { id:"bossrush",    title:"Boss Rush",      cat:"action",   emoji:"👹", badge:"NEW", engine:"bossrush" },
+  { id:"petraiser",   title:"Pet Raiser",     cat:"strategy", emoji:"🐣", badge:"NEW", engine:"petraiser" },
+  { id:"idleempire",  title:"Idle Empire",    cat:"strategy", emoji:"💰", badge:"NEW", engine:"idleempire" },
+  { id:"herotower",   title:"Hero Tower",     cat:"rpg",      emoji:"🗼", badge:"NEW", engine:"herotower" },
+  { id:"snakequest",  title:"Snake Quest",    cat:"arcade",   emoji:"🐍", badge:"NEW", engine:"snakequest" },
+  { id:"gemtycoon",   title:"Gem Tycoon",     cat:"arcade",   emoji:"💎", badge:"NEW", engine:"gemtycoon" },
+  { id:"wizardduel",  title:"Wizard Duel",    cat:"strategy", emoji:"🪄", badge:"NEW", engine:"wizardduel" },
+  { id:"blacksmith",  title:"Blacksmith",     cat:"strategy", emoji:"🔨", badge:"NEW", engine:"blacksmith" },
+  { id:"tankwar",     title:"Tank War",       cat:"action",   emoji:"🚜", badge:"NEW", engine:"tankwar" },
+  { id:"roguearcher", title:"Rogue Archer",   cat:"action",   emoji:"🏹", badge:"HOT", engine:"roguearcher" },
+  { id:"citytraffic", title:"City Traffic",   cat:"strategy", emoji:"🚦", badge:"NEW", engine:"citytraffic" },
+  { id:"spellwords",  title:"Spell Words",    cat:"rpg",      emoji:"✨", badge:"NEW", engine:"spellwords" }
 );
 GAMES.push(
   { id:"aurorarun",   title:"Aurora Run",    cat:"arcade",   emoji:"🌌", badge:"HOT", engine:"aurorarun" },
@@ -8998,7 +10081,7 @@ window.ENGINES = ENGINES;
 /* Bump this whenever the file is rebuilt. The Diagnostics panel shows it, so
    you can instantly tell whether GitHub Pages is serving the newest upload or
    a cached older one. */
-const KLYP_BUILD = "2026-07-22 · build 16 (31 new games + rhythm)";
+const KLYP_BUILD = "2026-07-22 · build 17 (voxel + 30 progression games)";
 window.KLYP_BUILD = KLYP_BUILD;
 
 /* =====================================================================
@@ -10042,6 +11125,37 @@ const GAME_RULES = {
   memorygrid:{g:"Memorize the highlighted tiles, then tap them all from memory. Each level adds a tile.",c:"Watch the flash, then click the tiles you remember."},
   springjump:{g:"Bounce ever higher on the platforms. Orange ones vanish after one bounce, so keep moving.",c:"Move the mouse or "+K("←")+" "+K("→")+" · bouncing is automatic."},
   coincatch:{g:"Catch falling coins and 💎 gems in your basket, but dodge the 💣. Chain catches for combo points.",c:"Move the mouse to slide the basket."},
+  voxelworld:{g:"A full Minecraft-style survival world: mine blocks, gather resources, craft tools, build, and survive. It runs as its own full-screen world.",c:"Click to lock the mouse · WASD move · Space jump · mouse look · left/right-click to mine & place · E for inventory. Needs voxel-world.html uploaded next to your site."},
+  dungeondive:{g:"Descend a roguelike dungeon fighting monsters for gold. When you die you keep your gold and spend it on permanent HP and attack upgrades, so each run gets stronger.",c:K("Arrows")+" / "+K("WASD")+" move (into an enemy attacks) · reach 🔽 stairs to go deeper · "+K("S")+" opens the upgrade shop on death."},
+  towerdef:{g:"Defend against 10 waves of enemies by building and upgrading towers. Beating it earns permanent stars that boost your starting tower damage.",c:"Click an empty tile to build a tower (40g) · click a tower to upgrade it (50g)."},
+  rpgquest:{g:"Turn-based battles against ever-tougher foes. Winning earns XP; level up to raise your HP, attack and magic permanently and face stronger enemies.",c:K("1")+"/"+K("2")+"/"+K("3")+" or click for Attack, Magic and Heal · arrows to pick, Enter to confirm."},
+  spacetrader:{g:"Buy goods cheap on one planet and sell high on another across 20 days. Finish a run with 1000+ credits to permanently expand your cargo hold.",c:"Click a planet to travel (uses a day) · Buy/Sell buttons on each good."},
+  farmsim:{g:"Plant crops, wait for them to grow, harvest and sell for profit. Reinvest to buy more plots and keep expanding your farm — progress is saved.",c:"Pick a crop at the bottom · click a plot to plant, click again when ripe to sell · buy new plots for 100c."},
+  ninjaclimb:{g:"Wall-jump as high as you can up an endless shaft, collecting gems. Your best height and gems are saved between runs.",c:K("←")+" "+K("→")+" / "+K("A")+" "+K("D")+" steer · "+K("Space")+" / "+K("↑")+" to leap off a wall."},
+  alchemylab:{g:"Drag the four base elements together to discover new ones — over a dozen combinations to find. Everything you discover is saved forever.",c:"Drag one element onto another to combine them · click a base element to spawn a copy."},
+  galaxydef:{g:"A vertical shooter where downed enemies drop scrap. Spend scrap between runs on a permanently better gun and hull.",c:K("←")+" "+K("→")+" move · "+K("Space")+" fire · "+K("U")+" opens upgrades on the game-over screen."},
+  kingdombuild:{g:"Place farms, mines, lumber mills and houses on a grid and manage food, gold, wood and population across 25 turns for the highest score.",c:"Pick a building, click a tile to place it, then click END TURN to collect resources."},
+  monstertamer:{g:"Battle wild creatures, weaken them, and throw to catch them. Build a collection of all species; your caught monsters and wins are saved.",c:K("1")+" Fight · "+K("2")+" Catch (weaken first) · "+K("3")+" Switch monster · or click the buttons."},
+  runemage:{g:"Survive endless waves of enemies who drop crystals. Spend crystals in your spellbook to boost fire and unlock Ice Nova and Chain Bolt.",c:K("WASD")+" move · aim with the mouse · spells auto-cast · "+K("1")+"/"+K("2")+"/"+K("3")+" switch spell · "+K("U")+" spellbook on death."},
+  deepminer:{g:"Dig down through dirt, stone and precious ores that sell for cash. Spend it on a stronger drill and bigger bag to reach the rich deep layers.",c:K("A")+" "+K("D")+" move · "+K("S")+" dig down · "+K("U")+" opens the shop."},
+  arenachamp:{g:"Fight escalating AI champions in a 1-on-1 brawler. Every win is banked, and every few wins permanently raises your power.",c:K("A")+" "+K("D")+" move · "+K("W")+" jump · "+K("J")+" punch · "+K("K")+" block."},
+  potionbrew:{g:"A match-3 where you must collect enough gems of the target color to brew each potion. Every potion brewed raises the next goal.",c:"Click two adjacent gems to swap them and make matches of 3+."},
+  robofactory:{g:"An automation incremental: click to mine ore, then buy miners, forges and assemblers that turn ore → metal → parts automatically. Overclock doubles all speed. Saved between visits.",c:"Click the ore node · click an upgrade to buy it."},
+  survivalist:{g:"Survive as many day/night cycles as you can. Gather wood and berries by day, build a fire, and fend off monsters at night. Your best day count is saved.",c:K("WASD")+" move · hold "+K("Space")+" to gather/attack · "+K("E")+" eat · "+K("F")+" build a fire (5 wood)."},
+  cardbattle:{g:"A deckbuilding-lite duel: play cards using energy to attack, block and heal. Win to grow your deck permanently every couple of victories.",c:K("1")+"–"+K("4")+" or click to play a card · "+K("Enter")+" / END TURN button to end your turn."},
+  fishingpro:{g:"Wait for a bite, then reel by keeping the fish inside the green zone. Rarer fish sell for more; buy rod upgrades to widen your catch zone.",c:"Hold the mouse / "+K("Space")+" to reel · release to let the bar fall · click the rod button to upgrade."},
+  bossrush:{g:"Fight an endless gauntlet of bullet-hell bosses. Clear bosses to permanently level your gear, which boosts your fire rate, damage and health.",c:"Move with the mouse · you auto-fire · dodge the bullet patterns."},
+  petraiser:{g:"Raise a virtual pet by feeding, playing and resting. Earn XP to evolve it through five stages. Its stats decay over real time, so check back in — everything's saved.",c:"Click Feed, Play or Sleep at the bottom."},
+  idleempire:{g:"Buy businesses that earn money automatically, then reinvest as costs climb. At $1M you can prestige for a permanent +50% multiplier that stacks forever.",c:"Click a business to buy it · click PRESTIGE once you hit $1M."},
+  herotower:{g:"Climb an endless tower of enemies, resting to buy upgrades every few floors. Bank gold on death to permanently boost your hero's attack and HP.",c:K("Space")+" / click to attack · at rest stops press "+K("1")+"/"+K("2")+"/"+K("3")+" to buy, Space to continue."},
+  snakequest:{g:"Classic snake with a twist: grab ⭐ stars for +3 length, and spend the apples you bank on new snake skins. Your best length is saved.",c:K("Arrows")+" / "+K("WASD")+" to turn · on the game-over screen press "+K("1")+"–"+K("5")+" to change skin."},
+  gemtycoon:{g:"Click gems to mine them for cash — tougher gems take more hits. Upgrade your pickaxe power and dig to deeper, richer rounds. Cash is saved.",c:"Click a gem to mine it · buttons at the bottom upgrade the pickaxe or go deeper."},
+  wizardduel:{g:"A spell duel of elemental rock-paper-scissors (Fire beats Nature beats Water beats Fire) plus shield and mana charge. Wins grow your max mana permanently.",c:K("1")+"–"+K("5")+" or click to cast a spell each round."},
+  blacksmith:{g:"Mine ore, then forge weapons by pumping the bellows to hit the target heat. Sell them for gold and upgrade your forge to craft pricier items. Gold is saved.",c:"Pick an item, MINE ORE, press FORGE, then hold the mouse over the forge to pump heat to the target."},
+  tankwar:{g:"Battle waves of enemy tanks in an arena. Downed tanks drop scrap you spend on a permanently stronger cannon and armor.",c:K("WASD")+" move · aim & fire with the mouse or "+K("Space")+" · "+K("U")+" opens upgrades on death."},
+  roguearcher:{g:"An auto-firing survivor: clear each wave of enemies and pick a relic (double shot, piercing, rapid fire…) between waves. Relics stack within a run for wild builds.",c:K("WASD")+" move · you auto-fire toward the cursor · "+K("1")+"/"+K("2")+"/"+K("3")+" or click to pick a relic."},
+  citytraffic:{g:"Manage a busy intersection by toggling the traffic lights. Get cars through without 5 crashes before time runs out; high scores level up your city.",c:"Click / "+K("Space")+" to switch which direction has the green light."},
+  spellwords:{g:"A typing RPG: type the spell words fast to damage the enemy before its attack timer fires. Winning grants XP to level your mage, unlocking longer words and tougher foes.",c:"Just type the highlighted word to cast · "+K("Backspace")+" to fix a typo."},
   aurorarun:{g:"Run as far as you can, grabbing coins and dodging spikes.",c:K("Space")+" / "+K("↑")+" / click to jump."},
   siegebreaker:{g:"Smash every 👹 block with your boulders before you run out.",c:"Drag back from the boulder to aim & launch."},
   neondescent:{g:"Survive endless waves; enemies drop gems that upgrade your gun.",c:K("WASD")+" move · aim with the mouse · auto-fire."},
