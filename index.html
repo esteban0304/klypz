@@ -1266,6 +1266,7 @@ html[data-theme="light"] .hero{
       <button class="topnav__btn topnav__btn--ghost" id="themeToggle" title="Toggle theme">🌙</button>
       <button class="topnav__btn" data-route="browser">Web Viewer</button>
       <button class="topnav__btn topnav__btn--ghost" id="leaderboardBtn">🏆 Leaderboard</button>
+      <button class="topnav__btn topnav__btn--ghost" id="backendBtn" title="Connect chat & leaderboard (Ctrl+Shift+B)">🔌</button>
       <button class="topnav__btn topnav__btn--ghost" id="profileBtn">👤 Guest</button>
     </nav>
   </div>
@@ -8143,13 +8144,14 @@ window.ENGINES = ENGINES;
 /* Bump this whenever the file is rebuilt. The Diagnostics panel shows it, so
    you can instantly tell whether GitHub Pages is serving the newest upload or
    a cached older one. */
-const KLYP_BUILD = "2026-07-21 · build 9 (avatar starter fix)";
+const KLYP_BUILD = "2026-07-22 · build 11 (real backend url)";
 window.KLYP_BUILD = KLYP_BUILD;
 
 /* =====================================================================
    BACKEND CREDENTIALS
-   These point at the site's Supabase project. If chat/leaderboard stop
-   working with "Failed to fetch", the project is almost certainly PAUSED —
+   These point at the site's Supabase project (jbefrqnjsdhqsywgfsyh).
+   If chat/leaderboard stop working with "Failed to fetch", the project is
+   almost certainly PAUSED —
    free Supabase projects pause after ~1 week of inactivity and their address
    stops resolving. Open the Supabase dashboard and press Resume.
    To point the site at a different project instead:
@@ -8160,7 +8162,7 @@ window.KLYP_BUILD = KLYP_BUILD;
         and paste them in. They're saved in your browser and used from
         then on — no need to edit this file.
 ===================================================================== */
-const SUPABASE_URL_DEFAULT = "https://iyvzawibkqfvjkhtoolw.supabase.co";
+const SUPABASE_URL_DEFAULT = "https://jbefrqnjsdhqsywgfsyh.supabase.co";
 const SUPABASE_KEY_DEFAULT = "sb_publishable_DU50t5sisuJpoAQNqTosnA_cj_idZGo";
 function klypBackendCfg(){
   try{
@@ -8612,6 +8614,7 @@ window.addEventListener("keydown", e=>{
   if(e.ctrlKey && e.shiftKey && (e.key==="B"||e.key==="b")){ e.preventDefault(); openBackendSetup(); }
 });
 window.klypBackendSetup = openBackendSetup;
+document.addEventListener("DOMContentLoaded", ()=>{ const b=document.getElementById("backendBtn"); if(b) b.addEventListener("click", openBackendSetup); });
 
 function openDiagnostics(){
   const ov = document.getElementById("diagOverlay");
@@ -10408,6 +10411,36 @@ let shopPreviewHandle = null;
 let shopSelectedId = null;
 let shopCardHandles = [];
 
+/* Check each avatar file once so the shop can mark broken uploads (0-byte,
+   404, LFS pointer) as unavailable instead of letting the user pick one that
+   renders nothing. Results cached on window.__klypAvatarHealth. */
+window.__klypAvatarHealth = window.__klypAvatarHealth || {};
+async function checkAvatarHealth(){
+  const cat = window.KLYP_AVATAR_CATALOG || [];
+  await Promise.all(cat.map(async av=>{
+    try{
+      const r = await fetch(new URL(av.file, location.href).href, {cache:"no-store"});
+      if(!r.ok){ window.__klypAvatarHealth[av.id] = {ok:false, why:"HTTP "+r.status}; return; }
+      const buf = await r.arrayBuffer();
+      const head = new TextDecoder().decode(buf.slice(0,5));
+      if(buf.byteLength < 2048) window.__klypAvatarHealth[av.id] = {ok:false, why:"empty/too small"};
+      else if(head.slice(0,4) !== "glTF") window.__klypAvatarHealth[av.id] = {ok:false, why:"not a valid .glb"};
+      else window.__klypAvatarHealth[av.id] = {ok:true};
+    }catch(e){ window.__klypAvatarHealth[av.id] = {ok:false, why:"unreachable"}; }
+  }));
+  // if the currently equipped avatar is broken, switch to a healthy one
+  try{
+    if(profile && profile.equippedAvatarId){
+      const h = window.__klypAvatarHealth[profile.equippedAvatarId];
+      if(h && !h.ok){
+        const good = cat.find(a=>{ const s=window.__klypAvatarHealth[a.id]; return s && s.ok; });
+        if(good){ profile.equippedAvatarId = good.id; if(!profile.ownedAvatars.includes(good.id)) profile.ownedAvatars.push(good.id); try{ await saveProfile(); }catch(e){} }
+      }
+    }
+  }catch(e){}
+}
+window.addEventListener("load", ()=>{ setTimeout(checkAvatarHealth, 1500); });
+
 function renderShop(host){
   if(!host) return;
   if(!profile){ host.innerHTML = '<p style="color:var(--muted);padding:20px;">Create your account first, then come back to the shop.</p>'; return; }
@@ -10477,8 +10510,7 @@ function renderShop(host){
       card.onmouseenter = ()=>{ card.style.transform = "translateY(-3px)"; };
       card.onmouseleave = ()=>{ card.style.transform = ""; };
       const status = equipped ? '<span style="position:absolute;top:8px;right:8px;background:var(--cyan);color:#04070f;font-size:9px;font-weight:800;padding:2px 7px;border-radius:999px;z-index:3;">ON</span>'
-                   : owned   ? '<span style="position:absolute;top:8px;right:8px;background:#2fbf6a;color:#04070f;font-size:9px;font-weight:800;padding:2px 7px;border-radius:999px;z-index:3;">OWNED</span>'
-                   : "";
+                   : owned   ? '<span style="position:absolute;top:8px;right:8px;background:#2fbf6a;color:#04070f;font-size:9px;font-weight:800;padding:2px 7px;border-radius:999px;z-index:3;">OWNED</span>'                   : "";
       // a small box that will hold a live 3D preview of the actual model
       const previewBox = document.createElement("div");
       previewBox.style.cssText = "width:100%;height:120px;border-radius:10px;overflow:hidden;margin-bottom:8px;background:radial-gradient(circle at 50% 25%,#131c3f,#0d1117 70%);";
@@ -10489,6 +10521,12 @@ function renderShop(host){
         '<div style="font-size:12px;font-weight:700;color:'+(av.cost===0?"#2fbf6a":owned?"var(--muted)":"var(--cyan)")+';">'+
           (av.cost===0?"Free":owned?"Purchased":av.cost+" XP")+'</div>';
       card.innerHTML = status;
+      const health = window.__klypAvatarHealth ? window.__klypAvatarHealth[av.id] : null;
+      if(health && !health.ok){
+        card.innerHTML += '<span style="position:absolute;top:8px;left:8px;background:#ff3d77;color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:999px;z-index:3;">UNAVAILABLE</span>';
+        card.style.opacity = ".5";
+        card.title = "This model file is broken on the server ("+(health.why||"error")+") — re-upload it.";
+      }
       card.appendChild(previewBox);
       card.appendChild(info);
       // render a slow auto-spinning, non-interactive mini model on the card
