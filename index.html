@@ -8145,7 +8145,7 @@ window.ENGINES = ENGINES;
 /* Bump this whenever the file is rebuilt. The Diagnostics panel shows it, so
    you can instantly tell whether GitHub Pages is serving the newest upload or
    a cached older one. */
-const KLYP_BUILD = "2026-07-22 · build 14 (draco + username + avatar clarity)";
+const KLYP_BUILD = "2026-07-22 · build 15 (message column-proof)";
 window.KLYP_BUILD = KLYP_BUILD;
 
 /* =====================================================================
@@ -8801,7 +8801,7 @@ async function runFullDiagnostics(){
     // live write test — this is what actually breaks chat
     try{
       const probe = "__klyp_selftest_"+Date.now();
-      const { error } = await supabase.from("messages").insert({ channel:"__selftest", thread:"__selftest", author:probe, username:probe, text:"self-test", created_at:new Date().toISOString() });
+      const { error } = await insertMessage("__selftest", probe, "self-test");
       if(error){
         const m=(error.message||"").toLowerCase();
         push(false, "CHAT WRITE TEST (this is why messages fail)",
@@ -9470,7 +9470,7 @@ async function adminAction(kind){
     }
     if(kind==="broadcast"){
       const msg = prompt("Message to broadcast to everyone online:");
-      if(msg) await supabase.from("messages").insert({ channel:"public", thread:"public", author:"📢 ADMIN", username:"📢 ADMIN", text: msg, created_at: new Date().toISOString() });
+      if(msg) await insertMessage("public", "📢 ADMIN", msg);
     }
     if(kind==="stats"){
       const { count: users } = await supabase.from("users").select("*",{count:"exact",head:true});
@@ -9545,6 +9545,24 @@ function openChannel(chan, name, sub){
   loadMessages();
 }
 
+/* One place that builds a message row. Different Supabase tables (created by
+   hand at different times) name the same fields differently and mark various
+   ones NOT NULL — channel/thread/room, author/username/sender, text/body/content.
+   To avoid failing on whichever the table requires, we send the same values
+   under every common alias; extra keys that don't exist as columns are ignored
+   by PostgREST, and any NOT-NULL one that DOES exist gets a value. */
+async function insertMessage(channel, author, text){
+  if(!supabase) throw new Error("not connected");
+  const now = new Date().toISOString();
+  const row = {
+    channel: channel, thread: channel, room: channel,
+    author: author, username: author, sender: author, name: author, user_name: author,
+    text: text, body: text, content: text, message: text,
+    created_at: now
+  };
+  return await supabase.from("messages").insert(row);
+}
+
 async function loadMessages(){
   const thread = document.getElementById("messagingThread");
   if(!supabase){
@@ -9562,10 +9580,12 @@ async function loadMessages(){
     const { data: rows } = await supabase.from("messages").select("*")
       .eq("channel", currentChannel).order("created_at",{ascending:true}).limit(100);
     (rows||[]).forEach(m=>{
-      const mine = profile && m.author===profile.username;
-      html += '<div class="msg '+(mine?"mine":"theirs")+'"><div class="msg__meta">'+escapeHtml(m.author)+
+      const mine = profile && (m.author===profile.username || m.username===profile.username);
+      const who = m.author || m.username || m.sender || m.name || "anon";
+      const body = m.text || m.body || m.content || m.message || "";
+      html += '<div class="msg '+(mine?"mine":"theirs")+'"><div class="msg__meta">'+escapeHtml(who)+
         (mine||((profile&&profile.isAdmin))?' <span class="msg__deleteBtn" data-del="'+m.id+'">🗑</span>':'')+
-        '</div>'+escapeHtml(m.text)+'</div>';
+        '</div>'+escapeHtml(body)+'</div>';
     });
     const atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
     thread.innerHTML = html || '<p style="color:var(--muted);font-size:13px;">No messages yet — say hi!</p>';
@@ -9594,7 +9614,7 @@ document.getElementById("messagingForm").addEventListener("submit", async e=>{
     try{ const res = await supabase.from("moderation").select("*").eq("username", profile.username).maybeSingle(); mod=res.data; }catch(e){}
     if(mod && mod.banned){ toast("Your account is banned from chat."); return; }
     if(mod && mod.muted){ toast("You're currently muted."); return; }
-    const { error } = await supabase.from("messages").insert({ channel: currentChannel, thread: currentChannel, author: profile.username, username: profile.username, text: text, created_at: new Date().toISOString() });
+    const { error } = await insertMessage(currentChannel, profile.username, text);
     if(error){ console.error("chat insert error:", error); toast("Couldn't send: "+(error.message||error.hint||"database rejected it")); return; }
     input.value = "";
     profile.messagesSent = (profile.messagesSent||0)+1;
