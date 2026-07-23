@@ -5762,8 +5762,16 @@ const ENGINES = {
     function swing(){ if(over||(sword&&sword.t<0.25))return; sword={t:0,a:aim}; hitSet=new Set(); }
     function grenade(){ const s=S(); if(!s.grenade||grenCD>0||over)return; grenCD=1.1; const o=sho();
       grens.push({x:o.x,y:o.y,vx:Math.cos(aim)*8,vy:Math.sin(aim)*8-2,dmg:45+s.grenade*16}); }
-    function updAim(){ const ax=(keys["arrowright"]?1:0)-(keys["arrowleft"]?1:0), ay=(keys["arrowdown"]?1:0)-(keys["arrowup"]?1:0);
-      if(ax||ay) aim=Math.atan2(ay,ax); }
+    /* Control scheme: 1 = WASD turns/aims the character, arrows walk (default).
+       0 = classic: WASD walks, arrows aim. Toggle in-game with C; the choice is saved. */
+    let ctrlSwap = K.load("stickCtrl", 1);
+    const AIMK  = ()=> ctrlSwap ? ["d","a","s","w"] : ["arrowright","arrowleft","arrowdown","arrowup"];
+    const MOVEK = ()=> ctrlSwap ? ["arrowright","arrowleft","arrowup"] : ["d","a","w"];
+    function updAim(){ const [R,L,D,U]=AIMK();
+      const ax=(keys[R]?1:0)-(keys[L]?1:0), ay=(keys[D]?1:0)-(keys[U]?1:0);
+      if(ax||ay){ aim=Math.atan2(ay,ax);
+        // turning also flips which way the body faces — that's the orientation
+        if(Math.abs(Math.cos(aim))>0.15) p.face = Math.cos(aim)>=0 ? 1 : -1; } }
 
     /* ---------- shop (E) ---------- */
     const panel=document.createElement("div");
@@ -5793,8 +5801,9 @@ const ENGINES = {
       if(k==="e"){ toggleShop(); e.preventDefault(); return; }
       if(shopOpen) return;
       if(over){ if(k===" "||k==="r"){ reset(); } return; }
-      if(k==="w"||k==="arrowup"&&false){}
-      if(k==="w"&&p.onGround){ p.vy=-12; p.onGround=false; }        // W = jump
+      if(k==="c"){ ctrlSwap=ctrlSwap?0:1; K.save("stickCtrl",ctrlSwap);
+        banner=ctrlSwap?"WASD turns · arrows walk":"WASD walks · arrows aim"; bannerT=1.6; e.preventDefault(); return; }
+      if(k===MOVEK()[2]&&p.onGround){ p.vy=-12; p.onGround=false; }  // jump
       if(k==="j")fireGun(); if(k==="k")swing(); if(k==="g")grenade();
       if(["w","a","s","d","j","k","l","g"," "].includes(k)||k.startsWith("arrow")) e.preventDefault();
     }
@@ -5811,7 +5820,9 @@ const ENGINES = {
         p.flying = keys["l"] && fuel>0;
         if(p.flying){ p.vx+=Math.cos(aim)*s.thrust; p.vy+=Math.sin(aim)*s.thrust; p.vy+=0.2; p.vx*=0.93; p.vy*=0.95; fuel-=1.5; p.onGround=false;
           for(let i=0;i<2;i++) particles.push({x:p.x,y:p.y-4,vx:(Math.random()-.5)*2,vy:1+Math.random()*2,t:0,c:"#ff8a3d"}); }
-        else { const mv=(keys["d"]?1:0)-(keys["a"]?1:0); p.vx=mv*4; if(mv)p.face=mv; p.vy+=0.62; if(p.onGround)fuel=Math.min(s.fuelMax,fuel+1.2); }
+        else { const [MR,ML]=MOVEK(); const mv=(keys[MR]?1:0)-(keys[ML]?1:0); p.vx=mv*4;
+          if(mv && !ctrlSwap) p.face=mv;   // when WASD aims, facing is owned by the aim instead
+          p.vy+=0.62; if(p.onGround)fuel=Math.min(s.fuelMax,fuel+1.2); }
         p.x+=p.vx; p.y+=p.vy; p.x=Math.max(16,Math.min(W-16,p.x)); if(p.y<30){p.y=30;p.vy=0;}
         collide();
         p.phase+=Math.abs(p.vx)*0.13;
@@ -5942,7 +5953,10 @@ const ENGINES = {
       abil(W-72,H-72,30,"#4aa8ff","K","⚔",!sword);
       abil(W-72,H-146,30,"#9fbf3a","L","🚀",fuel>0);
       ctx.fillStyle="rgba(231,236,251,.75)"; ctx.font="500 11px Inter";
-      ctx.fillText("A/D move · W jump · Arrows aim · J gun · K sword · L boots · G grenade · E shop",14,H-12);
+      ctx.fillText((ctrlSwap
+        ? "WASD turn/aim · ←→ walk · ↑ jump"
+        : "A/D move · W jump · Arrows aim")
+        +" · J gun · K sword · L boots · G grenade · E shop · C swap controls",14,H-12);
       if(bannerT>0){ ctx.globalAlpha=Math.min(1,bannerT); ctx.fillStyle=banner.includes("BOSS")?"#ff7a1a":"#8fefff";
         ctx.font="700 30px Rajdhani"; ctx.textAlign="center"; ctx.fillText(banner,W/2,120); ctx.textAlign="left"; ctx.globalAlpha=1; }
       if(over){ ctx.fillStyle="rgba(4,7,15,.85)"; ctx.fillRect(0,0,W,H);
@@ -10081,7 +10095,7 @@ window.ENGINES = ENGINES;
 /* Bump this whenever the file is rebuilt. The Diagnostics panel shows it, so
    you can instantly tell whether GitHub Pages is serving the newest upload or
    a cached older one. */
-const KLYP_BUILD = "2026-07-22 · build 17 (voxel + 30 progression games)";
+const KLYP_BUILD = "2026-07-23 · build 18 (stickman turn controls + resilient video search)";
 window.KLYP_BUILD = KLYP_BUILD;
 
 /* =====================================================================
@@ -11061,7 +11075,7 @@ const GAME_RULES = {
   chronohop:{g:"Reach the door using ghosts of your past runs.",c:K("←")+K("→")+" move · "+K("↑")+" jump · "+K("R")+" new time-loop · "+K("N")+" restart."},
   skirmish:{g:"Wipe out the enemy squad.",c:"Click a unit → move → attack · "+K("End Turn")+"."},
   nanoswarm:{g:"Herd the swarm over green orbs, avoid red.",c:"Move the mouse to lead · hold to pull tighter."},
-  stickman:{g:"Clear each chamber, enter the portal, and climb the stages. Buy weapons & abilities with coins — they save forever.",c:K("A")+K("D")+" move · "+K("W")+" jump · arrows aim · "+K("J")+" gun · "+K("K")+" sword · "+K("L")+" boots · "+K("G")+" grenade · "+K("E")+" shop."},
+  stickman:{g:"Clear each chamber, enter the portal, and climb the stages. Buy weapons & abilities with coins — they save forever.",c:K("WASD")+" turns/aims your character · "+K("←")+K("→")+" walk · "+K("↑")+" jump · "+K("J")+" gun · "+K("K")+" sword · "+K("L")+" boots toward aim · "+K("G")+" grenade · "+K("E")+" shop · "+K("C")+" swaps to the old scheme (WASD walks, arrows aim)."},
   tron:{g:"Outlast the AI — don't hit any trail.",c:"Arrow keys to turn.",p:"Press "+K("2")+" for 2P: "+K("WASD")+" vs arrows."},
   artillery:{g:"Destroy the enemy tank across the terrain.",c:K("↑")+K("↓")+" angle · "+K("←")+K("→")+" power · "+K("Space")+" fire.",p:"Press "+K("2")+" for 2P — P1: arrows + "+K("Space")+" · P2: "+K("W")+K("S")+" angle, "+K("A")+K("D")+" power, "+K("Enter")+" fire."},
   minigolf:{g:"Sink the ball in as few strokes as possible.",c:"Drag from the ball to aim & putt."},
@@ -11783,29 +11797,104 @@ const INVIDIOUS_INSTANCES = [
   "https://invidious.nerdvpn.de",
   "https://yewtu.be",
   "https://invidious.jing.rocks",
-  "https://vid.puffyan.us",
+  "https://invidious.privacyredirect.com",
+  "https://inv.tux.pizza",
+  "https://invidious.f5.si",
+  "https://iv.melmac.space",
+  "https://invidious.reallyaweso.me",
 ];
-let workingInvidious = null;
+// Piped is a second, independent network with the same purpose. If every
+// Invidious mirror is down or blocked, these often still answer.
+const PIPED_INSTANCES = [
+  "https://pipedapi.kavin.rocks",
+  "https://pipedapi.adminforge.de",
+  "https://pipedapi.drgns.space",
+  "https://api.piped.private.coffee",
+  "https://pipedapi.reallyaweso.me",
+];
+let workingHost = null;   // {kind:"inv"|"piped", base:string}
+let liveInstances = null; // fetched from the Invidious directory, cached per session
+
+// Remember the last mirror that worked so the next search is instant.
+try{ const c=JSON.parse(localStorage.getItem("klyp:videoHost")||"null");
+  if(c && Date.now()-c.t < 86400000) workingHost=c.v; }catch(e){}
+function rememberHost(v){ workingHost=v;
+  try{ localStorage.setItem("klyp:videoHost",JSON.stringify({v,t:Date.now()})); }catch(e){} }
+
+// AbortSignal.timeout isn't on older school Chromebooks — fall back gracefully.
+function timeoutSignal(ms){
+  try{ if(AbortSignal.timeout) return AbortSignal.timeout(ms); }catch(e){}
+  const ac=new AbortController(); setTimeout(()=>{try{ac.abort();}catch(e){}},ms); return ac.signal;
+}
+// Fire every request at once and take the first that actually answers,
+// instead of waiting out each dead mirror in turn.
+function raceFirst(tasks){
+  return new Promise(resolve=>{
+    let left=tasks.length, settled=false;
+    if(!left) return resolve(null);
+    tasks.forEach(t=>{
+      Promise.resolve().then(t).then(r=>{ if(r && !settled){ settled=true; resolve(r); } })
+        .catch(()=>{})
+        .then(()=>{ if(--left===0 && !settled) resolve(null); });
+    });
+  });
+}
+
+// The Invidious project publishes a live directory of working public mirrors.
+async function refreshInstanceList(){
+  if(liveInstances) return liveInstances;
+  try{
+    const res=await fetch("https://api.invidious.io/instances.json?sort_by=type,users",{signal:timeoutSignal(5000)});
+    if(res.ok){
+      const data=await res.json();
+      liveInstances=data
+        .filter(([,v])=>v && v.type==="https" && v.api!==false && v.cors!==false && v.uri)
+        .map(([,v])=>v.uri.replace(/\/$/,""))
+        .slice(0,12);
+    }
+  }catch(e){ /* directory itself unreachable — fall back to the built-in list */ }
+  return liveInstances||[];
+}
+
+function invSearch(base,query){
+  return fetch(base+"/api/v1/search?q="+encodeURIComponent(query)+"&type=video",{signal:timeoutSignal(7000)})
+    .then(r=>r.ok?r.json():null)
+    .then(data=>{
+      if(!Array.isArray(data)||!data.length) return null;
+      const items=data.filter(v=>v.type==="video"&&v.videoId).map(v=>({
+        id:v.videoId, title:v.title, author:v.author||"", duration:v.lengthSeconds||0 }));
+      return items.length?{kind:"inv",base,items}:null;
+    });
+}
+function pipedSearch(base,query){
+  return fetch(base+"/search?q="+encodeURIComponent(query)+"&filter=videos",{signal:timeoutSignal(7000)})
+    .then(r=>r.ok?r.json():null)
+    .then(data=>{
+      const list=data&&(data.items||data);
+      if(!Array.isArray(list)||!list.length) return null;
+      const items=list.map(v=>({
+        id:(v.url||"").split("v=")[1]||v.id||"",
+        title:v.title||"", author:v.uploaderName||v.uploader||"",
+        duration:v.duration||0 })).filter(v=>v.id);
+      return items.length?{kind:"piped",base,items}:null;
+    });
+}
 
 async function invidiousSearch(query){
-  const instances = workingInvidious
-    ? [workingInvidious, ...INVIDIOUS_INSTANCES.filter(i=>i!==workingInvidious)]
-    : INVIDIOUS_INSTANCES;
-  for(const base of instances){
-    try{
-      const res = await fetch(base + "/api/v1/search?q=" + encodeURIComponent(query) + "&type=video", { signal: AbortSignal.timeout(6000) });
-      if(!res.ok) continue;
-      const data = await res.json();
-      if(Array.isArray(data) && data.length){
-        workingInvidious = base;
-        return data.filter(v=>v.type==="video").map(v=>({
-          id: v.videoId, title: v.title, author: v.author || "",
-          duration: v.lengthSeconds || 0,
-        }));
-      }
-    }catch(e){ /* try next instance */ }
+  // 1. Whatever worked last time gets first shot on its own (usually instant).
+  if(workingHost){
+    const quick=await raceFirst([()=> workingHost.kind==="piped"
+      ? pipedSearch(workingHost.base,query) : invSearch(workingHost.base,query)]);
+    if(quick){ return quick.items; }
   }
-  return null; // all instances failed
+  // 2. Otherwise race the whole Invidious pool (built-in + live directory) at once.
+  const live=await refreshInstanceList();
+  const invPool=[...new Set([...live,...INVIDIOUS_INSTANCES])].slice(0,12);
+  let hit=await raceFirst(invPool.map(b=>()=>invSearch(b,query)));
+  // 3. Still nothing? Try the Piped network.
+  if(!hit) hit=await raceFirst(PIPED_INSTANCES.map(b=>()=>pipedSearch(b,query)));
+  if(hit){ rememberHost({kind:hit.kind,base:hit.base}); return hit.items; }
+  return null; // everything is down or blocked
 }
 
 function fmtDuration(s){
@@ -11893,7 +11982,12 @@ async function doVideoSearch(seed){
   grid.innerHTML = '<div style="grid-column:1/-1;color:var(--muted);padding:40px 0;text-align:center;">Searching…</div>';
   const results = await invidiousSearch(q);
   if(!results){
-    grid.innerHTML = '<div style="grid-column:1/-1;color:var(--muted);padding:40px 0;text-align:center;line-height:1.7;">Couldn\'t reach any Invidious server right now — they go up and down.<br><span style="font-size:12px;">Try again in a moment, or search a different term.</span></div>';
+    grid.innerHTML = '<div style="grid-column:1/-1;color:var(--muted);padding:34px 0;text-align:center;line-height:1.7;">'
+      + 'No video mirror answered.<br><span style="font-size:12px;">Every public Invidious and Piped server was unreachable — usually they\'re rate-limiting, or this network blocks them.</span><br>'
+      + '<button id="vidRetryBtn" class="btn" style="margin-top:14px;">Try again</button></div>';
+    const rb=document.getElementById("vidRetryBtn");
+    if(rb) rb.onclick=()=>{ try{ localStorage.removeItem("klyp:videoHost"); }catch(e){}
+      workingHost=null; liveInstances=null; doVideoSearch(q); };
     return;
   }
   grid.innerHTML = "";
