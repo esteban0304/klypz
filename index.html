@@ -10095,7 +10095,7 @@ window.ENGINES = ENGINES;
 /* Bump this whenever the file is rebuilt. The Diagnostics panel shows it, so
    you can instantly tell whether GitHub Pages is serving the newest upload or
    a cached older one. */
-const KLYP_BUILD = "2026-07-23 · build 18 (stickman turn controls + resilient video search)";
+const KLYP_BUILD = "2026-07-23 · build 19 (daily mutators + achievements + Klyp OS)";
 window.KLYP_BUILD = KLYP_BUILD;
 
 /* =====================================================================
@@ -11195,6 +11195,11 @@ function showRules(g){ if(!g)return; const r=GAME_RULES[g.id]||{g:"Play and have
   document.getElementById("rulesBody").innerHTML=html;
   document.getElementById("rulesModal").classList.add("show"); }
 
+// Exposed so the meta layer (daily challenges, Klyp OS) can launch and close
+// games. Function declarations hoist, so these are already defined here.
+window.openGame = g => openGame(g);
+window.closeGame = () => closeGame();
+
 function openGame(g){
   currentGame = g;
   window.__nowPlaying = g.title;
@@ -11206,7 +11211,12 @@ function openGame(g){
   document.getElementById("favToggle").classList.toggle("active", !!(profile && Array.isArray(profile.favorites) && profile.favorites.includes(g.id)));
 
   if(g.engine && ENGINES[g.engine]){
+    // A daily-challenge mutator must be installed *before* the engine starts,
+    // because it swaps the frame scheduler the engine is about to register with.
+    const mut = window.__pendingMutator; window.__pendingMutator = null;
+    if(mut && window.KLYP_META){ try{ window.KLYP_META.beginMutator(mut, stage); }catch(e){ console.error("mutator failed:",e); } }
     cleanupGame = ENGINES[g.engine](stage);
+    if(window.KLYP_META){ try{ window.KLYP_META.onPlay(g); }catch(e){} }
     // Every game rewards coins for time actually played (engines that track a
     // real score — e.g. Stickman, Deep Drill — additionally award their own).
     gameStartedAt = Date.now();
@@ -11229,8 +11239,10 @@ function closeGame(){
     const secs = (Date.now()-gameStartedAt)/1000;
     const earned = Math.min(30, Math.floor(secs/10));
     if(earned>0){ window.KLYP.addCoins(earned); toast("🪙 +"+earned+" coins earned"); }
+    if(window.KLYP_META){ try{ window.KLYP_META.onClose(earned, secs); }catch(e){} }
     gameStartedAt = 0;
   }
+  if(window.KLYP_META){ try{ window.KLYP_META.endMutator(); }catch(e){} }
   if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
   document.getElementById("playerOverlay").classList.remove("maxed");
   document.getElementById("rulesModal").classList.remove("show");
@@ -12852,6 +12864,480 @@ window.addEventListener("error", (ev)=>{
   }
 });
 })();
+</script>
+
+<script>
+/* ============================================================================
+   KLYP META LAYER — three systems that sit on top of every game without
+   requiring a single engine to be modified:
+     1. MUTATORS      — daily remix challenges (mirror, turbo, strobe…)
+     2. ACHIEVEMENTS  — ~70 unlockables across the whole library
+     3. KLYP OS       — windowed desktop mode with a panic key
+   ========================================================================== */
+(function(){
+  const G = ()=> window.GAMES||[];
+  const E = ()=> window.ENGINES||{};
+  const K = ()=> window.KLYP;
+  const say = (m)=>{ try{ (window.toast||console.log)(m); }catch(e){} };
+  const LS = {
+    get(k,d){ try{ const v=localStorage.getItem("klyp:"+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } },
+    set(k,v){ try{ localStorage.setItem("klyp:"+k,JSON.stringify(v)); }catch(e){} }
+  };
+
+  /* ======================= 1. MUTATORS ======================= */
+  // Every mutator works by wrapping the *outside* of a game — CSS on the
+  // stage, a frame-scheduler swap, or a key remap — so all 163 games get
+  // them for free and no engine has to know they exist.
+  const MUTATORS = [
+    { id:"mirror",  name:"Mirror World",  emoji:"🪞", desc:"Everything is flipped left-to-right.",
+      css:"scaleX(-1)" },
+    { id:"upside",  name:"Upside Down",   emoji:"🙃", desc:"The whole screen is rotated 180°.",
+      css:"rotate(180deg)" },
+    { id:"tiny",    name:"Ant Mode",      emoji:"🐜", desc:"The game shrinks to a postage stamp.",
+      css:"scale(0.55)" },
+    { id:"turbo",   name:"Turbo",         emoji:"⚡", desc:"Everything runs at double speed.",
+      speed:2 },
+    { id:"slowmo",  name:"Molasses",      emoji:"🐌", desc:"Everything runs at half speed.",
+      speed:0.5 },
+    { id:"strobe",  name:"Blackout",      emoji:"🌑", desc:"The screen blacks out every few seconds.",
+      strobe:true },
+    { id:"fog",     name:"Fogged Lens",   emoji:"🌫", desc:"The screen is blurred — play by feel.",
+      filter:"blur(3px)" },
+    { id:"gray",    name:"Colourblind",   emoji:"⬜", desc:"All colour is drained away.",
+      filter:"grayscale(1) contrast(1.2)" },
+    { id:"reversed",name:"Crossed Wires", emoji:"🔀", desc:"Left and right controls are swapped.",
+      swap:true },
+    { id:"drift",   name:"Drunk Camera",  emoji:"🍺", desc:"The view sways as you play.",
+      drift:true },
+  ];
+  // Daily challenges are drawn only from keyboard-driven games, because
+  // mirroring/rotating the stage would desync mouse coordinates.
+  const DAILY_POOL = ["stickman","snakequest","dinorun","spaceinvade","asteroidbelt","froghop",
+    "racerlane","mazerunner","springjump","helicopter","ninjaclimb","slide2048","dungeondive",
+    "deepminer","arenachamp","survivalist","bossrush","tankwar","runemage","roguearcher",
+    "galaxydef","herotower","gravitywell","stacktower","dodgerain","beatblade","lightsout",
+    "spellwords","wordscramble","snakequest"];
+
+  function hashStr(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return Math.abs(h); }
+  function todayKey(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function dailyPick(dateKey){
+    const h=hashStr(dateKey||todayKey());
+    const pool=DAILY_POOL.filter(id=>G().some(g=>g.id===id));
+    const game=G().find(g=>g.id===pool[h%pool.length])||G()[0];
+    const mut=MUTATORS[(h>>7)%MUTATORS.length];
+    return {game,mut};
+  }
+
+  /* --- frame scheduler: lets us speed up, slow down, or pause a game --- */
+  const rawRAF = window.requestAnimationFrame, rawCAF = window.cancelAnimationFrame;
+  const realRAF = rawRAF.bind(window);
+  const realCAF = rawCAF.bind(window);
+  function makeScheduler(){
+    const cbs=new Map(); let seq=0;
+    return { cbs, add(cb){ const i=++seq; cbs.set(i,cb); return i; }, del(i){ cbs.delete(i); },
+      drain(t){ const list=[...cbs.entries()]; cbs.clear(); list.forEach(([,cb])=>{ try{ cb(t); }catch(e){ console.error("frame error:",e); } }); } };
+  }
+  // While any scheduler is installed, rAF calls are routed to whichever
+  // scheduler is "current" — the one being constructed or currently draining.
+  let schedulers=[], current=null, pumping=false, pumpGen=0;
+  function installRAF(){
+    if(pumping) return; pumping=true;
+    // A previously-stopped pump may still have one frame queued. Tag each pump
+    // with a generation so an old loop can't come back to life alongside a new one.
+    const myGen = ++pumpGen;
+    window.requestAnimationFrame = cb => (current||schedulers[0]).add(cb);
+    window.cancelAnimationFrame  = i  => schedulers.forEach(s=>s.del(i));
+    let acc=0;
+    (function pump(t){
+      if(!pumping || myGen!==pumpGen) return;
+      realRAF(pump); acc++;
+      schedulers.slice().forEach(s=>{
+        if(s.paused) return;
+        const sp = s.speed||1;
+        const runs = sp>=1 ? Math.round(sp) : (acc % Math.round(1/sp) === 0 ? 1 : 0);
+        for(let r=0;r<runs;r++){ const prev=current; current=s; s.drain(t); current=prev; }
+      });
+    })(0);
+  }
+  function uninstallRAF(){ if(schedulers.length) return; pumping=false; pumpGen++;
+    window.requestAnimationFrame=rawRAF; window.cancelAnimationFrame=rawCAF; }
+
+  /* --- key swap for "Crossed Wires" --- */
+  const SWAP={ArrowLeft:"ArrowRight",ArrowRight:"ArrowLeft",a:"d",d:"a",A:"D",D:"A"};
+  let swapHandler=null;
+  function installSwap(){
+    swapHandler=(e)=>{
+      if(e.__klyp) return;
+      const k=SWAP[e.key]; if(!k) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      const ev=new KeyboardEvent(e.type,{key:k,code:e.code,bubbles:true,cancelable:true});
+      ev.__klyp=true; window.dispatchEvent(ev);
+    };
+    window.addEventListener("keydown",swapHandler,true);
+    window.addEventListener("keyup",swapHandler,true);
+  }
+  function removeSwap(){ if(!swapHandler)return;
+    window.removeEventListener("keydown",swapHandler,true);
+    window.removeEventListener("keyup",swapHandler,true); swapHandler=null; }
+
+  let activeMut=null, mutStage=null, mutSched=null, mutExtras=[];
+  function beginMutator(mut, stage){
+    endMutator();
+    activeMut=mut; mutStage=stage;
+    if(mut.speed){ mutSched=makeScheduler(); mutSched.speed=mut.speed; schedulers.push(mutSched); installRAF(); }
+    if(mut.swap) installSwap();
+    const t=[]; if(mut.css)t.push(mut.css);
+    if(t.length) stage.style.transform=t.join(" ");
+    if(mut.filter) stage.style.filter=mut.filter;
+    if(mut.strobe){
+      const o=document.createElement("div");
+      o.style.cssText="position:absolute;inset:0;background:#000;pointer-events:none;z-index:5;animation:klypStrobe 4.2s infinite;";
+      stage.style.position=stage.style.position||"relative"; stage.appendChild(o); mutExtras.push(o);
+    }
+    if(mut.drift){ stage.style.animation="klypDrift 7s ease-in-out infinite"; }
+  }
+  function endMutator(){
+    if(mutSched){ schedulers=schedulers.filter(s=>s!==mutSched); mutSched=null; uninstallRAF(); }
+    removeSwap();
+    if(mutStage){ mutStage.style.transform=""; mutStage.style.filter=""; mutStage.style.animation=""; }
+    mutExtras.forEach(o=>{ try{ o.remove(); }catch(e){} }); mutExtras=[];
+    activeMut=null; mutStage=null;
+  }
+
+  /* --- daily challenge state --- */
+  function dailyState(){ return LS.get("daily",{last:"",streak:0,best:{},done:{}}); }
+  function playDaily(){
+    const {game,mut}=dailyPick();
+    if(!game) return say("No daily game available");
+    window.__pendingMutator=mut;
+    say(mut.emoji+" "+mut.name+" — "+mut.desc);
+    if(window.openGame) window.openGame(game);
+  }
+  function completeDaily(score){
+    const st=dailyState(), key=todayKey();
+    if(!st.done[key]){
+      st.done[key]=true;
+      st.streak = (st.last && daysBetween(st.last,key)===1) ? (st.streak||0)+1 : 1;
+      st.last=key;
+      const bonus=50+Math.min(200,(st.streak-1)*25);
+      if(K()) K().addCoins(bonus);
+      say("🎯 Daily complete! +"+bonus+" coins · streak "+st.streak);
+      META.bump("dailyDone",1); META.bump("streak",0,st.streak);
+    }
+    if(score!=null && (!st.best[key]||score>st.best[key])) st.best[key]=score;
+    LS.set("daily",st);
+  }
+  function daysBetween(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+
+  /* ======================= 2. ACHIEVEMENTS ======================= */
+  const stats = Object.assign({plays:{}, totalPlays:0, coins:0, dailyDone:0, streak:0,
+    mutators:{}, cats:{}, night:0, marathon:0}, LS.get("stats",{}));
+  function saveStats(){ LS.set("stats",stats); }
+
+  const ACH=[];
+  const add=(id,name,desc,emoji,check)=>ACH.push({id,name,desc,emoji,check});
+  // — breadth —
+  [1,5,10,25,50,100,163].forEach((n,i)=>add("uniq"+n,
+    n===163?"Completionist":"Explorer "+(i+1),
+    "Play "+n+" different game"+(n>1?"s":""), n>=100?"🏆":"🎮",
+    s=>Object.keys(s.plays).length>=n));
+  // — volume —
+  [10,50,100,250,500,1000].forEach(n=>add("plays"+n,"Regular ×"+n,
+    "Play "+n+" games in total","🕹",s=>s.totalPlays>=n));
+  // — coins —
+  [100,500,2000,10000,50000].forEach(n=>add("coin"+n,"Coin Purse "+n,
+    "Earn "+n.toLocaleString()+" coins in total","🪙",s=>s.coins>=n));
+  // — daily —
+  [1,5,15,30].forEach(n=>add("daily"+n,"Daily Devotee ×"+n,
+    "Complete "+n+" daily challenge"+(n>1?"s":""),"🎯",s=>s.dailyDone>=n));
+  [3,7,14,30].forEach(n=>add("streak"+n,n+"-Day Streak",
+    "Keep a "+n+"-day daily streak","🔥",s=>s.streak>=n));
+  // — mutators —
+  add("mutAll","Remix Master","See all 10 mutators at least once","🎲",
+    s=>Object.keys(s.mutators).length>=10);
+  MUTATORS.forEach(m=>add("mut_"+m.id,m.name,"Finish a run under "+m.name,m.emoji,
+    s=>!!s.mutators[m.id]));
+  // — categories —
+  ["arcade","puzzle","action","strategy","rpg"].forEach(c=>add("cat_"+c,
+    c[0].toUpperCase()+c.slice(1)+" Fan","Play 10 "+c+" games","📚",s=>(s.cats[c]||0)>=10));
+  // — per-game milestones (read live from KLYP bests) —
+  const BESTS=[["stickman",5,"Stick Legend","Reach stage 5 in Stickman Rebirth","🥷"],
+    ["snakequest",30,"Long Boi","Reach length 30 in Snake Quest","🐍"],
+    ["dinorun",500,"Jurassic","Score 500 in Dino Run","🦖"],
+    ["slide2048",10000,"Tile Titan","Score 10,000 in 2048","🔢"],
+    ["beatblade",20000,"Rhythm Ace","Score 20,000 in Beatblade","🎶"],
+    ["bossrush",5,"Boss Slayer","Reach boss 5 in Boss Rush","👹"],
+    ["dungeondive",5,"Deep Delver","Reach depth 5 in Dungeon Dive","🗡"],
+    ["roguearcher",10,"Relic Hoarder","Reach wave 10 in Rogue Archer","🏹"],
+    ["towerdef",1,"Tower Master","Beat all 10 waves of Tower Defense","🏰"],
+    ["herotower",20,"Sky High","Reach floor 20 in Hero Tower","🗼"]];
+  BESTS.forEach(([g,v,n,d,e])=>add("best_"+g,n,d,e,()=>{ try{ return K()&&K().best(g)>=v; }catch(err){ return false; } }));
+  // — quirky —
+  add("night","Night Owl","Play between midnight and 5am","🦉",s=>s.night>0);
+  add("marathon","Marathon","Play one game for 15 minutes straight","⏱",s=>s.marathon>0);
+  add("voxel","World Builder","Open Voxel World","🧊",s=>!!s.plays["voxelworld"]);
+  add("desktop","Power User","Open Klyp OS desktop mode","🖥",s=>!!s.desktop);
+
+  function unlocked(){ return LS.get("ach",{}); }
+  function checkAch(){
+    const u=unlocked(); let fresh=[];
+    ACH.forEach(a=>{ if(u[a.id]) return;
+      let ok=false; try{ ok=!!a.check(stats); }catch(e){}
+      if(ok){ u[a.id]=Date.now(); fresh.push(a); } });
+    if(fresh.length){ LS.set("ach",u);
+      fresh.forEach((a,i)=>setTimeout(()=>{ say("🏅 Achievement: "+a.emoji+" "+a.name); if(K())K().addCoins(25); },i*1200)); }
+    return fresh;
+  }
+
+  const META={
+    bump(key,by,setTo){ if(setTo!=null) stats[key]=Math.max(stats[key]||0,setTo); else stats[key]=(stats[key]||0)+(by||1); saveStats(); checkAch(); },
+    onPlay(g){
+      if(!g) return;
+      stats.plays[g.id]=(stats.plays[g.id]||0)+1;
+      stats.totalPlays++; stats.cats[g.cat]=(stats.cats[g.cat]||0)+1;
+      const h=new Date().getHours(); if(h>=0&&h<5) stats.night++;
+      if(activeMut) stats.mutators[activeMut.id]=1;
+      saveStats(); checkAch();
+    },
+    onClose(earned, secs){
+      if(earned>0){ stats.coins+=earned; }
+      if(secs>=900) stats.marathon=1;
+      if(activeMut){ stats.mutators[activeMut.id]=1; completeDaily(null); }
+      saveStats(); checkAch();
+    },
+    markDesktop(){ stats.desktop=1; saveStats(); checkAch(); },
+    stats, ACH, MUTATORS, dailyPick, playDaily, dailyState, todayKey,
+    beginMutator, endMutator, get activeMutator(){ return activeMut; },
+    makeScheduler, installRAF, uninstallRAF, schedulers:()=>schedulers,
+    setCurrent(s){ current=s; }, pushScheduler(s){ schedulers.push(s); installRAF(); },
+    popScheduler(s){ schedulers=schedulers.filter(x=>x!==s); uninstallRAF(); },
+    openAchievements, openDaily
+  };
+  window.KLYP_META=META;
+
+  /* ======================= UI: styles ======================= */
+  const st=document.createElement("style");
+  st.textContent=`
+  @keyframes klypStrobe{0%,72%{opacity:0}78%,88%{opacity:1}94%,100%{opacity:0}}
+  @keyframes klypDrift{0%,100%{transform:translate(0,0) rotate(0deg)}25%{transform:translate(10px,-6px) rotate(1.2deg)}50%{transform:translate(-8px,5px) rotate(-1deg)}75%{transform:translate(6px,8px) rotate(.8deg)}}
+  .metaModal{position:fixed;inset:0;background:rgba(3,6,14,.82);backdrop-filter:blur(6px);z-index:9000;display:none;align-items:center;justify-content:center;padding:20px;}
+  .metaModal.show{display:flex;}
+  .metaCard{background:var(--panel,#0c1326);border:1px solid var(--line,#22304d);border-radius:16px;max-width:820px;width:100%;max-height:86vh;overflow:auto;padding:22px;}
+  .metaCard h3{margin:0 0 4px;font-family:Rajdhani,sans-serif;font-size:24px;color:var(--text,#e7ecfb);}
+  .achGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:14px;}
+  .achItem{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--line,#22304d);}
+  .achItem.got{background:linear-gradient(135deg,rgba(47,191,106,.16),rgba(0,224,255,.08));border-color:#2fbf6a;}
+  .achItem .e{font-size:22px;filter:grayscale(1);opacity:.45;}
+  .achItem.got .e{filter:none;opacity:1;}
+  .achItem b{display:block;font-size:13px;color:var(--text,#e7ecfb);}
+  .achItem span{font-size:11px;color:var(--muted,#8ea0c8);line-height:1.4;}
+  .dailyCard{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:linear-gradient(135deg,rgba(194,75,255,.18),rgba(0,224,255,.1));
+    border:1px solid #c24bff;border-radius:14px;padding:16px 18px;margin:16px 0;}
+  .dailyCard .big{font-size:40px;}
+  .metaBtn{padding:10px 16px;border-radius:10px;border:none;background:#c24bff;color:#fff;font-weight:700;cursor:pointer;font-family:Rajdhani,sans-serif;font-size:15px;}
+  /* ---- Klyp OS ---- */
+  #klypOS{position:fixed;inset:0;z-index:8500;display:none;background:radial-gradient(circle at 30% 20%,#16224a,#070b16 70%);}
+  #klypOS.on{display:block;}
+  .osWin{position:absolute;background:#0c1326;border:1px solid #2b3d63;border-radius:10px;box-shadow:0 18px 60px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden;min-width:260px;}
+  .osBar{display:flex;align-items:center;gap:8px;padding:7px 10px;background:linear-gradient(90deg,#16224a,#0e1730);cursor:move;user-select:none;}
+  .osBar b{font-size:13px;color:#e7ecfb;font-family:Rajdhani,sans-serif;flex:1;}
+  .osDot{width:12px;height:12px;border-radius:50%;border:none;cursor:pointer;}
+  .osBody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#060a14;position:relative;}
+  .osTask{position:absolute;left:0;right:0;bottom:0;height:46px;background:rgba(8,12,26,.95);border-top:1px solid #2b3d63;display:flex;align-items:center;gap:8px;padding:0 10px;}
+  .osTask button{background:#16224a;border:1px solid #2b3d63;color:#cfe0ff;border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;font-weight:600;}
+  .osTask button.start{background:#c24bff;border-color:#c24bff;color:#fff;}
+  .osMenu{position:absolute;left:10px;bottom:52px;width:300px;max-height:60vh;overflow:auto;background:#0c1326;border:1px solid #2b3d63;border-radius:12px;padding:10px;display:none;}
+  .osMenu.on{display:block;}
+  .osMenu input{width:100%;padding:8px;border-radius:8px;border:1px solid #2b3d63;background:#060a14;color:#e7ecfb;margin-bottom:8px;}
+  .osMenu div.item{padding:7px 9px;border-radius:7px;cursor:pointer;font-size:13px;color:#cfe0ff;}
+  .osMenu div.item:hover{background:#16224a;}
+  #osPanic{position:fixed;inset:0;z-index:9500;display:none;background:#fff;color:#111;font-family:Calibri,Arial,sans-serif;overflow:auto;}
+  #osPanic.on{display:block;}
+  `;
+  document.head.appendChild(st);
+
+  /* ======================= UI: daily + achievements ======================= */
+  const modal=document.createElement("div"); modal.className="metaModal";
+  modal.innerHTML='<div class="metaCard"><div id="metaBody"></div></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener("click",e=>{ if(e.target===modal) modal.classList.remove("show"); });
+  function showModal(html){ document.getElementById("metaBody").innerHTML=html; modal.classList.add("show"); }
+
+  function openDaily(){
+    const {game,mut}=dailyPick(); const st=dailyState(); const key=todayKey();
+    const done=!!st.done[key];
+    showModal('<h3>🎲 Daily Challenge</h3>'
+      +'<p style="color:var(--muted,#8ea0c8);font-size:13px;margin:2px 0 0;">A different game with a different twist, every day. Same for everyone.</p>'
+      +'<div class="dailyCard"><div class="big">'+mut.emoji+'</div>'
+      +'<div style="flex:1;min-width:200px;"><div style="font-size:20px;font-weight:700;color:#fff;font-family:Rajdhani,sans-serif;">'+mut.name+'</div>'
+      +'<div style="font-size:13px;color:#cfe0ff;">'+mut.desc+'</div>'
+      +'<div style="font-size:13px;color:#9fb0da;margin-top:6px;">Today\'s game: <b style="color:#00e0ff;">'+game.emoji+' '+game.title+'</b></div></div>'
+      +'<button class="metaBtn" id="dailyGo">'+(done?"Play again":"Play now")+'</button></div>'
+      +'<div style="display:flex;gap:20px;font-size:13px;color:var(--muted,#8ea0c8);">'
+      +'<div>🔥 Streak: <b style="color:#ffd93d;">'+(st.streak||0)+'</b></div>'
+      +'<div>🎯 Completed: <b style="color:#2fbf6a;">'+(META.stats.dailyDone||0)+'</b></div>'
+      +'<div>'+(done?'<span style="color:#2fbf6a;">✓ Done today</span>':'<span style="color:#ff8a3d;">Not done today</span>')+'</div></div>'
+      +'<p style="font-size:12px;color:var(--muted,#8ea0c8);margin-top:16px;line-height:1.6;">Finishing a run under today\'s mutator completes the challenge and pays a streak bonus (50 coins, +25 per day of streak, up to 250).</p>');
+    const b=document.getElementById("dailyGo");
+    if(b) b.onclick=()=>{ modal.classList.remove("show"); playDaily(); };
+  }
+
+  function openAchievements(){
+    const u=unlocked(); const got=ACH.filter(a=>u[a.id]).length;
+    const pct=Math.round(got/ACH.length*100);
+    showModal('<h3>🏅 Achievements</h3>'
+      +'<p style="color:var(--muted,#8ea0c8);font-size:13px;margin:2px 0 10px;">'+got+' of '+ACH.length+' unlocked — '+pct+'% complete. Each one pays 25 coins.</p>'
+      +'<div style="height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#2fbf6a,#00e0ff);"></div></div>'
+      +'<div class="achGrid">'+ACH.map(a=>'<div class="achItem'+(u[a.id]?' got':'')+'"><div class="e">'+a.emoji+'</div><div><b>'+a.name+'</b><span>'+a.desc+'</span></div></div>').join("")+'</div>');
+  }
+
+  /* ======================= 3. KLYP OS ======================= */
+  const os=document.createElement("div"); os.id="klypOS";
+  os.innerHTML='<div class="osTask"><button class="start" id="osStart">▦ Start</button>'
+    +'<div id="osTasks" style="display:flex;gap:6px;flex:1;overflow:auto;"></div>'
+    +'<button id="osPanicBtn" title="Panic (` key)">🚨 Panic</button>'
+    +'<span id="osClock" style="color:#9fb0da;font-size:12px;min-width:52px;text-align:right;"></span>'
+    +'<button id="osExit">✕ Exit</button></div>'
+    +'<div class="osMenu" id="osMenu"><input id="osSearch" placeholder="Search 163 games…"><div id="osList"></div></div>';
+  document.body.appendChild(os);
+
+  const panic=document.createElement("div"); panic.id="osPanic";
+  panic.innerHTML='<div style="padding:0;font-size:13px;">'
+    +'<div style="background:#217346;color:#fff;padding:6px 12px;font-weight:600;">AutoSave ● Off &nbsp;&nbsp; Book1 - Excel &nbsp;&nbsp; 🔍 Search</div>'
+    +'<div style="background:#f3f2f1;border-bottom:1px solid #d0cfcd;padding:6px 12px;color:#333;">File &nbsp; Home &nbsp; Insert &nbsp; Draw &nbsp; Page Layout &nbsp; Formulas &nbsp; Data &nbsp; Review &nbsp; View &nbsp; Help</div>'
+    +'<table id="panicSheet" style="border-collapse:collapse;width:100%;font-size:12px;"></table></div>';
+  document.body.appendChild(panic);
+  (function buildSheet(){
+    const t=panic.querySelector("#panicSheet"); const cols=["","A","B","C","D","E","F","G","H"];
+    const data=[["","Q3 Revenue Forecast","","","","","",""],
+      ["Region","Jan","Feb","Mar","Total","Growth %","Target","Variance"],
+      ["North",42150,45300,47800,135250,"8.2%",130000,5250],
+      ["South",38400,37900,41200,117500,"3.1%",120000,-2500],
+      ["East",51200,53100,55600,159900,"6.7%",155000,4900],
+      ["West",29800,31450,33900,95150,"9.4%",92000,3150],
+      ["Central",44100,44900,46200,135200,"4.8%",134000,1200],
+      ["","","","","","","",""],
+      ["Total",205650,212650,224700,643000,"6.4%",631000,12000]];
+    let html="<tr>"+cols.map(c=>'<th style="border:1px solid #d0cfcd;background:#f3f2f1;color:#555;font-weight:600;padding:3px 6px;min-width:70px;">'+c+"</th>").join("")+"</tr>";
+    for(let r=0;r<26;r++){
+      html+="<tr><td style='border:1px solid #d0cfcd;background:#f3f2f1;color:#555;text-align:center;padding:3px 6px;'>"+(r+1)+"</td>";
+      for(let c=0;c<8;c++){ const v=(data[r]&&data[r][c]!==undefined)?data[r][c]:"";
+        const num=typeof v==="number";
+        html+="<td style='border:1px solid #e1dfdd;padding:3px 6px;text-align:"+(num?"right":"left")+";"+(r===1?"font-weight:600;background:#fafafa;":"")+(r===0?"font-weight:700;font-size:15px;color:#217346;":"")+"'>"+(num?v.toLocaleString():v)+"</td>"; }
+      html+="</tr>";
+    }
+    t.innerHTML=html;
+  })();
+  let panicOn=false;
+  function togglePanic(force){
+    panicOn = force!=null?force:!panicOn;
+    panic.classList.toggle("on",panicOn);
+    document.title = panicOn ? "Book1 - Excel" : "StudyHub — Focus & Learn";
+  }
+
+  const wins=[]; let zTop=10;
+  function makeWindow(g){
+    const w=document.createElement("div"); w.className="osWin";
+    const n=wins.length; w.style.left=(40+n*34)+"px"; w.style.top=(30+n*28)+"px"; w.style.zIndex=++zTop;
+    w.innerHTML='<div class="osBar"><button class="osDot" style="background:#ff5f57;"></button>'
+      +'<button class="osDot" style="background:#febc2e;"></button><b>'+g.emoji+' '+g.title+'</b></div>'
+      +'<div class="osBody"></div>';
+    const body=w.querySelector(".osBody"); body.style.width="700px"; body.style.height="500px";
+    os.appendChild(w);
+    // Each window gets its own frame scheduler so background windows can be
+    // paused — otherwise every open game would keep running at full speed.
+    const sched=makeScheduler(); META.pushScheduler(sched);
+    META.setCurrent(sched);
+    let clean=null;
+    try{ if(E()[g.engine]) clean=E()[g.engine](body); }catch(e){ body.innerHTML='<p style="color:#ff9db8;padding:20px;">This game failed to start in desktop mode.</p>'; }
+    META.setCurrent(null);
+    META.onPlay(g);
+    const rec={el:w,sched,clean,game:g};
+    wins.push(rec);
+    // dragging
+    const bar=w.querySelector(".osBar"); let dx=0,dy=0,drag=false;
+    bar.addEventListener("mousedown",e=>{ if(e.target.classList.contains("osDot"))return;
+      drag=true; dx=e.clientX-w.offsetLeft; dy=e.clientY-w.offsetTop; w.style.zIndex=++zTop; focusWin(rec); e.preventDefault(); });
+    const mv=e=>{ if(!drag)return; w.style.left=Math.max(0,e.clientX-dx)+"px"; w.style.top=Math.max(0,e.clientY-dy)+"px"; };
+    const up=()=>{ drag=false; };
+    document.addEventListener("mousemove",mv); document.addEventListener("mouseup",up);
+    rec.detach=()=>{ document.removeEventListener("mousemove",mv); document.removeEventListener("mouseup",up); };
+    w.addEventListener("mousedown",()=>{ w.style.zIndex=++zTop; focusWin(rec); });
+    w.querySelectorAll(".osDot")[0].onclick=()=>closeWin(rec);
+    w.querySelectorAll(".osDot")[1].onclick=()=>{ w.style.display="none"; renderTasks(); };
+    focusWin(rec); renderTasks();
+    return rec;
+  }
+  function focusWin(rec){ wins.forEach(r=>{ r.sched.paused = r!==rec; }); rec.el.style.display="flex"; renderTasks(); }
+  function closeWin(rec){
+    try{ rec.clean&&rec.clean(); }catch(e){}
+    rec.detach&&rec.detach(); META.popScheduler(rec.sched);
+    rec.el.remove(); wins.splice(wins.indexOf(rec),1); renderTasks();
+  }
+  function renderTasks(){
+    const t=document.getElementById("osTasks"); if(!t)return;
+    t.innerHTML=""; wins.forEach(r=>{ const b=document.createElement("button");
+      b.textContent=r.game.emoji+" "+r.game.title;
+      b.onclick=()=>{ r.el.style.display="flex"; r.el.style.zIndex=++zTop; focusWin(r); };
+      t.appendChild(b); });
+  }
+  function renderMenu(filter){
+    const l=document.getElementById("osList"); if(!l)return;
+    const q=(filter||"").toLowerCase();
+    l.innerHTML="";
+    G().filter(g=>!q||g.title.toLowerCase().includes(q)).slice(0,80).forEach(g=>{
+      const d=document.createElement("div"); d.className="item"; d.textContent=g.emoji+"  "+g.title;
+      d.onclick=()=>{ document.getElementById("osMenu").classList.remove("on"); makeWindow(g); };
+      l.appendChild(d); });
+  }
+  function openOS(){
+    os.classList.add("on"); META.markDesktop(); renderMenu(""); renderTasks();
+    clockTimer=setInterval(()=>{ const c=document.getElementById("osClock");
+      if(c)c.textContent=new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}); },1000);
+  }
+  function closeOS(){
+    [...wins].forEach(closeWin); os.classList.remove("on"); togglePanic(false);
+    clearInterval(clockTimer);
+  }
+  let clockTimer=null;
+  os.querySelector("#osStart").onclick=()=>document.getElementById("osMenu").classList.toggle("on");
+  os.querySelector("#osExit").onclick=closeOS;
+  os.querySelector("#osPanicBtn").onclick=()=>togglePanic(true);
+  os.querySelector("#osSearch").addEventListener("input",e=>renderMenu(e.target.value));
+  window.addEventListener("keydown",e=>{
+    if(e.key==="`"){ if(os.classList.contains("on")||panicOn){ togglePanic(); e.preventDefault(); } }
+    if(panicOn&&e.key==="Escape"){ togglePanic(false); }
+  });
+  META.openOS=openOS;
+
+  /* ======================= entry points ======================= */
+  function addButtons(){
+    const nav=document.querySelector(".topnav"); if(!nav||document.getElementById("dailyBtn"))return;
+    const mk=(id,label,title,fn)=>{ const b=document.createElement("button");
+      b.className="topnav__btn topnav__btn--ghost"; b.id=id; b.title=title; b.textContent=label;
+      b.onclick=fn; nav.insertBefore(b,nav.firstChild.nextSibling); return b; };
+    mk("osBtn","🖥","Klyp OS desktop mode",openOS);
+    mk("achBtn","🏅","Achievements",openAchievements);
+    mk("dailyBtn","🎲","Daily challenge",openDaily);
+  }
+  function addHomeCard(){
+    const home=document.querySelector(".homeHero"); if(!home||document.getElementById("dailyHome"))return;
+    const {game,mut}=dailyPick(); const st=dailyState(); const done=!!st.done[todayKey()];
+    const d=document.createElement("div"); d.className="dailyCard"; d.id="dailyHome";
+    d.innerHTML='<div class="big">'+mut.emoji+'</div><div style="flex:1;min-width:220px;">'
+      +'<div style="font-size:12px;letter-spacing:.14em;color:#c24bff;font-weight:700;">DAILY CHALLENGE'+(done?' · ✓ DONE':'')+'</div>'
+      +'<div style="font-size:19px;font-weight:700;color:#fff;font-family:Rajdhani,sans-serif;">'+mut.name+' — '+game.title+'</div>'
+      +'<div style="font-size:13px;color:#9fb0da;">'+mut.desc+' · 🔥 streak '+(st.streak||0)+'</div></div>'
+      +'<button class="metaBtn" id="dailyHomeGo">Play</button>';
+    home.appendChild(d);
+    d.querySelector("#dailyHomeGo").onclick=playDaily;
+  }
+  function init(){ addButtons(); addHomeCard(); checkAch(); }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init);
+  else init();
+  setTimeout(init,900); // in case the app renders its shell late
+})();
+
 </script>
 </body>
 </html>
